@@ -4,11 +4,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { StatusBadge, PriorityBadge } from "@/components/status-badge";
-import { BusinessRule, ConditionGroup } from "@/lib/types";
+import { BusinessField, BusinessRule, ConditionGroup } from "@/lib/types";
 import { getField } from "@/lib/fields";
+import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-function GroupView({ group, depth = 0 }: { group: ConditionGroup; depth?: number }) {
+function GroupView({ group, depth = 0, catalog }: { group: ConditionGroup; depth?: number; catalog: BusinessField[] }) {
   if (group.children.length === 0) {
     return <p className="text-xs italic text-muted-foreground">Always applies (no conditions)</p>;
   }
@@ -21,12 +22,12 @@ function GroupView({ group, depth = 0 }: { group: ConditionGroup; depth?: number
           )}
           {child.type === "condition" ? (
             <div className="rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs">
-              <span className="font-medium">{getField(child.field)?.label ?? child.field}</span>{" "}
+              <span className="font-medium">{getField(catalog, child.field)?.label ?? child.field}</span>{" "}
               <span className="text-muted-foreground">{child.operator}</span>{" "}
               <span className="font-mono">{child.value}{child.value2 ? ` – ${child.value2}` : ""}</span>
             </div>
           ) : (
-            <GroupView group={child} depth={depth + 1} />
+            <GroupView group={child} depth={depth + 1} catalog={catalog} />
           )}
         </div>
       ))}
@@ -35,6 +36,7 @@ function GroupView({ group, depth = 0 }: { group: ConditionGroup; depth?: number
 }
 
 export function RuleViewSheet({ rule, open, onOpenChange }: { rule: BusinessRule | null; open: boolean; onOpenChange: (v: boolean) => void }) {
+  const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-lg">
@@ -76,7 +78,7 @@ export function RuleViewSheet({ rule, open, onOpenChange }: { rule: BusinessRule
               <Separator />
               <div className="py-4">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">IF Conditions</p>
-                <GroupView group={rule.rootGroup} />
+                <GroupView group={rule.rootGroup} catalog={fieldCatalog} />
               </div>
               <Separator />
               <div className="py-4">

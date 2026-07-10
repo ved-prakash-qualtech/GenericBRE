@@ -1,16 +1,15 @@
 "use client";
 
-import { BusinessRule, Domain, Priority, RuleStatus } from "@/lib/types";
-import { CATEGORIES, OWNERS } from "@/lib/fields";
+import { BusinessRule, Domain, Priority } from "@/lib/types";
+import { useAppStore } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
 
-const DOMAINS: Domain[] = ["Lending", "Insurance", "NBFC"];
 const PRIORITIES: Priority[] = [1, 2, 3, 4, 5];
-const STATUSES: RuleStatus[] = ["Draft", "Active", "Inactive", "Archived"];
 const PRIORITY_ITEMS: Record<number, string> = {
   1: "P1 · Critical",
   2: "P2 · High",
@@ -20,12 +19,17 @@ const PRIORITY_ITEMS: Record<number, string> = {
 };
 
 interface MetadataFormProps {
-  data: Pick<BusinessRule, "id" | "name" | "domain" | "category" | "subCategory" | "priority" | "status" | "description" | "owner">;
+  data: Pick<BusinessRule, "id" | "name" | "domain" | "category" | "subCategory" | "groupId" | "priority" | "status" | "description" | "owner">;
   onChange: (patch: Partial<BusinessRule>) => void;
   errors?: Record<string, string>;
 }
 
 export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps) {
+  const industries = useAppStore((s) => s.industries);
+  const categories = useAppStore((s) => s.categories);
+  const owners = useAppStore((s) => s.owners);
+  const ruleGroups = useAppStore((s) => s.ruleGroups);
+
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -62,12 +66,12 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
         </div>
 
         <div className="space-y-1.5">
-          <Label>Domain *</Label>
+          <Label>Industry *</Label>
           <Select value={data.domain} onValueChange={(v) => onChange({ domain: v as Domain })}>
             <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {DOMAINS.map((d) => (
-                <SelectItem key={d} value={d}>{d}</SelectItem>
+              {industries.map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -78,7 +82,7 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
           <Select value={data.category} onValueChange={(v) => onChange({ category: v ?? "" })}>
             <SelectTrigger className={cn("w-full", errors.category && "border-destructive")}><SelectValue placeholder="Select category" /></SelectTrigger>
             <SelectContent>
-              {CATEGORIES.map((c) => (
+              {categories.map((c) => (
                 <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}
             </SelectContent>
@@ -95,12 +99,24 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
         </div>
 
         <div className="space-y-1.5">
-          <Label>Status *</Label>
-          <Select value={data.status} onValueChange={(v) => onChange({ status: v as RuleStatus })}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+          <Label>Status</Label>
+          <div className="flex h-9 items-center">
+            <StatusBadge status={data.status} />
+          </div>
+          <p className="text-[10px] text-muted-foreground/70">Changed via the workflow actions (Save Draft / Submit for Review / Publish), not directly.</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Rule Group</Label>
+          <Select
+            value={data.groupId ?? "__none__"}
+            onValueChange={(v) => onChange({ groupId: v === "__none__" ? undefined : v ?? undefined })}
+          >
+            <SelectTrigger className="w-full"><SelectValue placeholder="None" /></SelectTrigger>
             <SelectContent>
-              {STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
+              <SelectItem value="__none__">None</SelectItem>
+              {ruleGroups.map((g) => (
+                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -111,7 +127,7 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
           <Select value={data.owner} onValueChange={(v) => onChange({ owner: v ?? "" })}>
             <SelectTrigger className="w-full"><SelectValue placeholder="Select owner" /></SelectTrigger>
             <SelectContent>
-              {OWNERS.map((o) => (
+              {owners.map((o) => (
                 <SelectItem key={o} value={o}>{o}</SelectItem>
               ))}
             </SelectContent>

@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans), Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -136,6 +136,31 @@ body {
   overscroll-behavior: none;
 }
 
+/* Font size scale matched to Universal CRM's default (compact) density —
+   same base size and heading scale, applied to the app's main content area. */
+main {
+  font-size: 0.8125rem;
+}
+main h1.text-2xl,
+main .text-2xl {
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+}
+main .text-xl {
+  font-size: 1rem;
+  line-height: 1.375rem;
+}
+main .text-lg {
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+}
+main .text-base {
+  font-size: 0.8125rem;
+}
+main .text-sm {
+  font-size: 0.75rem;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -151,23 +176,86 @@ body {
   background: var(--muted-foreground);
 }
 
-/* Appearance Studio: wallpaper + glass panels (Feature 07) */
+/* Appearance Studio: background image + glass panels (Feature 07).
+   One set of --app-wallpaper* vars feeds three possible layers (full-app /
+   dashboard-scoped / sidebar-scoped); data-bg-target picks which one shows,
+   so switching "target" in the studio needs no extra JS wiring. */
+.app-wallpaper-layer,
+.bg-scoped-layer {
+  background-image: var(--app-wallpaper);
+  background-size: var(--app-wallpaper-size, cover);
+  background-position: center;
+  background-attachment: var(--app-wallpaper-attachment, scroll);
+  filter: blur(var(--app-wallpaper-blur, 0px)) brightness(var(--app-wallpaper-brightness, 100%));
+  opacity: 0;
+  pointer-events: none;
+}
 .app-wallpaper-layer {
   position: fixed;
   inset: 0;
   z-index: 0;
-  background-image: var(--app-wallpaper);
-  background-size: cover;
-  background-position: center;
-  filter: blur(var(--app-wallpaper-blur, 0px)) brightness(var(--app-wallpaper-brightness, 100%));
+}
+.bg-scoped-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+html[data-bg-target="app"] .app-wallpaper-layer {
   opacity: var(--app-wallpaper-opacity, 0);
-  pointer-events: none;
+}
+html[data-bg-target="dashboard"] .bg-scoped-layer--dashboard,
+html[data-bg-target="sidebar"] .bg-scoped-layer--sidebar {
+  opacity: var(--app-wallpaper-opacity, 0);
+}
+.bg-scoped-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: var(--app-wallpaper-dim, 0);
 }
 
 .glass-mode .glass-panel {
   background-color: color-mix(in oklch, var(--card) 72%, transparent);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+/* Display tab — density controls card padding via the existing --card-spacing
+   var (higher specificity than the card's own inline utility so it wins);
+   font scale controls base text size independently of density. */
+html[data-density="compact"] [data-slot="card"] {
+  --card-spacing: --spacing(3);
+}
+html[data-density="spacious"] [data-slot="card"] {
+  --card-spacing: --spacing(5);
+}
+
+html[data-font-scale="sm"] main {
+  font-size: 0.75rem;
+}
+html[data-font-scale="lg"] main {
+  font-size: 0.9375rem;
+}
+
+html[data-high-contrast="true"] {
+  --border: oklch(0.4 0 0);
+  --ring: oklch(0.4 0 0 / 60%);
+}
+html.dark[data-high-contrast="true"] {
+  --border: oklch(0.85 0 0 / 45%);
+  --ring: oklch(0.85 0 0 / 60%);
+}
+html[data-high-contrast="true"] *:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+html[data-large-targets="true"] button,
+html[data-large-targets="true"] a[role="button"],
+html[data-large-targets="true"] [role="menuitem"] {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 @keyframes shimmer {

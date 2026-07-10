@@ -4,6 +4,7 @@ import { DecisionOutcome, RuleStatus } from "@/lib/types";
 const RULE_STATUS_STYLES: Record<RuleStatus, string> = {
   Active: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border-emerald-500/25",
   Draft: "bg-amber-500/12 text-amber-600 dark:text-amber-400 border-amber-500/25",
+  Testing: "bg-blue-500/12 text-blue-600 dark:text-blue-400 border-blue-500/25",
   Inactive: "bg-zinc-500/12 text-zinc-600 dark:text-zinc-400 border-zinc-500/25",
   Archived: "bg-zinc-900/8 text-zinc-500 dark:text-zinc-500 border-zinc-500/20",
 };
@@ -11,6 +12,7 @@ const RULE_STATUS_STYLES: Record<RuleStatus, string> = {
 const RULE_STATUS_DOT: Record<RuleStatus, string> = {
   Active: "bg-emerald-500",
   Draft: "bg-amber-500",
+  Testing: "bg-blue-500",
   Inactive: "bg-zinc-400",
   Archived: "bg-zinc-500",
 };

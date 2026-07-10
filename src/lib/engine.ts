@@ -1,5 +1,6 @@
 import { getField } from "./fields";
 import {
+  BusinessField,
   BusinessRule,
   Condition,
   ConditionGroup,
@@ -67,14 +68,15 @@ export interface ConditionEvalDetail {
 export function evaluateGroup(
   group: ConditionGroup,
   input: InputMap,
-  details: ConditionEvalDetail[]
+  details: ConditionEvalDetail[],
+  catalog: BusinessField[] = []
 ): boolean {
   if (group.children.length === 0) return true;
   const results = group.children.map((child) => {
     if (child.type === "condition") {
-      return evaluateConditionLeaf(child, input, details);
+      return evaluateConditionLeaf(child, input, details, catalog);
     }
-    return evaluateGroup(child, input, details);
+    return evaluateGroup(child, input, details, catalog);
   });
   return group.logic === "AND" ? results.every(Boolean) : results.some(Boolean);
 }
@@ -82,11 +84,12 @@ export function evaluateGroup(
 function evaluateConditionLeaf(
   cond: Condition,
   input: InputMap,
-  details: ConditionEvalDetail[]
+  details: ConditionEvalDetail[],
+  catalog: BusinessField[]
 ): boolean {
   const actual = input[cond.field];
   const passed = evaluateOperator(cond.operator, actual, cond.value, cond.value2);
-  const field = getField(cond.field);
+  const field = getField(catalog, cond.field);
   const expectedLabel =
     cond.operator === "between"
       ? `${cond.value} – ${cond.value2}`
@@ -103,7 +106,8 @@ function evaluateConditionLeaf(
 
 export function evaluateRule(
   rule: BusinessRule,
-  input: InputMap
+  input: InputMap,
+  catalog: BusinessField[] = []
 ): TraceStep {
   const start = performance.now();
   const details: ConditionEvalDetail[] = [];
@@ -120,7 +124,7 @@ export function evaluateRule(
     };
   }
 
-  const passed = evaluateGroup(rule.rootGroup, input, details);
+  const passed = evaluateGroup(rule.rootGroup, input, details, catalog);
   const durationMs = Math.max(0.1, performance.now() - start);
 
   return {
@@ -149,7 +153,8 @@ function outcomeRank(outcome: DecisionOutcome): number {
 export function runSimulation(
   domain: Domain,
   rules: BusinessRule[],
-  input: InputMap
+  input: InputMap,
+  catalog: BusinessField[] = []
 ): SimulationResult {
   const start = performance.now();
   const domainRules = rules
@@ -192,7 +197,7 @@ export function runSimulation(
       continue;
     }
 
-    const step = evaluateRule(rule, input);
+    const step = evaluateRule(rule, input, catalog);
     trace.push(step);
 
     if (step.status === "Passed") {

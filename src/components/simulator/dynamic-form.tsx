@@ -1,8 +1,8 @@
 "use client";
 
 import { Domain } from "@/lib/types";
-import { getField } from "@/lib/fields";
-import { SIMULATOR_FIELDS } from "@/lib/scenario-presets";
+import { fieldsForDomain, getField } from "@/lib/fields";
+import { useAppStore } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,12 +18,15 @@ export function DynamicForm({
   values: SimValues;
   onChange: (key: string, value: string | number | boolean) => void;
 }) {
-  const keys = SIMULATOR_FIELDS[domain];
+  const fieldCatalog = useAppStore((s) => s.fieldCatalog);
+  const keys = fieldsForDomain(fieldCatalog, domain)
+    .filter((f) => !f.computed)
+    .map((f) => f.key);
 
   return (
     <div className="grid grid-cols-2 gap-3">
       {keys.map((key) => {
-        const field = getField(key);
+        const field = getField(fieldCatalog, key);
         if (!field) return null;
         const value = values[key];
 

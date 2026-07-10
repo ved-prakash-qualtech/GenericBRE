@@ -3,12 +3,13 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { PlayCircle, RotateCcw, CreditCard, Landmark, ShieldPlus } from "lucide-react";
+import { PlayCircle, RotateCcw } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { Domain, SimulationResult } from "@/lib/types";
 import { runSimulation } from "@/lib/engine";
 import { lookupInterestRate, lookupHaircut, lookupPremium } from "@/lib/matrix-lookup";
 import { SCENARIO_PRESETS, PresetKey } from "@/lib/scenario-presets";
+import { iconForIndustry } from "@/lib/industries";
 import { DynamicForm, SimValues } from "@/components/simulator/dynamic-form";
 import { DecisionBanner } from "@/components/simulator/decision-banner";
 import { DecisionCallout } from "@/components/simulator/decision-callout";
@@ -18,35 +19,31 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
 
-const DOMAIN_TABS: { value: Domain; label: string; icon: React.ElementType }[] = [
-  { value: "Lending", label: "Digital Lending", icon: CreditCard },
-  { value: "NBFC", label: "NBFC Gold Loan", icon: Landmark },
-  { value: "Insurance", label: "Insurance", icon: ShieldPlus },
-];
-
 function SimulatorContent() {
   const searchParams = useSearchParams();
   const rules = useAppStore((s) => s.rules);
   const matrices = useAppStore((s) => s.matrices);
+  const industries = useAppStore((s) => s.industries);
+  const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   const addSimulation = useAppStore((s) => s.addSimulation);
   const logAudit = useAppStore((s) => s.logAudit);
   const currentUser = useAppStore((s) => s.currentUser);
 
-  const initialDomain = (searchParams.get("domain") as Domain) || "Lending";
+  const initialDomain = (searchParams.get("domain") as Domain) || industries[0]?.id || "";
   const initialPreset = (searchParams.get("preset") as PresetKey) || "happy";
   const [domain, setDomain] = useState<Domain>(initialDomain);
-  const [values, setValues] = useState<SimValues>(() => SCENARIO_PRESETS[initialDomain][initialPreset]);
+  const [values, setValues] = useState<SimValues>(() => SCENARIO_PRESETS[initialDomain]?.[initialPreset] ?? {});
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [running, setRunning] = useState(false);
 
   const switchDomain = (d: Domain) => {
     setDomain(d);
-    setValues(SCENARIO_PRESETS[d].happy);
+    setValues(SCENARIO_PRESETS[d]?.happy ?? {});
     setResult(null);
   };
 
   const applyPreset = (preset: PresetKey) => {
-    setValues(SCENARIO_PRESETS[domain][preset]);
+    setValues(SCENARIO_PRESETS[domain]?.[preset] ?? {});
     setResult(null);
   };
 
@@ -61,7 +58,7 @@ function SimulatorContent() {
     }
 
     setTimeout(() => {
-      const sim = runSimulation(domain, rules, input);
+      const sim = runSimulation(domain, rules, input, fieldCatalog);
 
       if (sim.outcome !== "Rejected") {
         if (domain === "Lending") {
@@ -110,19 +107,22 @@ function SimulatorContent() {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <div className="flex w-full shrink-0 flex-col border-b lg:h-full lg:w-100 lg:border-b-0 lg:border-r">
           <div className="flex gap-1.5 border-b p-3">
-            {DOMAIN_TABS.map((t) => (
-              <button
-                key={t.value}
-                onClick={() => switchDomain(t.value)}
-                className={cn(
-                  "flex flex-1 flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-[11px] font-medium transition-colors",
-                  domain === t.value ? "border-primary bg-primary/10 text-primary" : "hover:bg-accent"
-                )}
-              >
-                <t.icon className="size-4" />
-                {t.label}
-              </button>
-            ))}
+            {industries.map((i) => {
+              const Icon = iconForIndustry(i.icon);
+              return (
+                <button
+                  key={i.id}
+                  onClick={() => switchDomain(i.id)}
+                  className={cn(
+                    "flex flex-1 flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-[11px] font-medium transition-colors",
+                    domain === i.id ? "border-primary bg-primary/10 text-primary" : "hover:bg-accent"
+                  )}
+                >
+                  <Icon className="size-4" />
+                  {i.name}
+                </button>
+              );
+            })}
           </div>
 
           <ScrollArea className="min-h-0 flex-1">

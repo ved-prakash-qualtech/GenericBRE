@@ -1,9 +1,9 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, Copy, Eye, FileEdit, Archive, Ban, PlayCircle, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, Copy, Eye, FileEdit, Archive, Ban, PlayCircle, FlaskConical, Undo2, CheckCheck, MoreHorizontal } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { BusinessRule } from "@/lib/types";
+import { BusinessRule, RuleGroup } from "@/lib/types";
 import { StatusBadge, PriorityBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,10 +29,18 @@ export interface RepositoryActions {
   onClone: (r: BusinessRule) => void;
   onDisable: (r: BusinessRule) => void;
   onArchive: (r: BusinessRule) => void;
-  onPublish: (r: BusinessRule) => void;
+  onSubmitForReview: (r: BusinessRule) => void;
+  onApprove: (r: BusinessRule) => void;
+  onReject: (r: BusinessRule) => void;
+  onReactivate: (r: BusinessRule) => void;
 }
 
-export function buildColumns(actions: RepositoryActions): ColumnDef<BusinessRule>[] {
+export interface RepositoryColumnContext {
+  canPublish: boolean;
+  ruleGroups: RuleGroup[];
+}
+
+export function buildColumns(actions: RepositoryActions, context: RepositoryColumnContext): ColumnDef<BusinessRule>[] {
   return [
     {
       accessorKey: "id",
@@ -59,6 +67,19 @@ export function buildColumns(actions: RepositoryActions): ColumnDef<BusinessRule
       accessorKey: "category",
       header: "Category",
       size: 120,
+    },
+    {
+      id: "group",
+      header: "Rule Group",
+      cell: ({ row }) => {
+        const group = context.ruleGroups.find((g) => g.id === row.original.groupId);
+        return group ? (
+          <span className="text-xs text-muted-foreground">{group.name}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground/50">—</span>
+        );
+      },
+      size: 160,
     },
     {
       accessorKey: "priority",
@@ -99,30 +120,54 @@ export function buildColumns(actions: RepositoryActions): ColumnDef<BusinessRule
             <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />}>
               <MoreHorizontal className="size-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onSelect={() => actions.onView(r)}>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={() => actions.onView(r)}>
                 <Eye className="size-3.5" /> View
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => actions.onEdit(r)}>
-                <FileEdit className="size-3.5" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => actions.onClone(r)}>
-                <Copy className="size-3.5" /> Clone
-              </DropdownMenuItem>
-              {r.status !== "Active" && (
-                <DropdownMenuItem onSelect={() => actions.onPublish(r)}>
-                  <PlayCircle className="size-3.5" /> Publish
+              {r.status !== "Archived" && (
+                <DropdownMenuItem onClick={() => actions.onEdit(r)}>
+                  <FileEdit className="size-3.5" /> Edit
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={() => actions.onClone(r)}>
+                <Copy className="size-3.5" /> Clone
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {r.status !== "Inactive" && (
-                <DropdownMenuItem onSelect={() => actions.onDisable(r)}>
+
+              {r.status === "Draft" && (
+                <DropdownMenuItem onClick={() => actions.onSubmitForReview(r)}>
+                  <FlaskConical className="size-3.5" /> Submit for Review
+                </DropdownMenuItem>
+              )}
+              {r.status === "Testing" && (
+                <>
+                  <DropdownMenuItem onClick={() => actions.onApprove(r)} disabled={!context.canPublish}>
+                    <CheckCheck className="size-3.5" /> Approve &amp; Publish
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => actions.onReject(r)}>
+                    <Undo2 className="size-3.5" /> Send Back to Draft
+                  </DropdownMenuItem>
+                </>
+              )}
+              {r.status === "Active" && (
+                <DropdownMenuItem onClick={() => actions.onDisable(r)}>
                   <Ban className="size-3.5" /> Disable
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem variant="destructive" onSelect={() => actions.onArchive(r)}>
-                <Archive className="size-3.5" /> Archive
-              </DropdownMenuItem>
+              {r.status === "Inactive" && (
+                <DropdownMenuItem onClick={() => actions.onReactivate(r)} disabled={!context.canPublish}>
+                  <PlayCircle className="size-3.5" /> Re-activate
+                </DropdownMenuItem>
+              )}
+
+              {r.status !== "Archived" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onClick={() => actions.onArchive(r)}>
+                    <Archive className="size-3.5" /> Archive
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         );

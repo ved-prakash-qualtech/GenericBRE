@@ -6,8 +6,8 @@ import {
   FlaskConical,
   Bell,
   ScrollText,
-  Palette,
   Settings,
+  Compass,
   type LucideIcon,
 } from "lucide-react";
 
@@ -30,6 +30,6 @@ export const NAV_ITEMS: NavItem[] = [
 export const NAV_ITEMS_SECONDARY: NavItem[] = [
   { href: "/notifications", label: "Notifications", icon: Bell, badgeKey: "notifications" },
   { href: "/audit-log", label: "Audit Log", icon: ScrollText },
-  { href: "/appearance", label: "Appearance Studio", icon: Palette },
-  { href: "/settings", label: "Settings", icon: Settings, disabled: true },
+  { href: "/metadata-explorer", label: "Metadata Explorer", icon: Compass },
+  { href: "/settings", label: "Configuration Studio", icon: Settings },
 ];

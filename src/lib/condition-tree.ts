@@ -14,6 +14,18 @@ export function emptyGroup(logic: "AND" | "OR" = "AND"): ConditionGroup {
   return { id: newId("grp"), type: "group", logic, children: [] };
 }
 
+// Deep-clones a condition tree with brand-new ids — used when instantiating a
+// Rule Template, so using the same template twice never produces id clashes.
+export function cloneGroupWithFreshIds(group: ConditionGroup): ConditionGroup {
+  return {
+    ...group,
+    id: newId("grp"),
+    children: group.children.map((c) =>
+      c.type === "group" ? cloneGroupWithFreshIds(c) : { ...c, id: newId("cond") }
+    ),
+  };
+}
+
 type Node = Condition | ConditionGroup;
 
 export function mapTree(node: ConditionGroup, fn: (n: Node) => Node): ConditionGroup {

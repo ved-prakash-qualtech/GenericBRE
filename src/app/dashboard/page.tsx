@@ -1,17 +1,45 @@
 "use client";
 
-import { Download } from "lucide-react";
+import { useState } from "react";
+import { Download, LayoutGrid, Sparkles } from "lucide-react";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { RecentRulesPanel, RecentActivityPanel, RecentDeploymentsPanel } from "@/components/dashboard/recent-panels";
 import { DomainDistributionChart, RuleStatusChart } from "@/components/dashboard/charts";
 import { DemoScenariosPanel } from "@/components/dashboard/demo-scenarios";
+import { ManageWidgetsSheet } from "@/components/dashboard/manage-widgets-sheet";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
 import { downloadCsv } from "@/lib/csv";
 
+// Each widget declares its own span within a 6-column grid (so the previous
+// 3-col/2-col/1+2-col rows all become spans of one shared, reorderable flow).
+// This is the store's `widgets` state actually driving the layout — visible +
+// order come from Manage Widgets, not a hardcoded JSX arrangement.
+const WIDGET_REGISTRY: Record<string, { span: string; height?: string; heading?: string; render: () => React.ReactNode }> = {
+  kpis: { span: "col-span-full", render: () => <KpiCards /> },
+  "quick-actions": {
+    span: "col-span-full md:col-span-1 xl:col-span-2",
+    heading: "Quick Actions",
+    render: () => <QuickActions />,
+  },
+  "recent-rules": { span: "col-span-full md:col-span-1 xl:col-span-2", height: "h-90", render: () => <RecentRulesPanel /> },
+  "recent-activity": { span: "col-span-full md:col-span-2 xl:col-span-2", height: "h-90", render: () => <RecentActivityPanel /> },
+  "domain-distribution": { span: "col-span-full md:col-span-1 xl:col-span-3", height: "h-64", render: () => <DomainDistributionChart /> },
+  "rule-status": { span: "col-span-full md:col-span-1 xl:col-span-3", height: "h-64", render: () => <RuleStatusChart /> },
+  "recent-deployments": { span: "col-span-full md:col-span-1 xl:col-span-2", height: "h-56", render: () => <RecentDeploymentsPanel /> },
+  "demo-scenarios": { span: "col-span-full md:col-span-1 xl:col-span-4", height: "h-56", render: () => <DemoScenariosPanel /> },
+};
+
 export default function DashboardPage() {
   const rules = useAppStore((s) => s.rules);
+  const widgets = useAppStore((s) => s.widgets);
+  const showInsights = useAppStore((s) => s.appearance.showInsights);
+  const [manageOpen, setManageOpen] = useState(false);
+
+  const orderedVisible = [...widgets].filter((w) => w.visible).sort((a, b) => a.order - b.order);
+  const pendingReview = rules.filter((r) => r.status === "Testing").length;
+  const criticalDrafts = rules.filter((r) => r.status === "Draft" && r.priority === 1).length;
 
   const exportSummary = () => {
     downloadCsv(
@@ -36,47 +64,56 @@ export default function DashboardPage() {
           <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
           <p className="text-xs text-muted-foreground">Central workspace for the Business Rules Engine</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={exportSummary}>
-          <Download className="size-3.5" /> Export
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setManageOpen(true)}>
+            <LayoutGrid className="size-3.5" /> Manage Widgets
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={exportSummary}>
+            <Download className="size-3.5" /> Export
+          </Button>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-        <div className="mx-auto flex max-w-350 flex-col gap-5">
-          <KpiCards />
-
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-            <div className="flex flex-col gap-2">
-              <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick Actions</h2>
-              <QuickActions />
+        <div className="mx-auto max-w-350">
+          {showInsights && (pendingReview > 0 || criticalDrafts > 0) && (
+            <div className="mb-5 flex items-center gap-2.5 rounded-xl border bg-accent px-4 py-3 text-xs text-accent-foreground">
+              <Sparkles className="size-4 shrink-0 text-primary" />
+              <p>
+                <span className="font-semibold">Smart Insight:</span>{" "}
+                {pendingReview > 0 && (
+                  <>
+                    {pendingReview} rule{pendingReview === 1 ? "" : "s"} awaiting review
+                    {criticalDrafts > 0 ? " · " : "."}
+                  </>
+                )}
+                {criticalDrafts > 0 && <>{criticalDrafts} critical-priority rule{criticalDrafts === 1 ? "" : "s"} still in Draft.</>}
+              </p>
             </div>
-            <div className="h-90">
-              <RecentRulesPanel />
-            </div>
-            <div className="h-90">
-              <RecentActivityPanel />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <div className="h-64">
-              <DomainDistributionChart />
-            </div>
-            <div className="h-64">
-              <RuleStatusChart />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-            <div className="h-56 xl:col-span-1">
-              <RecentDeploymentsPanel />
-            </div>
-            <div className="h-56 xl:col-span-2">
-              <DemoScenariosPanel />
-            </div>
+          )}
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-6">
+            {orderedVisible.map((w) => {
+              const widget = WIDGET_REGISTRY[w.id];
+              if (!widget) return null;
+              return (
+                <div key={w.id} className={`flex flex-col gap-2 ${widget.span} ${widget.height ?? ""}`}>
+                  {widget.heading && (
+                    <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{widget.heading}</h2>
+                  )}
+                  {widget.height ? <div className="min-h-0 flex-1">{widget.render()}</div> : widget.render()}
+                </div>
+              );
+            })}
+            {orderedVisible.length === 0 && (
+              <div className="col-span-full rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+                All widgets are hidden. Open Manage Widgets to bring some back.
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      <ManageWidgetsSheet open={manageOpen} onOpenChange={setManageOpen} />
     </div>
   );
 }

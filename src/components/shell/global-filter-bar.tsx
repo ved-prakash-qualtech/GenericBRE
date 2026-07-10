@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { RotateCcw, Building2, SlidersHorizontal, Check } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, useHasCapability } from "@/lib/store";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,14 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Domain, RuleStatus } from "@/lib/types";
+import { RuleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-const DOMAIN_OPTIONS: { value: Domain; label: string }[] = [
-  { value: "Lending", label: "Lending" },
-  { value: "Insurance", label: "Insurance" },
-  { value: "NBFC", label: "NBFC" },
-];
 
 const STATUS_OPTIONS: { value: RuleStatus; label: string }[] = [
   { value: "Active", label: "Active" },
@@ -34,12 +28,14 @@ export function GlobalFilterBar() {
   const filters = useAppStore((s) => s.globalFilters);
   const setFilters = useAppStore((s) => s.setGlobalFilters);
   const resetFilters = useAppStore((s) => s.resetGlobalFilters);
-  const role = useAppStore((s) => s.currentUser.role);
+  const canManageSystem = useHasCapability("system.manage");
+  const industries = useAppStore((s) => s.industries);
+  const DOMAIN_OPTIONS = industries.map((i) => ({ value: i.id, label: i.name }));
   const hasActive = filters.domains.length > 0 || filters.statuses.length > 0;
 
   return (
     <div className="hidden items-center gap-2 lg:flex">
-      {role === "Super Admin" && (
+      {canManageSystem && (
         <Select
           items={{ qualtechedge: "QualtechEdge Bank", northstar: "NorthStar NBFC", "unity-life": "Unity Life Insurance" }}
           defaultValue="qualtechedge"
@@ -59,7 +55,7 @@ export function GlobalFilterBar() {
         label="Domain"
         options={DOMAIN_OPTIONS}
         selected={filters.domains}
-        onChange={(v) => setFilters({ domains: v as Domain[] })}
+        onChange={(v) => setFilters({ domains: v as string[] })}
       />
       <MultiSelect
         label="Status"
@@ -81,6 +77,8 @@ export function MobileFilterButton() {
   const filters = useAppStore((s) => s.globalFilters);
   const setFilters = useAppStore((s) => s.setGlobalFilters);
   const resetFilters = useAppStore((s) => s.resetGlobalFilters);
+  const industries = useAppStore((s) => s.industries);
+  const DOMAIN_OPTIONS = industries.map((i) => ({ value: i.id, label: i.name }));
   const count = filters.domains.length + filters.statuses.length;
 
   const toggle = (key: "domains" | "statuses", value: string) => {

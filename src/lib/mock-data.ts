@@ -7,9 +7,13 @@ import {
   DecisionMatrix,
   Domain,
   Priority,
+  Role,
+  RuleGroup,
   RuleStatus,
+  RuleTemplate,
 } from "./types";
-import { CATEGORIES, OWNERS } from "./fields";
+import { DEFAULT_CATEGORIES, DEFAULT_OWNERS } from "./fields";
+import rolesData from "@/data/roles.json";
 
 // ---------- deterministic seeded RNG (avoids SSR/CSR hydration drift) ----------
 function mulberry32(seed: number) {
@@ -454,11 +458,11 @@ function generateFillerRules(count: number): BusinessRule[] {
         id: `RL-${ruleCounter}`,
         name: `${stem} #${ruleCounter}`,
         domain,
-        category: pick(CATEGORIES),
+        category: pick(DEFAULT_CATEGORIES),
         priority: (Math.ceil(rng() * 5) as Priority),
         status,
         description: `Supporting configuration rule covering ${field.replace(/_/g, " ")} variance handling for ${domain.toLowerCase()} operations.`,
-        owner: pick(OWNERS),
+        owner: pick(DEFAULT_OWNERS),
         rootGroup: group("AND", [cond(field, opNum, String(val))]),
         actions: [{ id: cid(), type: "Show Message", reasonCode: "INFO_FLAG", message: "Informational flag — does not affect final decision." }],
         createdDaysAgo: Math.floor(rng() * 150) + 1,
@@ -560,7 +564,7 @@ export const NOTIFICATIONS: AppNotification[] = [
 export const AUDIT_LOG: AuditEntry[] = [
   { id: "A1", timestamp: daysAgo(0.05), user: "Jyoti Sonani", action: "Published Rule", entity: "BusinessRule", entityId: "RL-101", details: "Status changed Draft → Active." },
   { id: "A2", timestamp: daysAgo(0.3), user: "Naveen Kumar", action: "Edited Matrix", entity: "DecisionMatrix", entityId: "MTX-LEND-01", details: "Updated interest rate for 650–699 band from 12.0% to 11.5%." },
-  { id: "A3", timestamp: daysAgo(0.5), user: "Ved Prakash", action: "Ran Simulation", entity: "Simulation", entityId: "SIM-4471", details: "Digital Lending scenario, outcome Approved." },
+  { id: "A3", timestamp: daysAgo(0.5), user: "Radhe", action: "Ran Simulation", entity: "Simulation", entityId: "SIM-4471", details: "Digital Lending scenario, outcome Approved." },
   { id: "A4", timestamp: daysAgo(1), user: "Saurabh Anand", action: "Cloned Rule", entity: "BusinessRule", entityId: "RL-206", details: "Cloned to RL-2061 as Draft." },
   { id: "A5", timestamp: daysAgo(1.4), user: "Shivang Sharma", action: "Save Failed", entity: "BusinessRule", entityId: "RL-303", details: "Validation error: mandatory Value field missing." },
   { id: "A6", timestamp: daysAgo(2), user: "System", action: "Export Delivered", entity: "Report", entityId: "RPT-WEEKLY-14", details: "CSV export delivered to risk-ops@qualtechedge.com." },
@@ -573,4 +577,56 @@ export const RECENT_DEPLOYMENTS = [
   { id: "D2", ruleId: "RL-201", ruleName: "Smoker Risk Classification", domain: "Insurance" as Domain, timestamp: daysAgo(3), status: "Live" as const },
   { id: "D3", ruleId: "RL-304", ruleName: "LTV Ceiling Guardrail", domain: "NBFC" as Domain, timestamp: daysAgo(9), status: "Live" as const },
   { id: "D4", ruleId: "RL-108", ruleName: "Non-Metro KYC Compliance Check", domain: "Lending" as Domain, timestamp: daysAgo(6), status: "Pending" as const },
+];
+
+// ============================================================
+// ROLES — seeded 1:1 from BRD §5.4's Target Role-Based Access Matrix, loaded
+// from src/data/roles.json (personaName + icon power the "Switch Role" demo
+// picker). Fully renameable/editable via the Configuration Studio;
+// enforcement is client-side only (no backend in this prototype).
+// ============================================================
+export const DEFAULT_ROLES: Role[] = rolesData as Role[];
+
+// ============================================================
+// RULE GROUPS — organizational collections, independent of Category.
+// ============================================================
+export const DEFAULT_RULE_GROUPS: RuleGroup[] = [
+  { id: "grp-core-eligibility", name: "Core Eligibility Bundle", description: "The baseline pass/fail checks every application must clear first." },
+  { id: "grp-risk-review", name: "Risk & Compliance Review", description: "Rules that flag a case for manual review rather than an automatic decision." },
+  { id: "grp-pricing", name: "Pricing & Calculation", description: "Rules that compute or adjust a numeric outcome rather than approve/reject." },
+];
+
+// ============================================================
+// RULE TEMPLATES — generic, industry-agnostic starting shapes. Instantiating
+// one just pre-fills the Rule Builder; the result is a normal editable rule.
+// ============================================================
+export const DEFAULT_RULE_TEMPLATES: RuleTemplate[] = [
+  {
+    id: "tmpl-threshold-check",
+    name: "Threshold Check",
+    description: "Reject when a numeric field breaches a configured minimum or maximum.",
+    rootGroup: group("AND", [cond("", "<", "")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "THRESHOLD_BREACH", message: "Value did not meet the configured threshold." }],
+  },
+  {
+    id: "tmpl-eligibility-gate",
+    name: "Eligibility Gate",
+    description: "Require two conditions to both hold before allowing the case to proceed.",
+    rootGroup: group("AND", [cond("", "=", ""), cond("", "=", "")]),
+    actions: [{ id: cid(), type: "Approve", reasonCode: "ELIGIBLE_CUSTOMER", message: "All eligibility conditions satisfied." }],
+  },
+  {
+    id: "tmpl-review-flag",
+    name: "Manual Review Flag",
+    description: "Route a case to manual review when a risk condition is met, without an automatic reject.",
+    rootGroup: group("AND", [cond("", ">", "")]),
+    actions: [{ id: cid(), type: "Show Message", reasonCode: "MANUAL_REVIEW", message: "This case has been flagged for manual review." }],
+  },
+  {
+    id: "tmpl-value-assignment",
+    name: "Value Assignment",
+    description: "Assign or calculate an output value onto the case when a condition is met.",
+    rootGroup: group("AND", [cond("", "=", "")]),
+    actions: [{ id: cid(), type: "Assign Value", outputField: "", outputValue: "" }],
+  },
 ];

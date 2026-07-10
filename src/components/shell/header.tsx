@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Menu, Search, Plus } from "lucide-react";
+import { Menu, Search, Plus, Palette } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LogoLockup } from "./logo";
@@ -10,9 +10,11 @@ import { NotificationBell } from "./notification-panel";
 import { HelpDesk } from "./help-desk";
 import { UserMenu } from "./user-menu";
 import { CommandPalette } from "./command-palette";
+import { AppearanceStudio } from "@/components/studio/appearance-studio";
 
 export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -56,12 +58,22 @@ export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
             <span className="hidden sm:inline">Create Rule</span>
           </Button>
           <div className="mx-0.5 hidden h-6 w-px bg-border sm:block" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-9"
+            onClick={() => setAppearanceOpen(true)}
+            aria-label="Appearance Studio"
+          >
+            <Palette className="size-[18px]" />
+          </Button>
           <NotificationBell />
           <HelpDesk />
           <UserMenu />
         </div>
       </header>
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <AppearanceStudio open={appearanceOpen} onOpenChange={setAppearanceOpen} />
     </>
   );
 }

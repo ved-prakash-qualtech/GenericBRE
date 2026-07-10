@@ -16,17 +16,13 @@ import {
 } from "recharts";
 import { useAppStore } from "@/lib/store";
 import { PanelHeader } from "./recent-panels";
-import { Domain, RuleStatus } from "@/lib/types";
-
-const DOMAIN_COLORS: Record<Domain, string> = {
-  Lending: "var(--chart-1)",
-  Insurance: "var(--chart-2)",
-  NBFC: "var(--chart-3)",
-};
+import { RuleStatus } from "@/lib/types";
+import { colorForIndustry } from "@/lib/industries";
 
 const STATUS_COLORS: Record<RuleStatus, string> = {
   Active: "var(--chart-1)",
   Draft: "var(--chart-4)",
+  Testing: "var(--chart-3)",
   Inactive: "var(--chart-2)",
   Archived: "var(--chart-5)",
 };
@@ -42,6 +38,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: { name:
 
 export function DomainDistributionChart() {
   const rules = useAppStore((s) => s.rules);
+  const industries = useAppStore((s) => s.industries);
   const router = useRouter();
 
   const data = useMemo(() => {
@@ -68,7 +65,7 @@ export function DomainDistributionChart() {
                 onClick={(d) => router.push(`/repository?domain=${d.name}`)}
               >
                 {data.map((d) => (
-                  <Cell key={d.name} fill={DOMAIN_COLORS[d.name as Domain]} stroke="var(--card)" strokeWidth={2} />
+                  <Cell key={d.name} fill={colorForIndustry(industries, d.name)} stroke="var(--card)" strokeWidth={2} />
                 ))}
               </Pie>
               <Tooltip content={<ChartTooltip />} />
@@ -83,7 +80,7 @@ export function DomainDistributionChart() {
               className="flex items-center justify-between rounded-md px-1.5 py-1 text-left hover:bg-accent/60 transition-colors"
             >
               <span className="flex items-center gap-2 text-xs">
-                <span className="size-2 rounded-full" style={{ backgroundColor: DOMAIN_COLORS[d.name as Domain] }} />
+                <span className="size-2 rounded-full" style={{ backgroundColor: colorForIndustry(industries, d.name) }} />
                 {d.name}
               </span>
               <span className="text-xs font-semibold tabular-nums">{d.value}</span>
@@ -100,7 +97,7 @@ export function RuleStatusChart() {
   const router = useRouter();
 
   const data = useMemo(() => {
-    const order: RuleStatus[] = ["Active", "Draft", "Inactive", "Archived"];
+    const order: RuleStatus[] = ["Active", "Testing", "Draft", "Inactive", "Archived"];
     const counts: Record<string, number> = {};
     for (const r of rules) counts[r.status] = (counts[r.status] ?? 0) + 1;
     return order.map((name) => ({ name, value: counts[name] ?? 0 }));

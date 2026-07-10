@@ -6,12 +6,14 @@ import { ConditionGroup, RuleAction } from "@/lib/types";
 import { collectFieldKeys } from "@/lib/condition-tree";
 import { evaluateGroup, ConditionEvalDetail } from "@/lib/engine";
 import { getField } from "@/lib/fields";
+import { useAppStore } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function InlineTestPanel({ rootGroup, actions }: { rootGroup: ConditionGroup; actions: RuleAction[] }) {
+  const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   const fieldKeys = useMemo(() => Array.from(collectFieldKeys(rootGroup)), [rootGroup]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState<{ passed: boolean; details: ConditionEvalDetail[] } | null>(null);
@@ -20,13 +22,13 @@ export function InlineTestPanel({ rootGroup, actions }: { rootGroup: ConditionGr
     const details: ConditionEvalDetail[] = [];
     const input: Record<string, string | number | boolean> = {};
     for (const key of fieldKeys) {
-      const field = getField(key);
+      const field = getField(fieldCatalog, key);
       let v: string | number | boolean = values[key] ?? "";
       if (field?.type === "number" || field?.type === "currency") v = parseFloat(String(v)) || 0;
       if (field?.type === "boolean") v = v === "true";
       input[key] = v;
     }
-    const passed = evaluateGroup(rootGroup, input, details);
+    const passed = evaluateGroup(rootGroup, input, details, fieldCatalog);
     setResult({ passed, details });
   };
 
@@ -42,7 +44,7 @@ export function InlineTestPanel({ rootGroup, actions }: { rootGroup: ConditionGr
         <>
           <div className="grid grid-cols-2 gap-2.5">
             {fieldKeys.map((key) => {
-              const field = getField(key);
+              const field = getField(fieldCatalog, key);
               return (
                 <div key={key} className="space-y-1">
                   <label className="text-[11px] text-muted-foreground">{field?.label ?? key}</label>

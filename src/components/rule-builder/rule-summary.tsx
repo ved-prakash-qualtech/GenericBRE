@@ -1,7 +1,8 @@
 "use client";
 
-import { BusinessRule, ConditionGroup } from "@/lib/types";
+import { BusinessField, BusinessRule, ConditionGroup } from "@/lib/types";
 import { getField } from "@/lib/fields";
+import { useAppStore } from "@/lib/store";
 import { Sparkles } from "lucide-react";
 
 function operatorText(op: string) {
@@ -20,22 +21,23 @@ function operatorText(op: string) {
   return map[op] ?? op;
 }
 
-function groupToText(group: ConditionGroup): string {
+function groupToText(group: ConditionGroup, catalog: BusinessField[]): string {
   if (group.children.length === 0) return "always";
   return group.children
     .map((c) => {
       if (c.type === "condition") {
-        const field = getField(c.field)?.label ?? c.field ?? "…";
+        const field = getField(catalog, c.field)?.label ?? c.field ?? "…";
         const val = c.operator === "between" ? `${c.value} and ${c.value2}` : c.value || "…";
         return `${field} ${operatorText(c.operator)} ${val}`;
       }
-      return `(${groupToText(c)})`;
+      return `(${groupToText(c, catalog)})`;
     })
     .join(` ${group.logic} `);
 }
 
 export function RuleSummary({ rule }: { rule: Pick<BusinessRule, "name" | "rootGroup" | "actions" | "priority" | "status"> }) {
-  const conditionText = groupToText(rule.rootGroup);
+  const fieldCatalog = useAppStore((s) => s.fieldCatalog);
+  const conditionText = groupToText(rule.rootGroup, fieldCatalog);
   return (
     <div className="rounded-xl border bg-gradient-to-br from-primary/5 to-transparent p-4">
       <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-primary">

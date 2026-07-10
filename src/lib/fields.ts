@@ -1,6 +1,9 @@
 import { BusinessField, Domain, Operator } from "./types";
 
-export const BUSINESS_FIELDS: BusinessField[] = [
+// Seed content only — the live catalog lives in the store (`fieldCatalog`) and
+// is fully editable from the Configuration Studio. New industries add their
+// own fields there; nothing here is a closed set.
+export const DEFAULT_FIELD_CATALOG: BusinessField[] = [
   // Common
   { key: "applicant_age", label: "Applicant Age", domain: "Common", type: "number", unit: "years" },
   { key: "gender", label: "Gender", domain: "Common", type: "enum", options: ["Male", "Female", "Other"] },
@@ -13,7 +16,7 @@ export const BUSINESS_FIELDS: BusinessField[] = [
   { key: "monthly_liabilities", label: "Monthly Liabilities", domain: "Lending", type: "currency", unit: "₹" },
   { key: "loan_amount", label: "Loan Amount Requested", domain: "Lending", type: "currency", unit: "₹" },
   { key: "loan_type", label: "Loan Type", domain: "Lending", type: "enum", options: ["Personal Loan", "Home Loan", "Vehicle Loan", "Business Loan"] },
-  { key: "dti_ratio", label: "Debt-to-Income Ratio", domain: "Lending", type: "number", unit: "%" },
+  { key: "dti_ratio", label: "Debt-to-Income Ratio", domain: "Lending", type: "number", unit: "%", computed: true },
   { key: "employment_type", label: "Employment Type", domain: "Lending", type: "enum", options: ["Salaried", "Self-Employed", "Business Owner"] },
 
   // Insurance
@@ -44,15 +47,17 @@ export const OPERATORS: { value: Operator; label: string; types: string[] }[] = 
   { value: "between", label: "Between", types: ["number", "currency"] },
 ];
 
-export function fieldsForDomain(domain: Domain): BusinessField[] {
-  return BUSINESS_FIELDS.filter((f) => f.domain === domain || f.domain === "Common");
+export function fieldsForDomain(catalog: BusinessField[], domain: Domain): BusinessField[] {
+  return catalog.filter((f) => f.domain === domain || f.domain === "Common");
 }
 
-export function getField(key: string): BusinessField | undefined {
-  return BUSINESS_FIELDS.find((f) => f.key === key);
+export function getField(catalog: BusinessField[], key: string): BusinessField | undefined {
+  return catalog.find((f) => f.key === key);
 }
 
-export const CATEGORIES = [
+// Seed content only — the live list lives in the store (`categories`) and is
+// fully editable from the Configuration Studio.
+export const DEFAULT_CATEGORIES = [
   "Eligibility",
   "Pricing",
   "Underwriting",
@@ -60,9 +65,11 @@ export const CATEGORIES = [
   "Compliance",
   "Collateral",
   "Claims",
-] as const;
+];
 
-export const OWNERS = [
+// Seed content only — the live list lives in the store (`owners`) and is fully
+// editable from the Configuration Studio.
+export const DEFAULT_OWNERS = [
   "Credit Risk Division",
   "Actuarial Underwriting",
   "Asset Management Group",

@@ -3,15 +3,16 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Rocket, AlertTriangle } from "lucide-react";
-import { useAppStore } from "@/lib/store";
-import { BusinessRule, Condition, ConditionGroup, RuleAction } from "@/lib/types";
-import { emptyGroup, updateNode, removeNode, addChildToGroup, validateTree } from "@/lib/condition-tree";
+import { ArrowLeft, Save, Rocket, FlaskConical, LayoutTemplate, AlertTriangle } from "lucide-react";
+import { useAppStore, useHasCapability } from "@/lib/store";
+import { BusinessRule, Condition, ConditionGroup, RuleAction, RuleTemplate } from "@/lib/types";
+import { emptyGroup, updateNode, removeNode, addChildToGroup, validateTree, cloneGroupWithFreshIds } from "@/lib/condition-tree";
 import { MetadataForm } from "@/components/rule-builder/metadata-form";
 import { ConditionGroupEditor } from "@/components/rule-builder/condition-group-editor";
 import { ActionListEditor } from "@/components/rule-builder/action-editor";
 import { RuleSummary } from "@/components/rule-builder/rule-summary";
 import { InlineTestPanel } from "@/components/rule-builder/inline-test-panel";
+import { TemplatePicker } from "@/components/rule-builder/template-picker";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -21,17 +22,17 @@ function nextRuleId(existing: BusinessRule[]) {
   return `RL-${max + 1}`;
 }
 
-function blankRule(id: string): BusinessRule {
+function blankRule(id: string, defaultDomain: string, defaultOwner: string): BusinessRule {
   return {
     id,
     name: "",
-    domain: "Lending",
+    domain: defaultDomain,
     category: "",
     subCategory: "",
     priority: 3,
     status: "Draft",
     description: "",
-    owner: "Credit Risk Division",
+    owner: defaultOwner,
     rootGroup: emptyGroup("AND"),
     actions: [],
     createdAt: new Date().toISOString(),
@@ -49,12 +50,21 @@ function RuleBuilderContent() {
   const rules = useAppStore((s) => s.rules);
   const addRule = useAppStore((s) => s.addRule);
   const updateRule = useAppStore((s) => s.updateRule);
+  const submitForReview = useAppStore((s) => s.submitForReview);
+  const approveRule = useAppStore((s) => s.approveRule);
   const logAudit = useAppStore((s) => s.logAudit);
   const currentUser = useAppStore((s) => s.currentUser);
+  const industries = useAppStore((s) => s.industries);
+  const owners = useAppStore((s) => s.owners);
+  const ruleTemplates = useAppStore((s) => s.ruleTemplates);
+  const canPublish = useHasCapability("rule.publish");
 
   const existingRule = useMemo(() => rules.find((r) => r.id === editId), [rules, editId]);
-  const [rule, setRule] = useState<BusinessRule>(() => existingRule ?? blankRule(nextRuleId(rules)));
+  const [rule, setRule] = useState<BusinessRule>(
+    () => existingRule ?? blankRule(nextRuleId(rules), industries[0]?.id ?? "", owners[0] ?? "")
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(!existingRule);
 
   useEffect(() => {
     // Re-seed the editable draft whenever the ?id= query param points at a different
@@ -64,6 +74,16 @@ function RuleBuilderContent() {
   }, [existingRule?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const patchRule = (patch: Partial<BusinessRule>) => setRule((r) => ({ ...r, ...patch }));
+
+  const applyTemplate = (template: RuleTemplate) => {
+    setRule((r) => ({
+      ...r,
+      rootGroup: cloneGroupWithFreshIds(template.rootGroup),
+      actions: template.actions.map((a) => ({ ...a })),
+    }));
+    setTemplatePickerOpen(false);
+    toast.success(`"${template.name}" applied`, { description: "Fully editable below — adjust fields and values as needed." });
+  };
 
   const updateTreeNode = (id: string, patch: Partial<Condition | ConditionGroup>) =>
     setRule((r) => ({ ...r, rootGroup: updateNode(r.rootGroup, id, patch) }));
@@ -88,11 +108,10 @@ function RuleBuilderContent() {
     return true;
   };
 
-  const handleSave = (publish?: boolean) => {
-    if (!validate()) return;
+  const persistRule = (statusOverride?: BusinessRule["status"]): BusinessRule => {
     const finalRule: BusinessRule = {
       ...rule,
-      status: publish ? "Active" : rule.status,
+      status: statusOverride ?? rule.status,
       updatedAt: new Date().toISOString(),
     };
     if (existingRule) {
@@ -102,9 +121,34 @@ function RuleBuilderContent() {
       addRule(finalRule);
       logAudit({ user: currentUser.name, action: "Created Rule", entity: "BusinessRule", entityId: finalRule.id, details: `New rule created as ${finalRule.status}.` });
     }
-    toast.success(publish ? "Rule published" : "Rule saved", {
-      description: `${finalRule.id} · ${finalRule.name} is now ${finalRule.status}.`,
-    });
+    return finalRule;
+  };
+
+  const handleSaveDraft = () => {
+    if (!validate()) return;
+    const saved = persistRule("Draft");
+    toast.success("Rule saved", { description: `${saved.id} · ${saved.name} is now Draft.` });
+    router.push("/repository");
+  };
+
+  // Only roles with the `rule.publish` capability see this — it saves and
+  // immediately approves/publishes in one step (BRD §5.5 allows PM/Risk/
+  // Underwriter/SysAdmin to self-publish; Business Analyst cannot).
+  const handleSaveAndPublish = () => {
+    if (!validate()) return;
+    const saved = persistRule("Draft");
+    approveRule(saved.id);
+    toast.success("Rule published", { description: `${saved.id} · ${saved.name} is now Active.` });
+    router.push("/repository");
+  };
+
+  // Roles without `rule.publish` submit into the Testing/review queue instead
+  // of publishing directly — BRD §5.5's governance workflow.
+  const handleSubmitForReview = () => {
+    if (!validate()) return;
+    const saved = persistRule("Draft");
+    submitForReview(saved.id);
+    toast.success("Submitted for review", { description: `${saved.id} · ${saved.name} moved to Testing.` });
     router.push("/repository");
   };
 
@@ -123,13 +167,31 @@ function RuleBuilderContent() {
             <AlertTriangle className="size-3.5" /> Fix validation errors to save
           </span>
         )}
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleSave(false)}>
+        {!existingRule && (
+          <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setTemplatePickerOpen(true)}>
+            <LayoutTemplate className="size-3.5" /> Use Template
+          </Button>
+        )}
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSaveDraft}>
           <Save className="size-3.5" /> Save Draft
         </Button>
-        <Button size="sm" className="gap-1.5" onClick={() => handleSave(true)}>
-          <Rocket className="size-3.5" /> Save &amp; Publish
-        </Button>
+        {canPublish ? (
+          <Button size="sm" className="gap-1.5" onClick={handleSaveAndPublish}>
+            <Rocket className="size-3.5" /> Save &amp; Publish
+          </Button>
+        ) : (
+          <Button size="sm" className="gap-1.5" onClick={handleSubmitForReview}>
+            <FlaskConical className="size-3.5" /> Submit for Review
+          </Button>
+        )}
       </div>
+
+      <TemplatePicker
+        open={templatePickerOpen}
+        onOpenChange={setTemplatePickerOpen}
+        templates={ruleTemplates}
+        onUse={applyTemplate}
+      />
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="mx-auto flex max-w-330 flex-col gap-4 px-5 py-5 sm:px-6">

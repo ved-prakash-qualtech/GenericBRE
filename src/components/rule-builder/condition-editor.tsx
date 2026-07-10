@@ -3,6 +3,7 @@
 import { Trash2 } from "lucide-react";
 import { Condition, Domain, Operator } from "@/lib/types";
 import { fieldsForDomain, getField, OPERATORS } from "@/lib/fields";
+import { useAppStore } from "@/lib/store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,8 +21,9 @@ export function ConditionEditor({
   onChange: (patch: Partial<Condition>) => void;
   onDelete: () => void;
 }) {
-  const fields = fieldsForDomain(domain);
-  const field = getField(condition.field);
+  const fieldCatalog = useAppStore((s) => s.fieldCatalog);
+  const fields = fieldsForDomain(fieldCatalog, domain);
+  const field = getField(fieldCatalog, condition.field);
   const availableOperators = OPERATORS.filter((o) => !field || o.types.includes(field.type));
 
   const renderValueInput = () => {

@@ -1,14 +1,10 @@
-import { Domain } from "./types";
-
 export type PresetKey = "happy" | "reject" | "review";
 
-export const SIMULATOR_FIELDS: Record<Domain, string[]> = {
-  Lending: ["applicant_age", "credit_score", "monthly_income", "monthly_liabilities", "loan_amount", "loan_type", "employment_type", "city"],
-  Insurance: ["applicant_age", "smoker", "occupation_type", "bmi", "medical_history", "sum_assured"],
-  NBFC: ["collateral_type", "appraised_value", "purity_grade", "ltv_requested"],
-};
-
-export const SCENARIO_PRESETS: Record<Domain, Record<PresetKey, Record<string, string | number | boolean>>> = {
+// Seed content only, keyed by Industry.id. Industries added at runtime via the
+// Configuration Studio simply have no presets — the Simulator falls back to
+// its full field catalog and a blank form (see scenario-presets lookups using
+// `?.` below and in the Simulator page).
+export const SCENARIO_PRESETS: Record<string, Record<PresetKey, Record<string, string | number | boolean>>> = {
   Lending: {
     happy: {
       applicant_age: 30,

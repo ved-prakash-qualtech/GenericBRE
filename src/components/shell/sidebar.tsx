@@ -1,47 +1,41 @@
 "use client";
 
-import { useState } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/lib/store";
 import { LogoLockup } from "./logo";
 import { SidebarNav } from "./sidebar-nav";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   const setCollapsed = useAppStore((s) => s.setSidebarCollapsed);
-  const [hovering, setHovering] = useState(false);
 
-  const visuallyExpanded = !collapsed || hovering;
-
+  // Expand/collapse only via the explicit toggle button below — no
+  // expand-on-hover. Hover-to-expand isn't standard sidebar behavior (it
+  // fights click-through and causes layout jumps on accidental mouse-over).
   return (
     <motion.aside
-      onMouseEnter={() => collapsed && setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
-      animate={{ width: visuallyExpanded ? 220 : 56 }}
+      animate={{ width: collapsed ? 56 : 220 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
-      className={cn(
-        "z-30 hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex",
-        hovering && collapsed ? "absolute inset-y-0 left-0 shadow-2xl" : "relative"
-      )}
+      className="relative z-30 hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex"
       style={{ height: "100%" }}
     >
+      <div className="bg-scoped-layer bg-scoped-layer--sidebar" />
       <div className="flex h-14 items-center border-b border-sidebar-border px-3">
-        <LogoLockup collapsed={!visuallyExpanded} />
+        <LogoLockup collapsed={collapsed} />
       </div>
 
-      <SidebarNav collapsed={!visuallyExpanded} />
+      <SidebarNav collapsed={collapsed} />
 
       <div className="border-t border-sidebar-border p-2.5">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground"
+          className="w-full justify-center text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground dark:hover:bg-sidebar-accent"
         >
-          {visuallyExpanded ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
+          {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
         </Button>
       </div>
     </motion.aside>

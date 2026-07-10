@@ -1,20 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { MatrixGrid } from "@/components/matrix/matrix-grid";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Domain } from "@/lib/types";
 
-const DOMAIN_LABELS: Record<Domain, string> = {
-  Lending: "Lending · Interest Rates",
-  NBFC: "NBFC · Gold Loan Haircut",
-  Insurance: "Insurance · Premium Slabs",
-};
-
 export default function MatrixPage() {
   const matrices = useAppStore((s) => s.matrices);
-  const [domain, setDomain] = useState<Domain>("Lending");
+  const industries = useAppStore((s) => s.industries);
+
+  // Only industries that actually have a configured matrix get a tab — this
+  // stays correct automatically as industries/matrices are added or removed.
+  const domainsWithMatrices = useMemo(
+    () => industries.filter((i) => matrices.some((m) => m.domain === i.id)),
+    [industries, matrices]
+  );
+
+  const [domain, setDomain] = useState<Domain>(() => domainsWithMatrices[0]?.id ?? "");
 
   return (
     <div className="flex h-full flex-col">
@@ -28,14 +31,14 @@ export default function MatrixPage() {
       <div className="min-h-0 flex-1 p-5 sm:p-6">
         <Tabs value={domain} onValueChange={(v) => setDomain(v as Domain)} className="flex h-full flex-col gap-3">
           <TabsList>
-            {(Object.keys(DOMAIN_LABELS) as Domain[]).map((d) => (
-              <TabsTrigger key={d} value={d}>{DOMAIN_LABELS[d]}</TabsTrigger>
+            {domainsWithMatrices.map((i) => (
+              <TabsTrigger key={i.id} value={i.id}>{i.name}</TabsTrigger>
             ))}
           </TabsList>
-          {(Object.keys(DOMAIN_LABELS) as Domain[]).map((d) => {
-            const matrix = matrices.find((m) => m.domain === d);
+          {domainsWithMatrices.map((i) => {
+            const matrix = matrices.find((m) => m.domain === i.id);
             return (
-              <TabsContent key={d} value={d} className="min-h-0 flex-1">
+              <TabsContent key={i.id} value={i.id} className="min-h-0 flex-1">
                 {matrix && <MatrixGrid matrix={matrix} />}
               </TabsContent>
             );
