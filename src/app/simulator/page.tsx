@@ -3,9 +3,9 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { PlayCircle, RotateCcw } from "lucide-react";
+import { FlaskConical, PlayCircle, RotateCcw } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { Domain, SimulationResult } from "@/lib/types";
+import { Domain, RuleEnvironment, SimulationResult } from "@/lib/types";
 import { runSimulation } from "@/lib/engine";
 import { lookupInterestRate, lookupHaircut, lookupPremium } from "@/lib/matrix-lookup";
 import { SCENARIO_PRESETS, PresetKey } from "@/lib/scenario-presets";
@@ -17,6 +17,7 @@ import { ExecutionTimeline } from "@/components/simulator/execution-timeline";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StatusBadge } from "@/components/status-badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 function SimulatorContent() {
@@ -31,15 +32,22 @@ function SimulatorContent() {
 
   const initialDomain = (searchParams.get("domain") as Domain) || industries[0]?.id || "";
   const initialPreset = (searchParams.get("preset") as PresetKey) || "happy";
+  const initialSandboxRule = searchParams.get("sandboxRule");
+  const initialEnvironment = (searchParams.get("environment") as RuleEnvironment) || "Prod";
   const [domain, setDomain] = useState<Domain>(initialDomain);
   const [values, setValues] = useState<SimValues>(() => SCENARIO_PRESETS[initialDomain]?.[initialPreset] ?? {});
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [running, setRunning] = useState(false);
+  const [sandboxRuleId, setSandboxRuleId] = useState<string | null>(initialSandboxRule);
+  const [environment, setEnvironment] = useState<RuleEnvironment>(initialEnvironment);
+
+  const testingRulesInDomain = rules.filter((r) => r.domain === domain && r.status === "Testing");
 
   const switchDomain = (d: Domain) => {
     setDomain(d);
     setValues(SCENARIO_PRESETS[d]?.happy ?? {});
     setResult(null);
+    setSandboxRuleId(null);
   };
 
   const applyPreset = (preset: PresetKey) => {
@@ -58,7 +66,7 @@ function SimulatorContent() {
     }
 
     setTimeout(() => {
-      const sim = runSimulation(domain, rules, input, fieldCatalog);
+      const sim = runSimulation(domain, rules, input, fieldCatalog, sandboxRuleId ? [sandboxRuleId] : [], environment);
 
       if (sim.outcome !== "Rejected") {
         if (domain === "Lending") {
@@ -77,13 +85,19 @@ function SimulatorContent() {
       }
 
       setResult(sim);
-      addSimulation(sim);
+      // Sandbox previews (a rule still in Testing) aren't production activity —
+      // keep them out of the "Simulations Run" history/KPI, log them distinctly.
+      if (!sim.sandbox) {
+        addSimulation(sim);
+      }
       logAudit({
         user: currentUser.name,
-        action: "Ran Simulation",
+        action: sim.sandbox ? "Ran Sandbox Test" : "Ran Simulation",
         entity: "Simulation",
         entityId: sim.id,
-        details: `${domain} scenario, outcome ${sim.outcome}.`,
+        details: sim.sandbox
+          ? `${domain} scenario against pending rule ${sandboxRuleId}, outcome ${sim.outcome} (sandbox — not live).`
+          : `${domain} scenario, outcome ${sim.outcome}.`,
       });
       toast[sim.outcome === "Approved" ? "success" : sim.outcome === "Rejected" ? "error" : "warning"](
         `Simulation complete: ${sim.outcome}`,
@@ -127,6 +141,31 @@ function SimulatorContent() {
 
           <ScrollArea className="min-h-0 flex-1">
             <div className="space-y-4 p-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-muted-foreground">Environment Tier</label>
+                <div className="flex overflow-hidden rounded-lg border text-xs">
+                  {(["Dev", "UAT", "Prod"] as RuleEnvironment[]).map((env) => (
+                    <button
+                      key={env}
+                      onClick={() => {
+                        setEnvironment(env);
+                        setResult(null);
+                      }}
+                      className={cn(
+                        "flex-1 py-1.5 font-medium transition-colors",
+                        environment === env ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                      )}
+                    >
+                      {env}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10.5px] text-muted-foreground">
+                  Only rules promoted at least this far are evaluated — a client-side preview of environment promotion,
+                  not a separately deployed environment.
+                </p>
+              </div>
+
               <div className="flex gap-1.5">
                 <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => applyPreset("happy")}>Happy Path</Button>
                 <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => applyPreset("reject")}>Rejection Path</Button>
@@ -134,6 +173,29 @@ function SimulatorContent() {
               </div>
 
               <DynamicForm domain={domain} values={values} onChange={(k, v) => setValues((s) => ({ ...s, [k]: v }))} />
+
+              {testingRulesInDomain.length > 0 && (
+                <div className="space-y-1.5 rounded-lg border p-3">
+                  <label className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                    <FlaskConical className="size-3 text-amber-500" /> Sandbox test a pending rule
+                  </label>
+                  <p className="text-[10.5px] text-muted-foreground">
+                    Include one Testing-stage rule in this run to preview its effect before approving. Never affects live results.
+                  </p>
+                  <Select
+                    value={sandboxRuleId ?? "none"}
+                    onValueChange={(v) => setSandboxRuleId(v === "none" ? null : (v ?? null))}
+                  >
+                    <SelectTrigger size="sm" className="h-8 w-full"><SelectValue placeholder="None" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (production rules only)</SelectItem>
+                      {testingRulesInDomain.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>{r.id} — {r.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </ScrollArea>
 
@@ -157,6 +219,16 @@ function SimulatorContent() {
               </div>
             ) : (
               <>
+                {result.sandbox && (
+                  <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
+                    <FlaskConical className="size-4 shrink-0" />
+                    <p>
+                      <span className="font-semibold">Sandbox Test</span> — this run includes a rule still in Testing
+                      status. It previews the effect of approving that rule; it is not a live production decision and
+                      isn&apos;t counted in simulation history.
+                    </p>
+                  </div>
+                )}
                 <DecisionBanner result={result} />
                 <DecisionCallout result={result} />
 

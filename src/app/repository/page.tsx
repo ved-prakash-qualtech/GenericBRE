@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Download, Plus, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -8,12 +8,22 @@ import { useAppStore, useHasCapability } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MultiSelect } from "@/components/ui/multi-select";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { buildColumns } from "@/components/repository/columns";
 import { DataTable } from "@/components/repository/data-table";
 import { RuleViewSheet } from "@/components/repository/rule-view-sheet";
 import { downloadCsv } from "@/lib/csv";
 import { BusinessRule } from "@/lib/types";
-import { detectRuleConflicts } from "@/lib/conflict-detection";
+import { detectRuleConflicts, detectConflictsForCandidate, RuleConflict } from "@/lib/conflict-detection";
 
 function RepositoryContent() {
   const rules = useAppStore((s) => s.rules);
@@ -22,11 +32,16 @@ function RepositoryContent() {
   const submitForReview = useAppStore((s) => s.submitForReview);
   const approveRule = useAppStore((s) => s.approveRule);
   const rejectRule = useAppStore((s) => s.rejectRule);
+  const promoteRuleEnvironment = useAppStore((s) => s.promoteRuleEnvironment);
+  const deleteRule = useAppStore((s) => s.deleteRule);
   const industries = useAppStore((s) => s.industries);
   const categories = useAppStore((s) => s.categories);
   const owners = useAppStore((s) => s.owners);
   const ruleGroups = useAppStore((s) => s.ruleGroups);
   const canPublish = useHasCapability("rule.publish");
+  const canCreate = useHasCapability("rule.create");
+  const canEdit = useHasCapability("rule.edit");
+  const canDelete = useHasCapability("rule.delete");
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -36,10 +51,25 @@ function RepositoryContent() {
   const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
   const [ownerFilters, setOwnerFilters] = useState<string[]>([]);
   const [groupFilters, setGroupFilters] = useState<string[]>([]);
+  const [environmentFilters, setEnvironmentFilters] = useState<string[]>([]);
   const [viewRule, setViewRule] = useState<BusinessRule | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
+  const [approvalConfirm, setApprovalConfirm] = useState<{ rule: BusinessRule; conflicts: RuleConflict[] } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<BusinessRule | null>(null);
 
   const conflicts = useMemo(() => detectRuleConflicts(rules), [rules]);
+
+  const performApprove = useCallback(
+    (r: BusinessRule) => {
+      const result = approveRule(r.id);
+      if (result.ok) {
+        toast.success(`${r.id} approved & published`, { description: `${r.name} is now live.` });
+      } else {
+        toast.error("Approval blocked", { description: result.reason });
+      }
+    },
+    [approveRule]
+  );
 
   const filtered = useMemo(() => {
     return rules.filter((r) => {
@@ -49,9 +79,10 @@ function RepositoryContent() {
       if (categoryFilters.length && !categoryFilters.includes(r.category)) return false;
       if (ownerFilters.length && !ownerFilters.includes(r.owner)) return false;
       if (groupFilters.length && !groupFilters.includes(r.groupId ?? "")) return false;
+      if (environmentFilters.length && !environmentFilters.includes(r.environment)) return false;
       return true;
     });
-  }, [rules, search, domains, statuses, categoryFilters, ownerFilters, groupFilters]);
+  }, [rules, search, domains, statuses, categoryFilters, ownerFilters, groupFilters, environmentFilters]);
 
   const columns = useMemo(
     () =>
@@ -63,37 +94,77 @@ function RepositoryContent() {
           },
           onEdit: (r) => router.push(`/rule-builder?id=${r.id}`),
           onClone: (r) => {
-            const newId = cloneRule(r.id);
-            toast.success(`Cloned ${r.id} → ${newId}`, { description: "New rule saved as Draft." });
+            const result = cloneRule(r.id);
+            if (result.ok) {
+              toast.success(`Cloned ${r.id} → ${result.newId}`, { description: "New rule saved as Draft." });
+            } else {
+              toast.error("Clone blocked", { description: result.reason });
+            }
           },
           onDisable: (r) => {
-            setRuleStatus(r.id, "Inactive");
-            toast.info(`${r.id} disabled`, { description: `${r.name} removed from live evaluation.` });
+            const result = setRuleStatus(r.id, "Inactive");
+            if (result.ok) {
+              toast.info(`${r.id} disabled`, { description: `${r.name} removed from live evaluation.` });
+            } else {
+              toast.error("Action blocked", { description: result.reason });
+            }
           },
           onArchive: (r) => {
-            setRuleStatus(r.id, "Archived");
-            toast.info(`${r.id} archived`);
+            const result = setRuleStatus(r.id, "Archived");
+            if (result.ok) {
+              toast.info(`${r.id} archived`);
+            } else {
+              toast.error("Action blocked", { description: result.reason });
+            }
           },
           onSubmitForReview: (r) => {
-            submitForReview(r.id);
-            toast.success(`${r.id} submitted for review`, { description: "Moved to Testing pending approval." });
+            const result = submitForReview(r.id);
+            if (result.ok) {
+              toast.success(`${r.id} submitted for review`, { description: "Moved to Testing pending approval." });
+            } else {
+              toast.error("Action blocked", { description: result.reason });
+            }
           },
           onApprove: (r) => {
-            approveRule(r.id);
-            toast.success(`${r.id} approved & published`, { description: `${r.name} is now live.` });
+            const candidateConflicts = detectConflictsForCandidate(r, rules);
+            if (candidateConflicts.length > 0) {
+              setApprovalConfirm({ rule: r, conflicts: candidateConflicts });
+            } else {
+              performApprove(r);
+            }
           },
           onReject: (r) => {
-            rejectRule(r.id);
-            toast.info(`${r.id} sent back to Draft`);
+            const result = rejectRule(r.id);
+            if (result.ok) {
+              toast.info(`${r.id} sent back to Draft`);
+            } else {
+              toast.error("Action blocked", { description: result.reason });
+            }
           },
           onReactivate: (r) => {
-            setRuleStatus(r.id, "Active");
-            toast.success(`${r.id} re-activated`);
+            const result = setRuleStatus(r.id, "Active");
+            if (result.ok) {
+              toast.success(`${r.id} re-activated`);
+            } else {
+              toast.error("Action blocked", { description: result.reason });
+            }
           },
+          onPromote: (r) => {
+            const result = promoteRuleEnvironment(r.id);
+            if (result.ok) {
+              toast.success(`${r.id} promoted`, { description: `${r.name} is now in a higher environment tier.` });
+            } else {
+              toast.error("Promotion blocked", { description: result.reason });
+            }
+          },
+          onTestInSimulator: (r) => {
+            router.push(`/simulator?domain=${r.domain}&sandboxRule=${r.id}`);
+          },
+          onDelete: (r) => setDeleteConfirm(r),
         },
-        { canPublish, ruleGroups }
+        { canPublish, canCreate, canEdit, canDelete, ruleGroups }
       ),
-    [router, cloneRule, setRuleStatus, submitForReview, approveRule, rejectRule, canPublish, ruleGroups]
+    [router, cloneRule, setRuleStatus, submitForReview, rejectRule, promoteRuleEnvironment, canPublish, canCreate, canEdit, canDelete, ruleGroups, rules, performApprove]
   );
 
   const clearAll = () => {
@@ -103,9 +174,17 @@ function RepositoryContent() {
     setCategoryFilters([]);
     setOwnerFilters([]);
     setGroupFilters([]);
+    setEnvironmentFilters([]);
   };
 
-  const hasFilters = search || domains.length || statuses.length || categoryFilters.length || ownerFilters.length || groupFilters.length;
+  const hasFilters =
+    search ||
+    domains.length ||
+    statuses.length ||
+    categoryFilters.length ||
+    ownerFilters.length ||
+    groupFilters.length ||
+    environmentFilters.length;
 
   return (
     <div className="flex h-full flex-col">
@@ -128,6 +207,7 @@ function RepositoryContent() {
                 Category: r.category,
                 Priority: r.priority,
                 Status: r.status,
+                Environment: r.environment,
                 Owner: r.owner,
                 UpdatedAt: r.updatedAt,
               }))
@@ -136,9 +216,11 @@ function RepositoryContent() {
         >
           <Download className="size-3.5" /> Export CSV
         </Button>
-        <Button size="sm" className="gap-1.5" onClick={() => router.push("/rule-builder")}>
-          <Plus className="size-3.5" /> Create Rule
-        </Button>
+        {canCreate && (
+          <Button size="sm" className="gap-1.5" onClick={() => router.push("/rule-builder")}>
+            <Plus className="size-3.5" /> Create Rule
+          </Button>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-5 py-2.5 sm:px-6">
@@ -187,6 +269,16 @@ function RepositoryContent() {
           selected={groupFilters}
           onChange={setGroupFilters}
         />
+        <MultiSelect
+          label="Environment"
+          options={[
+            { value: "Dev", label: "Dev" },
+            { value: "UAT", label: "UAT" },
+            { value: "Prod", label: "Prod" },
+          ]}
+          selected={environmentFilters}
+          onChange={setEnvironmentFilters}
+        />
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={clearAll} className="text-xs">
             Clear all
@@ -215,6 +307,71 @@ function RepositoryContent() {
       </div>
 
       <RuleViewSheet rule={viewRule} open={viewOpen} onOpenChange={setViewOpen} />
+
+      <AlertDialog open={!!approvalConfirm} onOpenChange={(v) => !v && setApprovalConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-destructive" /> Possible conflict detected
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Publishing {approvalConfirm?.rule.id} would create
+              {approvalConfirm && approvalConfirm.conflicts.length > 1 ? " these conflicts" : " this conflict"} with
+              rules already Active. You can still approve — this is advisory, not a hard block.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="space-y-1.5 rounded-lg border bg-destructive/5 p-2.5 text-xs">
+            {approvalConfirm?.conflicts.map((c, i) => (
+              <li key={i} className="text-destructive">
+                {c.ruleAId} vs {c.ruleBId} — {c.reason}
+              </li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (approvalConfirm) performApprove(approvalConfirm.rule);
+                setApprovalConfirm(null);
+              }}
+            >
+              Approve Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(v) => !v && setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-destructive" /> Delete {deleteConfirm?.id} permanently?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes {deleteConfirm?.name} and its condition/action definitions for good — unlike Archive, this
+              can&apos;t be undone. Its version history and audit trail entries stay for the record, but the rule
+              itself is gone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!deleteConfirm) return;
+                const result = deleteRule(deleteConfirm.id);
+                if (result.ok) {
+                  toast.success(`${deleteConfirm.id} deleted permanently`);
+                } else {
+                  toast.error("Delete blocked", { description: result.reason });
+                }
+                setDeleteConfirm(null);
+              }}
+            >
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

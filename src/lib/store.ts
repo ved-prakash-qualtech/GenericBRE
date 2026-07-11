@@ -26,13 +26,16 @@ import {
   Industry,
   MatrixRow,
   Role,
+  RuleEnvironment,
   RuleGroup,
   RuleStatus,
   RuleTemplate,
+  RuleVersion,
   SimulationResult,
 } from "./types";
 import { DEFAULT_INDUSTRIES } from "./industries";
 import { DEFAULT_FIELD_CATALOG, DEFAULT_CATEGORIES, DEFAULT_OWNERS } from "./fields";
+import { hashAuditEntry, buildHashChain } from "./audit-chain";
 
 export type {
   ThemePreset,
@@ -72,6 +75,31 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   showInsights: true,
   logo: null,
 };
+
+function snapshotFromRule(
+  rule: BusinessRule,
+  snapshotBy: string,
+  changeType: RuleVersion["changeType"],
+  restoredFromVersion?: number
+): RuleVersion {
+  return {
+    ruleId: rule.id,
+    version: rule.version,
+    snapshotAt: rule.updatedAt,
+    snapshotBy,
+    changeType,
+    restoredFromVersion,
+    name: rule.name,
+    category: rule.category,
+    subCategory: rule.subCategory,
+    groupId: rule.groupId,
+    priority: rule.priority,
+    owner: rule.owner,
+    description: rule.description,
+    rootGroup: rule.rootGroup,
+    actions: rule.actions,
+  };
+}
 
 const DEFAULT_WIDGETS: DashboardWidgetState[] = [
   { id: "kpis", visible: true, order: 0 },
@@ -152,17 +180,33 @@ interface AppState {
 
   // approval workflow (BRD §5.5 governance: Draft -> Testing -> Review -> Publish)
   approvalRequests: ApprovalRequest[];
-  submitForReview: (ruleId: string) => void;
-  approveRule: (ruleId: string) => void;
-  rejectRule: (ruleId: string, comment?: string) => void;
+  // Every rule-mutation action below is enforced inside the store itself, not
+  // just via a UI-level disabled button: each returns { ok: false, reason }
+  // instead of silently succeeding when the caller lacks the required
+  // capability (or, for approveRule, is the same person who submitted the
+  // rule for review — maker-checker).
+  submitForReview: (ruleId: string) => { ok: boolean; reason?: string };
+  approveRule: (ruleId: string) => { ok: boolean; reason?: string };
+  rejectRule: (ruleId: string, comment?: string) => { ok: boolean; reason?: string };
+
+  // environment promotion (client-side approximation — see RuleEnvironment).
+  // Advances Dev -> UAT -> Prod one step at a time; same rule.publish gate
+  // as approve/reject since promoting is itself a governance decision.
+  promoteRuleEnvironment: (ruleId: string) => { ok: boolean; reason?: string };
 
   // rules
-  addRule: (rule: BusinessRule) => void;
-  updateRule: (id: string, updater: (r: BusinessRule) => BusinessRule) => void;
-  setRuleStatus: (id: string, status: RuleStatus) => void;
-  cloneRule: (id: string) => string | undefined;
-  archiveRule: (id: string) => void;
-  deleteRule: (id: string) => void;
+  addRule: (rule: BusinessRule) => { ok: boolean; reason?: string };
+  updateRule: (id: string, updater: (r: BusinessRule) => BusinessRule) => { ok: boolean; reason?: string };
+  setRuleStatus: (id: string, status: RuleStatus) => { ok: boolean; reason?: string };
+  cloneRule: (id: string) => { ok: boolean; reason?: string; newId?: string };
+  archiveRule: (id: string) => { ok: boolean; reason?: string };
+  deleteRule: (id: string) => { ok: boolean; reason?: string };
+
+  // version history — a full content snapshot per edit (see RuleVersion),
+  // not just the bare counter. addRule/updateRule append automatically;
+  // restoreRuleVersion re-applies an older snapshot's content as a new version.
+  ruleVersions: RuleVersion[];
+  restoreRuleVersion: (ruleId: string, version: number) => { ok: boolean; reason?: string };
 
   // matrices
   updateMatrixRows: (matrixId: string, rows: MatrixRow[]) => void;
@@ -180,7 +224,7 @@ interface AppState {
   pushNotification: (n: Omit<AppNotification, "id" | "timestamp" | "read">) => void;
 
   // audit
-  logAudit: (entry: Omit<AuditEntry, "id" | "timestamp">) => void;
+  logAudit: (entry: Omit<AuditEntry, "id" | "timestamp" | "prevHash" | "hash">) => void;
 
   // appearance
   setAppearance: (patch: Partial<AppearanceSettings>) => void;
@@ -318,69 +362,193 @@ export const useAppStore = create<AppState>()(
       approvalRequests: [],
       submitForReview: (ruleId) => {
         const rule = get().rules.find((r) => r.id === ruleId);
-        if (!rule) return;
+        if (!rule) return { ok: false, reason: "Rule not found." };
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.edit")) {
+          return { ok: false, reason: `${currentUser.name} doesn't have permission to submit rules for review.` };
+        }
+
         set((s) => ({
           rules: s.rules.map((r) => (r.id === ruleId ? { ...r, status: "Testing", updatedAt: new Date().toISOString() } : r)),
           approvalRequests: [
-            { id: `AR-${Date.now()}`, ruleId, stage: "Pending Review", requestedBy: get().currentUser.name, requestedAt: new Date().toISOString() },
+            { id: `AR-${Date.now()}`, ruleId, stage: "Pending Review", requestedBy: currentUser.name, requestedAt: new Date().toISOString() },
             ...s.approvalRequests,
           ],
         }));
-        get().logAudit({ user: get().currentUser.name, action: "Submitted for Review", entity: "BusinessRule", entityId: ruleId, details: `${rule.name} moved to Testing and queued for review.` });
+        get().logAudit({ user: currentUser.name, action: "Submitted for Review", entity: "BusinessRule", entityId: ruleId, details: `${rule.name} moved to Testing and queued for review.` });
+        return { ok: true };
       },
       approveRule: (ruleId) => {
         const rule = get().rules.find((r) => r.id === ruleId);
-        if (!rule) return;
+        if (!rule) return { ok: false, reason: "Rule not found." };
+        const { currentUser, roles, approvalRequests } = get();
+
+        if (!hasCapability(roles, currentUser.role, "rule.publish")) {
+          get().logAudit({ user: currentUser.name, action: "Approval Denied", entity: "BusinessRule", entityId: ruleId, details: `${currentUser.name} attempted to approve ${rule.name} without the rule.publish capability.` });
+          return { ok: false, reason: `${currentUser.name} doesn't have permission to publish rules.` };
+        }
+        const pending = approvalRequests.find((a) => a.ruleId === ruleId && a.stage === "Pending Review");
+        if (pending && pending.requestedBy === currentUser.name) {
+          get().logAudit({ user: currentUser.name, action: "Approval Denied", entity: "BusinessRule", entityId: ruleId, details: `${currentUser.name} cannot approve ${rule.name} — they also requested the review (maker-checker).` });
+          return { ok: false, reason: "You submitted this rule for review — switch to a different reviewer role to approve it." };
+        }
+
         set((s) => ({
           rules: s.rules.map((r) => (r.id === ruleId ? { ...r, status: "Active", updatedAt: new Date().toISOString() } : r)),
           approvalRequests: s.approvalRequests.map((a) =>
             a.ruleId === ruleId && a.stage === "Pending Review"
-              ? { ...a, stage: "Approved", decidedBy: get().currentUser.name, decidedAt: new Date().toISOString() }
+              ? { ...a, stage: "Approved", decidedBy: currentUser.name, decidedAt: new Date().toISOString() }
               : a
           ),
         }));
-        get().logAudit({ user: get().currentUser.name, action: "Approved & Published Rule", entity: "BusinessRule", entityId: ruleId, details: `${rule.name} approved and published to Active.` });
+        get().logAudit({ user: currentUser.name, action: "Approved & Published Rule", entity: "BusinessRule", entityId: ruleId, details: `${rule.name} approved and published to Active.` });
+        return { ok: true };
       },
       rejectRule: (ruleId, comment) => {
         const rule = get().rules.find((r) => r.id === ruleId);
-        if (!rule) return;
+        if (!rule) return { ok: false, reason: "Rule not found." };
+        const { currentUser, roles } = get();
+
+        if (!hasCapability(roles, currentUser.role, "rule.publish")) {
+          get().logAudit({ user: currentUser.name, action: "Approval Denied", entity: "BusinessRule", entityId: ruleId, details: `${currentUser.name} attempted to send back ${rule.name} without the rule.publish capability.` });
+          return { ok: false, reason: `${currentUser.name} doesn't have permission to make review decisions.` };
+        }
+
         set((s) => ({
           rules: s.rules.map((r) => (r.id === ruleId ? { ...r, status: "Draft", updatedAt: new Date().toISOString() } : r)),
           approvalRequests: s.approvalRequests.map((a) =>
             a.ruleId === ruleId && a.stage === "Pending Review"
-              ? { ...a, stage: "Rejected", decidedBy: get().currentUser.name, decidedAt: new Date().toISOString(), comment }
+              ? { ...a, stage: "Rejected", decidedBy: currentUser.name, decidedAt: new Date().toISOString(), comment }
               : a
           ),
         }));
-        get().logAudit({ user: get().currentUser.name, action: "Sent Back to Draft", entity: "BusinessRule", entityId: ruleId, details: `${rule.name} rejected during review${comment ? `: ${comment}` : "."}` });
+        get().logAudit({ user: currentUser.name, action: "Sent Back to Draft", entity: "BusinessRule", entityId: ruleId, details: `${rule.name} rejected during review${comment ? `: ${comment}` : "."}` });
+        return { ok: true };
       },
 
-      addRule: (rule) => set((s) => ({ rules: [rule, ...s.rules] })),
+      promoteRuleEnvironment: (ruleId) => {
+        const rule = get().rules.find((r) => r.id === ruleId);
+        if (!rule) return { ok: false, reason: "Rule not found." };
+        const { currentUser, roles } = get();
 
-      updateRule: (id, updater) =>
+        if (!hasCapability(roles, currentUser.role, "rule.publish")) {
+          return { ok: false, reason: `${currentUser.name} doesn't have permission to promote rules between environments.` };
+        }
+        const next: Record<RuleEnvironment, RuleEnvironment | null> = { Dev: "UAT", UAT: "Prod", Prod: null };
+        const nextEnv = next[rule.environment];
+        if (!nextEnv) return { ok: false, reason: `${rule.name} is already at Prod.` };
+
+        set((s) => ({
+          rules: s.rules.map((r) => (r.id === ruleId ? { ...r, environment: nextEnv, updatedAt: new Date().toISOString() } : r)),
+        }));
+        get().logAudit({
+          user: currentUser.name,
+          action: "Promoted Environment",
+          entity: "BusinessRule",
+          entityId: ruleId,
+          details: `${rule.name} promoted ${rule.environment} → ${nextEnv}.`,
+        });
+        return { ok: true };
+      },
+
+      ruleVersions: [],
+
+      addRule: (rule) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.create")) {
+          return { ok: false, reason: `${currentUser.name} doesn't have permission to create rules.` };
+        }
+        set((s) => ({
+          rules: [rule, ...s.rules],
+          ruleVersions: [snapshotFromRule(rule, currentUser.name, "created"), ...s.ruleVersions],
+        }));
+        return { ok: true };
+      },
+
+      updateRule: (id, updater) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.edit")) {
+          return { ok: false, reason: `${currentUser.name} doesn't have permission to edit rules.` };
+        }
         set((s) => ({
           rules: s.rules.map((r) => (r.id === id ? updater(r) : r)),
-        })),
+        }));
+        const updated = get().rules.find((r) => r.id === id);
+        if (updated) {
+          set((s) => ({
+            ruleVersions: [snapshotFromRule(updated, currentUser.name, "edited"), ...s.ruleVersions],
+          }));
+        }
+        return { ok: true };
+      },
+
+      restoreRuleVersion: (ruleId, version) => {
+        const snapshot = get().ruleVersions.find((v) => v.ruleId === ruleId && v.version === version);
+        const rule = get().rules.find((r) => r.id === ruleId);
+        if (!snapshot || !rule) return { ok: false, reason: "That version could not be found." };
+
+        const restored: BusinessRule = {
+          ...rule,
+          name: snapshot.name,
+          category: snapshot.category,
+          subCategory: snapshot.subCategory,
+          groupId: snapshot.groupId,
+          priority: snapshot.priority,
+          owner: snapshot.owner,
+          description: snapshot.description,
+          rootGroup: snapshot.rootGroup,
+          actions: snapshot.actions,
+          version: rule.version + 1,
+          updatedAt: new Date().toISOString(),
+        };
+        set((s) => ({
+          rules: s.rules.map((r) => (r.id === ruleId ? restored : r)),
+          ruleVersions: [
+            snapshotFromRule(restored, get().currentUser.name, "restored", version),
+            ...s.ruleVersions,
+          ],
+        }));
+        get().logAudit({
+          user: get().currentUser.name,
+          action: "Restored Rule Version",
+          entity: "BusinessRule",
+          entityId: ruleId,
+          details: `${restored.name} restored to the content of v${version} (now v${restored.version}).`,
+        });
+        return { ok: true };
+      },
 
       setRuleStatus: (id, status) => {
+        const rule = get().rules.find((r) => r.id === id);
+        if (!rule) return { ok: false, reason: "Rule not found." };
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.publish")) {
+          return { ok: false, reason: `${currentUser.name} doesn't have permission to change a rule's status.` };
+        }
+
         set((s) => ({
           rules: s.rules.map((r) =>
             r.id === id ? { ...r, status, updatedAt: new Date().toISOString() } : r
           ),
         }));
-        const rule = get().rules.find((r) => r.id === id);
         get().logAudit({
-          user: get().currentUser.name,
+          user: currentUser.name,
           action: `Status → ${status}`,
           entity: "BusinessRule",
           entityId: id,
-          details: `${rule?.name ?? id} status changed to ${status}.`,
+          details: `${rule.name} status changed to ${status}.`,
         });
+        return { ok: true };
       },
 
       cloneRule: (id) => {
         const source = get().rules.find((r) => r.id === id);
-        if (!source) return undefined;
+        if (!source) return { ok: false, reason: "Rule not found." };
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.create")) {
+          return { ok: false, reason: `${currentUser.name} doesn't have permission to create rules.` };
+        }
+
         ruleIdSeq += 1;
         const newId = `RL-${ruleIdSeq}`;
         const clone: BusinessRule = {
@@ -388,27 +556,41 @@ export const useAppStore = create<AppState>()(
           id: newId,
           name: `${source.name} (Copy)`,
           status: "Draft",
+          environment: "Dev",
           version: 1,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
-        set((s) => ({ rules: [clone, ...s.rules] }));
+        set((s) => ({
+          rules: [clone, ...s.rules],
+          ruleVersions: [snapshotFromRule(clone, currentUser.name, "created"), ...s.ruleVersions],
+        }));
         get().logAudit({
-          user: get().currentUser.name,
+          user: currentUser.name,
           action: "Cloned Rule",
           entity: "BusinessRule",
           entityId: newId,
           details: `Cloned from ${id} as Draft.`,
         });
-        return newId;
+        return { ok: true, newId };
       },
 
       archiveRule: (id) => get().setRuleStatus(id, "Archived"),
 
       deleteRule: (id) => {
         const rule = get().rules.find((r) => r.id === id);
+        if (!rule) return { ok: false, reason: "Rule not found." };
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.delete")) {
+          return { ok: false, reason: `${currentUser.name} doesn't have permission to permanently delete rules.` };
+        }
+        if (rule.status !== "Archived") {
+          return { ok: false, reason: "Only Archived rules can be permanently deleted." };
+        }
+
         set((s) => ({ rules: s.rules.filter((r) => r.id !== id) }));
-        get().logAudit({ user: get().currentUser.name, action: "Deleted Rule", entity: "BusinessRule", entityId: id, details: `${rule?.name ?? id} permanently deleted.` });
+        get().logAudit({ user: currentUser.name, action: "Deleted Rule", entity: "BusinessRule", entityId: id, details: `${rule.name} permanently deleted.` });
+        return { ok: true };
       },
 
       updateMatrixRows: (matrixId, rows) =>
@@ -486,12 +668,15 @@ export const useAppStore = create<AppState>()(
         })),
 
       logAudit: (entry) =>
-        set((s) => ({
-          auditLog: [
-            { ...entry, id: `A-${Date.now()}`, timestamp: new Date().toISOString() },
-            ...s.auditLog,
-          ],
-        })),
+        set((s) => {
+          const timestamp = new Date().toISOString();
+          const prevHash = s.auditLog[0]?.hash ?? "";
+          const content = { ...entry, timestamp };
+          const hash = hashAuditEntry(prevHash, content);
+          return {
+            auditLog: [{ ...content, id: `A-${Date.now()}`, prevHash, hash }, ...s.auditLog],
+          };
+        }),
 
       setAppearance: (patch) => set((s) => ({ appearance: { ...s.appearance, ...patch } })),
       resetAppearance: () => set({ appearance: DEFAULT_APPEARANCE }),
@@ -523,7 +708,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 6,
+      version: 8,
       skipHydration: true,
       migrate: (persistedState) => {
         const state = persistedState as Partial<AppState> & {
@@ -537,6 +722,24 @@ export const useAppStore = create<AppState>()(
             glassPanels?: boolean;
           };
         };
+
+        // v7 -> v8 added `environment` (Dev/UAT/Prod) to BusinessRule. Backfill
+        // any persisted rule missing it using the same default the seed data
+        // uses, so promotion state doesn't just silently become undefined.
+        if (state?.rules) {
+          state.rules = state.rules.map((r) =>
+            r.environment
+              ? r
+              : { ...r, environment: r.status === "Active" ? "Prod" : r.status === "Testing" ? "UAT" : "Dev" }
+          );
+        }
+
+        // v6 -> v7 added a tamper-evident hash chain to AuditEntry. Any
+        // persisted log saved before that has no prevHash/hash — rebuild the
+        // chain from scratch so it isn't just silently missing.
+        if (state?.auditLog?.length && !state.auditLog[state.auditLog.length - 1]?.hash) {
+          state.auditLog = buildHashChain(state.auditLog);
+        }
 
         // v5 -> v6 restructured AppearanceSettings: flat wallpaper* fields
         // became a nested `background` object, and colorMode/density/

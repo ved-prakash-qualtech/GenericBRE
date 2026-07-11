@@ -1,10 +1,10 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, Copy, Eye, FileEdit, Archive, Ban, PlayCircle, FlaskConical, Undo2, CheckCheck, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, Copy, Eye, FileEdit, Archive, Ban, PlayCircle, FlaskConical, Undo2, CheckCheck, MoreHorizontal, TestTube2, ArrowUpCircle, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { BusinessRule, RuleGroup } from "@/lib/types";
-import { StatusBadge, PriorityBadge } from "@/components/status-badge";
+import { BusinessRule, RuleEnvironment, RuleGroup } from "@/lib/types";
+import { StatusBadge, PriorityBadge, EnvironmentBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -33,10 +33,18 @@ export interface RepositoryActions {
   onApprove: (r: BusinessRule) => void;
   onReject: (r: BusinessRule) => void;
   onReactivate: (r: BusinessRule) => void;
+  onTestInSimulator: (r: BusinessRule) => void;
+  onPromote: (r: BusinessRule) => void;
+  onDelete: (r: BusinessRule) => void;
 }
+
+const NEXT_ENV: Record<RuleEnvironment, RuleEnvironment | null> = { Dev: "UAT", UAT: "Prod", Prod: null };
 
 export interface RepositoryColumnContext {
   canPublish: boolean;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
   ruleGroups: RuleGroup[];
 }
 
@@ -94,6 +102,12 @@ export function buildColumns(actions: RepositoryActions, context: RepositoryColu
       size: 100,
     },
     {
+      accessorKey: "environment",
+      header: "Environment",
+      cell: ({ row }) => <EnvironmentBadge environment={row.original.environment} />,
+      size: 110,
+    },
+    {
       accessorKey: "owner",
       header: "Owner",
       cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.owner}</span>,
@@ -124,33 +138,43 @@ export function buildColumns(actions: RepositoryActions, context: RepositoryColu
               <DropdownMenuItem onClick={() => actions.onView(r)}>
                 <Eye className="size-3.5" /> View
               </DropdownMenuItem>
-              {r.status !== "Archived" && (
+              {r.status !== "Archived" && context.canEdit && (
                 <DropdownMenuItem onClick={() => actions.onEdit(r)}>
                   <FileEdit className="size-3.5" /> Edit
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => actions.onClone(r)}>
-                <Copy className="size-3.5" /> Clone
-              </DropdownMenuItem>
+              {context.canCreate && (
+                <DropdownMenuItem onClick={() => actions.onClone(r)}>
+                  <Copy className="size-3.5" /> Clone
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
 
-              {r.status === "Draft" && (
+              {r.status === "Draft" && context.canEdit && (
                 <DropdownMenuItem onClick={() => actions.onSubmitForReview(r)}>
                   <FlaskConical className="size-3.5" /> Submit for Review
                 </DropdownMenuItem>
               )}
               {r.status === "Testing" && (
                 <>
+                  <DropdownMenuItem onClick={() => actions.onTestInSimulator(r)}>
+                    <TestTube2 className="size-3.5" /> Test in Simulator
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => actions.onApprove(r)} disabled={!context.canPublish}>
                     <CheckCheck className="size-3.5" /> Approve &amp; Publish
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => actions.onReject(r)}>
+                  <DropdownMenuItem onClick={() => actions.onReject(r)} disabled={!context.canPublish}>
                     <Undo2 className="size-3.5" /> Send Back to Draft
                   </DropdownMenuItem>
                 </>
               )}
+              {r.status === "Active" && NEXT_ENV[r.environment] && (
+                <DropdownMenuItem onClick={() => actions.onPromote(r)} disabled={!context.canPublish}>
+                  <ArrowUpCircle className="size-3.5" /> Promote to {NEXT_ENV[r.environment]}
+                </DropdownMenuItem>
+              )}
               {r.status === "Active" && (
-                <DropdownMenuItem onClick={() => actions.onDisable(r)}>
+                <DropdownMenuItem onClick={() => actions.onDisable(r)} disabled={!context.canPublish}>
                   <Ban className="size-3.5" /> Disable
                 </DropdownMenuItem>
               )}
@@ -163,8 +187,16 @@ export function buildColumns(actions: RepositoryActions, context: RepositoryColu
               {r.status !== "Archived" && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => actions.onArchive(r)}>
+                  <DropdownMenuItem variant="destructive" onClick={() => actions.onArchive(r)} disabled={!context.canPublish}>
                     <Archive className="size-3.5" /> Archive
+                  </DropdownMenuItem>
+                </>
+              )}
+              {r.status === "Archived" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onClick={() => actions.onDelete(r)} disabled={!context.canDelete}>
+                    <Trash2 className="size-3.5" /> Delete Permanently
                   </DropdownMenuItem>
                 </>
               )}

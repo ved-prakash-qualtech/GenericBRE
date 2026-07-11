@@ -8,11 +8,21 @@ import {
   Domain,
   Operator,
   RuleAction,
+  RuleEnvironment,
   SimulationResult,
   TraceStep,
 } from "./types";
 
 type InputMap = Record<string, string | number | boolean>;
+
+// Promotion order — a rule "reaches" Prod by first passing through Dev and
+// UAT, so anything already at Prod is also valid to see in a Dev or UAT
+// simulation; a Dev-only rule is invisible once you simulate at a higher tier.
+const ENV_RANK: Record<RuleEnvironment, number> = { Dev: 0, UAT: 1, Prod: 2 };
+
+function isPromotedTo(ruleEnv: RuleEnvironment, simulationTier: RuleEnvironment): boolean {
+  return ENV_RANK[ruleEnv] >= ENV_RANK[simulationTier];
+}
 
 function coerceNumber(v: unknown): number {
   const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.\-]/g, ""));
@@ -107,12 +117,13 @@ function evaluateConditionLeaf(
 export function evaluateRule(
   rule: BusinessRule,
   input: InputMap,
-  catalog: BusinessField[] = []
+  catalog: BusinessField[] = [],
+  opts: { forceEvaluate?: boolean } = {}
 ): TraceStep {
   const start = performance.now();
   const details: ConditionEvalDetail[] = [];
 
-  if (rule.status !== "Active") {
+  if (rule.status !== "Active" && !opts.forceEvaluate) {
     return {
       ruleId: rule.id,
       ruleName: rule.name,
@@ -141,6 +152,7 @@ export function evaluateRule(
     })),
     actionsApplied: passed ? rule.actions : [],
     durationMs,
+    sandbox: rule.status !== "Active" && opts.forceEvaluate ? true : undefined,
   };
 }
 
@@ -154,7 +166,9 @@ export function runSimulation(
   domain: Domain,
   rules: BusinessRule[],
   input: InputMap,
-  catalog: BusinessField[] = []
+  catalog: BusinessField[] = [],
+  sandboxRuleIds: string[] = [],
+  environment: RuleEnvironment = "Prod"
 ): SimulationResult {
   const start = performance.now();
   const domainRules = rules
@@ -184,7 +198,13 @@ export function runSimulation(
       continue;
     }
 
-    if (rule.status !== "Active") {
+    // A sandboxed rule under test bypasses both the status gate and the
+    // environment gate — the whole point is previewing it regardless of
+    // where it's been promoted to. Otherwise a rule only fires once it's
+    // Active AND has reached this simulation's environment tier.
+    const sandboxed = sandboxRuleIds.includes(rule.id);
+    const eligible = sandboxed || (rule.status === "Active" && isPromotedTo(rule.environment, environment));
+    if (!eligible) {
       trace.push({
         ruleId: rule.id,
         ruleName: rule.name,
@@ -197,7 +217,7 @@ export function runSimulation(
       continue;
     }
 
-    const step = evaluateRule(rule, input, catalog);
+    const step = evaluateRule(rule, input, catalog, { forceEvaluate: sandboxed });
     trace.push(step);
 
     if (step.status === "Passed") {
@@ -230,6 +250,7 @@ export function runSimulation(
   }
 
   const totalDurationMs = Math.max(1, performance.now() - start);
+  const sandbox = trace.some((t) => t.sandbox);
 
   return {
     id: `SIM-${Date.now()}`,
@@ -244,6 +265,7 @@ export function runSimulation(
     input,
     timestamp: new Date().toISOString(),
     totalDurationMs,
+    sandbox: sandbox || undefined,
   };
 }
 

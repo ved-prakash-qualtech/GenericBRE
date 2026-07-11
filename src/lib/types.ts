@@ -64,6 +64,15 @@ export interface RuleAction {
   message?: string;
 }
 
+// Client-side approximation of environment promotion — there's no real
+// separate Dev/UAT/Prod deployment here (no backend), just a metadata tag the
+// evaluation engine actually honors: a rule tagged "Dev" only fires in a Dev-
+// tier simulation, "UAT" fires in UAT and Prod, "Prod" fires everywhere. It
+// changes evaluation behavior, so it's a real (if simplified) gate, not just
+// a decorative label — but it's still one browser's local state, not three
+// independently deployed environments.
+export type RuleEnvironment = "Dev" | "UAT" | "Prod";
+
 export interface BusinessRule {
   id: string; // e.g. RL-101
   name: string;
@@ -75,6 +84,7 @@ export interface BusinessRule {
   groupId?: string;
   priority: Priority;
   status: RuleStatus;
+  environment: RuleEnvironment;
   description?: string;
   owner: string;
   rootGroup: ConditionGroup;
@@ -86,6 +96,31 @@ export interface BusinessRule {
    *  Hand-authored demo rules are simulatable; bulk-generated filler rules
    *  (added purely for repository/dashboard scale) are not. */
   simulatable?: boolean;
+}
+
+// A full, immutable snapshot of a rule's definition at the moment it was
+// saved — content only (name/category/conditions/actions/etc.), not lifecycle
+// status. Enables real "what changed" history and rollback, instead of the
+// bare version counter this replaces: every content edit appends one of
+// these rather than silently overwriting the prior definition in place.
+export interface RuleVersion {
+  ruleId: string;
+  version: number;
+  snapshotAt: string;
+  snapshotBy: string;
+  /** How this snapshot came to exist — a normal edit, or a restore of an older version. */
+  changeType: "created" | "edited" | "restored";
+  /** When changeType is "restored", the version number that was restored. */
+  restoredFromVersion?: number;
+  name: string;
+  category: string;
+  subCategory?: string;
+  groupId?: string;
+  priority: Priority;
+  owner: string;
+  description?: string;
+  rootGroup: ConditionGroup;
+  actions: RuleAction[];
 }
 
 // A named, reusable collection of rules — purely organizational, orthogonal to
@@ -161,6 +196,8 @@ export interface TraceStep {
   }[];
   actionsApplied: RuleAction[];
   durationMs: number;
+  /** True when this step ran a non-Active (Testing) rule under an explicit sandbox test — never true in a normal production simulation. */
+  sandbox?: boolean;
 }
 
 export type DecisionOutcome = "Approved" | "Rejected" | "Review Required";
@@ -178,6 +215,8 @@ export interface SimulationResult {
   input: Record<string, string | number | boolean>;
   timestamp: string;
   totalDurationMs: number;
+  /** True when one or more Testing-stage rules were included via an explicit sandbox test — this result is a pre-approval preview, not a production decision. */
+  sandbox?: boolean;
 }
 
 export type NotificationType = "Error" | "Warning" | "Success" | "Info";
@@ -200,6 +239,10 @@ export interface AuditEntry {
   entity: string;
   entityId: string;
   details: string;
+  /** Hash of the entry immediately before this one in time ("" for the very first entry ever logged). */
+  prevHash: string;
+  /** This entry's own hash, computed from prevHash + its own fields — see audit-chain.ts. Forms a tamper-evident (not tamper-proof) chain. */
+  hash: string;
 }
 
 // The fixed, universal capability vocabulary (mirrors BRD §5.4's RBAC matrix

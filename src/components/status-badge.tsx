@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { DecisionOutcome, RuleStatus } from "@/lib/types";
+import { DecisionOutcome, RuleEnvironment, RuleStatus } from "@/lib/types";
 
 const RULE_STATUS_STYLES: Record<RuleStatus, string> = {
   Active: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border-emerald-500/25",
@@ -28,6 +28,26 @@ export function StatusBadge({ status, className }: { status: RuleStatus; classNa
     >
       <span className={cn("size-1.5 rounded-full", RULE_STATUS_DOT[status])} />
       {status}
+    </span>
+  );
+}
+
+const RULE_ENVIRONMENT_STYLES: Record<RuleEnvironment, string> = {
+  Dev: "bg-violet-500/12 text-violet-600 dark:text-violet-400 border-violet-500/25",
+  UAT: "bg-sky-500/12 text-sky-600 dark:text-sky-400 border-sky-500/25",
+  Prod: "bg-orange-500/12 text-orange-600 dark:text-orange-400 border-orange-500/25",
+};
+
+export function EnvironmentBadge({ environment, className }: { environment: RuleEnvironment; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
+        RULE_ENVIRONMENT_STYLES[environment],
+        className
+      )}
+    >
+      {environment}
     </span>
   );
 }

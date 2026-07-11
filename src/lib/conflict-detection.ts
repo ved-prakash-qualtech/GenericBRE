@@ -1,6 +1,6 @@
 import { BusinessRule, Condition, ConditionGroup } from "./types";
 
-function flattenConditions(node: ConditionGroup, out: Condition[] = []): Condition[] {
+export function flattenConditions(node: ConditionGroup, out: Condition[] = []): Condition[] {
   for (const child of node.children) {
     if (child.type === "condition") out.push(child);
     else flattenConditions(child, out);
@@ -50,6 +50,52 @@ export interface RuleConflict {
   reason: string;
 }
 
+// Shared by both detectRuleConflicts (Active-vs-Active sweep) and
+// detectConflictsForCandidate (candidate-vs-Active, run before approval) —
+// same conservative "opposed outcome on an overlapping field" logic either way.
+function pairConflicts(a: BusinessRule, b: BusinessRule): RuleConflict[] {
+  const out: RuleConflict[] = [];
+  if (a.domain !== b.domain) return out;
+
+  const aApprove = hasActionType(a, "Approve");
+  const aReject = hasActionType(a, "Reject");
+  const bApprove = hasActionType(b, "Approve");
+  const bReject = hasActionType(b, "Reject");
+  const opposedPolarity = (aApprove && bReject) || (aReject && bApprove);
+  if (!opposedPolarity) return out;
+
+  const aConds = flattenConditions(a.rootGroup);
+  const bConds = flattenConditions(b.rootGroup);
+
+  for (const ac of aConds) {
+    for (const bc of bConds) {
+      if (ac.field !== bc.field || !ac.field) continue;
+
+      if (ac.operator === "=" && bc.operator === "=" && ac.value === bc.value) {
+        out.push({
+          ruleAId: a.id,
+          ruleBId: b.id,
+          field: ac.field,
+          reason: `Both rules match ${ac.field} = "${ac.value}" but drive opposite outcomes (Approve vs Reject).`,
+        });
+        continue;
+      }
+
+      const aRange = rangeOf(ac);
+      const bRange = rangeOf(bc);
+      if (aRange && bRange && rangesOverlap(aRange, bRange)) {
+        out.push({
+          ruleAId: a.id,
+          ruleBId: b.id,
+          field: ac.field,
+          reason: `Overlapping thresholds on ${ac.field} (${ac.operator} ${ac.value} vs ${bc.operator} ${bc.value}) drive opposite outcomes.`,
+        });
+      }
+    }
+  }
+  return out;
+}
+
 // A deliberately conservative, explainable check: flags pairs of Active rules
 // in the same industry that both evaluate the same field and would drive
 // opposite terminal actions (Approve vs Reject) for an overlapping — or
@@ -62,48 +108,23 @@ export function detectRuleConflicts(rules: BusinessRule[]): RuleConflict[] {
 
   for (let i = 0; i < active.length; i++) {
     for (let j = i + 1; j < active.length; j++) {
-      const a = active[i];
-      const b = active[j];
-      if (a.domain !== b.domain) continue;
-
-      const aApprove = hasActionType(a, "Approve");
-      const aReject = hasActionType(a, "Reject");
-      const bApprove = hasActionType(b, "Approve");
-      const bReject = hasActionType(b, "Reject");
-      const opposedPolarity = (aApprove && bReject) || (aReject && bApprove);
-      if (!opposedPolarity) continue;
-
-      const aConds = flattenConditions(a.rootGroup);
-      const bConds = flattenConditions(b.rootGroup);
-
-      for (const ac of aConds) {
-        for (const bc of bConds) {
-          if (ac.field !== bc.field || !ac.field) continue;
-
-          if (ac.operator === "=" && bc.operator === "=" && ac.value === bc.value) {
-            conflicts.push({
-              ruleAId: a.id,
-              ruleBId: b.id,
-              field: ac.field,
-              reason: `Both rules match ${ac.field} = "${ac.value}" but drive opposite outcomes (Approve vs Reject).`,
-            });
-            continue;
-          }
-
-          const aRange = rangeOf(ac);
-          const bRange = rangeOf(bc);
-          if (aRange && bRange && rangesOverlap(aRange, bRange)) {
-            conflicts.push({
-              ruleAId: a.id,
-              ruleBId: b.id,
-              field: ac.field,
-              reason: `Overlapping thresholds on ${ac.field} (${ac.operator} ${ac.value} vs ${bc.operator} ${bc.value}) drive opposite outcomes.`,
-            });
-          }
-        }
-      }
+      conflicts.push(...pairConflicts(active[i], active[j]));
     }
   }
 
+  return conflicts;
+}
+
+// Checks a single candidate rule (typically still Testing, about to be
+// approved) against the current Active set, as if it were already live —
+// so a reviewer sees the same signal before publishing, not only afterward
+// on the Repository's reactive banner.
+export function detectConflictsForCandidate(candidate: BusinessRule, rules: BusinessRule[]): RuleConflict[] {
+  if (candidate.simulatable === false) return [];
+  const active = rules.filter((r) => r.status === "Active" && r.simulatable !== false && r.id !== candidate.id);
+  const conflicts: RuleConflict[] = [];
+  for (const other of active) {
+    conflicts.push(...pairConflicts(candidate, other));
+  }
   return conflicts;
 }

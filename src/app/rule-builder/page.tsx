@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Rocket, FlaskConical, LayoutTemplate, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Save, FlaskConical, LayoutTemplate, AlertTriangle, ShieldAlert } from "lucide-react";
 import { useAppStore, useHasCapability } from "@/lib/store";
 import { BusinessRule, Condition, ConditionGroup, RuleAction, RuleTemplate } from "@/lib/types";
 import { emptyGroup, updateNode, removeNode, addChildToGroup, validateTree, cloneGroupWithFreshIds } from "@/lib/condition-tree";
@@ -31,6 +31,7 @@ function blankRule(id: string, defaultDomain: string, defaultOwner: string): Bus
     subCategory: "",
     priority: 3,
     status: "Draft",
+    environment: "Dev",
     description: "",
     owner: defaultOwner,
     rootGroup: emptyGroup("AND"),
@@ -51,13 +52,13 @@ function RuleBuilderContent() {
   const addRule = useAppStore((s) => s.addRule);
   const updateRule = useAppStore((s) => s.updateRule);
   const submitForReview = useAppStore((s) => s.submitForReview);
-  const approveRule = useAppStore((s) => s.approveRule);
   const logAudit = useAppStore((s) => s.logAudit);
   const currentUser = useAppStore((s) => s.currentUser);
   const industries = useAppStore((s) => s.industries);
   const owners = useAppStore((s) => s.owners);
   const ruleTemplates = useAppStore((s) => s.ruleTemplates);
-  const canPublish = useHasCapability("rule.publish");
+  const canCreate = useHasCapability("rule.create");
+  const canEdit = useHasCapability("rule.edit");
 
   const existingRule = useMemo(() => rules.find((r) => r.id === editId), [rules, editId]);
   const [rule, setRule] = useState<BusinessRule>(
@@ -108,49 +109,76 @@ function RuleBuilderContent() {
     return true;
   };
 
-  const persistRule = (statusOverride?: BusinessRule["status"]): BusinessRule => {
+  const persistRule = (statusOverride?: BusinessRule["status"]): { ok: boolean; rule: BusinessRule; reason?: string } => {
     const finalRule: BusinessRule = {
       ...rule,
       status: statusOverride ?? rule.status,
       updatedAt: new Date().toISOString(),
     };
     if (existingRule) {
-      updateRule(finalRule.id, () => ({ ...finalRule, version: finalRule.version + 1 }));
+      const result = updateRule(finalRule.id, () => ({ ...finalRule, version: finalRule.version + 1 }));
+      if (!result.ok) return { ok: false, rule: finalRule, reason: result.reason };
       logAudit({ user: currentUser.name, action: "Edited Rule", entity: "BusinessRule", entityId: finalRule.id, details: `${finalRule.name} saved as ${finalRule.status}.` });
     } else {
-      addRule(finalRule);
+      const result = addRule(finalRule);
+      if (!result.ok) return { ok: false, rule: finalRule, reason: result.reason };
       logAudit({ user: currentUser.name, action: "Created Rule", entity: "BusinessRule", entityId: finalRule.id, details: `New rule created as ${finalRule.status}.` });
     }
-    return finalRule;
+    return { ok: true, rule: finalRule };
   };
 
   const handleSaveDraft = () => {
     if (!validate()) return;
     const saved = persistRule("Draft");
-    toast.success("Rule saved", { description: `${saved.id} · ${saved.name} is now Draft.` });
+    if (!saved.ok) {
+      toast.error("Couldn't save", { description: saved.reason });
+      return;
+    }
+    toast.success("Rule saved", { description: `${saved.rule.id} · ${saved.rule.name} is now Draft.` });
     router.push("/repository");
   };
 
-  // Only roles with the `rule.publish` capability see this — it saves and
-  // immediately approves/publishes in one step (BRD §5.5 allows PM/Risk/
-  // Underwriter/SysAdmin to self-publish; Business Analyst cannot).
-  const handleSaveAndPublish = () => {
-    if (!validate()) return;
-    const saved = persistRule("Draft");
-    approveRule(saved.id);
-    toast.success("Rule published", { description: `${saved.id} · ${saved.name} is now Active.` });
-    router.push("/repository");
-  };
-
-  // Roles without `rule.publish` submit into the Testing/review queue instead
-  // of publishing directly — BRD §5.5's governance workflow.
+  // Every role submits into the Testing/review queue — there is no
+  // straight-to-Active shortcut here, even for roles that also hold
+  // rule.publish. Publishing only ever happens from the Repository's
+  // Approve & Publish action, which enforces maker-checker (a reviewer
+  // can't approve their own submission) at the store level.
   const handleSubmitForReview = () => {
     if (!validate()) return;
     const saved = persistRule("Draft");
-    submitForReview(saved.id);
-    toast.success("Submitted for review", { description: `${saved.id} · ${saved.name} moved to Testing.` });
+    if (!saved.ok) {
+      toast.error("Couldn't save", { description: saved.reason });
+      return;
+    }
+    const result = submitForReview(saved.rule.id);
+    if (!result.ok) {
+      toast.error("Couldn't submit for review", { description: result.reason });
+      return;
+    }
+    toast.success("Submitted for review", { description: `${saved.rule.id} · ${saved.rule.name} moved to Testing.` });
     router.push("/repository");
   };
+
+  // A capability check, not just a hidden button — someone can still land
+  // here directly via the URL (e.g. /rule-builder?id=RL-101) without going
+  // through a Repository row action that would have hidden Edit for them.
+  const restricted = existingRule ? !canEdit : !canCreate;
+  if (restricted) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+        <ShieldAlert className="size-10 text-muted-foreground/40" />
+        <h1 className="text-base font-semibold">Access restricted</h1>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          {existingRule
+            ? `${currentUser.name}'s role doesn't include permission to edit rules.`
+            : `${currentUser.name}'s role doesn't include permission to create rules.`}
+        </p>
+        <Button variant="outline" size="sm" onClick={() => router.push("/repository")}>
+          Back to Repository
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -175,15 +203,9 @@ function RuleBuilderContent() {
         <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSaveDraft}>
           <Save className="size-3.5" /> Save Draft
         </Button>
-        {canPublish ? (
-          <Button size="sm" className="gap-1.5" onClick={handleSaveAndPublish}>
-            <Rocket className="size-3.5" /> Save &amp; Publish
-          </Button>
-        ) : (
-          <Button size="sm" className="gap-1.5" onClick={handleSubmitForReview}>
-            <FlaskConical className="size-3.5" /> Submit for Review
-          </Button>
-        )}
+        <Button size="sm" className="gap-1.5" onClick={handleSubmitForReview}>
+          <FlaskConical className="size-3.5" /> Submit for Review
+        </Button>
       </div>
 
       <TemplatePicker

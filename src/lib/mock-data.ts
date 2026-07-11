@@ -13,6 +13,7 @@ import {
   RuleTemplate,
 } from "./types";
 import { DEFAULT_CATEGORIES, DEFAULT_OWNERS } from "./fields";
+import { buildHashChain } from "./audit-chain";
 import rolesData from "@/data/roles.json";
 
 // ---------- deterministic seeded RNG (avoids SSR/CSR hydration drift) ----------
@@ -67,6 +68,11 @@ function makeRule(partial: {
     subCategory: partial.subCategory,
     priority: partial.priority,
     status: partial.status,
+    // Sensible default so pre-existing seed data isn't all stuck in "Dev":
+    // an established Active rule is presumed already promoted to Prod, a
+    // Testing rule sits in UAT pending its promotion decision, anything
+    // else (Draft/Inactive/Archived) is Dev until someone promotes it.
+    environment: partial.status === "Active" ? "Prod" : partial.status === "Testing" ? "UAT" : "Dev",
     description: partial.description,
     owner: partial.owner,
     rootGroup: partial.rootGroup,
@@ -561,7 +567,7 @@ export const NOTIFICATIONS: AppNotification[] = [
 // ============================================================
 // AUDIT LOG
 // ============================================================
-export const AUDIT_LOG: AuditEntry[] = [
+export const AUDIT_LOG: AuditEntry[] = buildHashChain([
   { id: "A1", timestamp: daysAgo(0.05), user: "Jyoti Sonani", action: "Published Rule", entity: "BusinessRule", entityId: "RL-101", details: "Status changed Draft → Active." },
   { id: "A2", timestamp: daysAgo(0.3), user: "Naveen Kumar", action: "Edited Matrix", entity: "DecisionMatrix", entityId: "MTX-LEND-01", details: "Updated interest rate for 650–699 band from 12.0% to 11.5%." },
   { id: "A3", timestamp: daysAgo(0.5), user: "Radhe", action: "Ran Simulation", entity: "Simulation", entityId: "SIM-4471", details: "Digital Lending scenario, outcome Approved." },
@@ -570,7 +576,7 @@ export const AUDIT_LOG: AuditEntry[] = [
   { id: "A6", timestamp: daysAgo(2), user: "System", action: "Export Delivered", entity: "Report", entityId: "RPT-WEEKLY-14", details: "CSV export delivered to risk-ops@qualtechedge.com." },
   { id: "A7", timestamp: daysAgo(4), user: "Ashutosh Vishwakarma", action: "Disabled Rule", entity: "BusinessRule", entityId: "RL-109", details: "Status changed Active → Inactive." },
   { id: "A8", timestamp: daysAgo(6), user: "Jyoti Sonani", action: "Created Rule", entity: "BusinessRule", entityId: "RL-108", details: "New Draft rule created in Compliance category." },
-];
+]);
 
 export const RECENT_DEPLOYMENTS = [
   { id: "D1", ruleId: "RL-101", ruleName: "Minimum Credit Score Validation", domain: "Lending" as Domain, timestamp: daysAgo(0.05), status: "Live" as const },

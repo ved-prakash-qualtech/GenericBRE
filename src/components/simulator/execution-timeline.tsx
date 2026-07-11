@@ -51,6 +51,11 @@ function TimelineStep({ step, index }: { step: TraceStep; index: number }) {
         >
           <span className="font-mono text-xs text-muted-foreground">{step.ruleId}</span>
           <span className="truncate text-[13px] font-medium">{step.ruleName}</span>
+          {step.sandbox && (
+            <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+              Sandbox
+            </span>
+          )}
           <span className={cn("ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold", cfg.color)}>{cfg.label}</span>
           {step.durationMs > 0 && <span className="shrink-0 text-[10px] text-muted-foreground">{step.durationMs.toFixed(2)}ms</span>}
           {hasDetails && <ChevronDown className={cn("size-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />}
