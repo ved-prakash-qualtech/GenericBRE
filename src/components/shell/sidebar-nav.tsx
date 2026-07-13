@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS, NAV_ITEMS_SECONDARY } from "@/lib/nav";
+import { NAV_ITEMS, NAV_ITEMS_SECONDARY, visibleNavItems } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAppStore } from "@/lib/store";
@@ -84,6 +84,10 @@ function NavLink({
 
 export function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const unread = useAppStore((s) => s.notifications.filter((n) => !n.read).length);
+  const roles = useAppStore((s) => s.roles);
+  const roleId = useAppStore((s) => s.currentUser.role);
+  const primaryItems = visibleNavItems(NAV_ITEMS, roles, roleId);
+  const secondaryItems = visibleNavItems(NAV_ITEMS_SECONDARY, roles, roleId);
 
   return (
     <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-2.5 py-4">
@@ -93,7 +97,7 @@ export function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNa
             Workspace
           </p>
         )}
-        {NAV_ITEMS.map((item) => (
+        {primaryItems.map((item) => (
           <NavLink
             key={item.href}
             href={item.href}
@@ -111,7 +115,7 @@ export function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNa
             Platform
           </p>
         )}
-        {NAV_ITEMS_SECONDARY.map((item) => (
+        {secondaryItems.map((item) => (
           <NavLink
             key={item.href}
             href={item.href}

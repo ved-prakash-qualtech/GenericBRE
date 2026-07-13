@@ -28,12 +28,15 @@ export function RoleSwitcherDialog({
   const roles = useAppStore((s) => s.roles);
   const currentUser = useAppStore((s) => s.currentUser);
   const login = useAppStore((s) => s.login);
+  const dashboardConfigs = useAppStore((s) => s.dashboardConfigs);
 
   const selectRole = (roleId: string, personaName: string) => {
     login(roleId);
     onOpenChange(false);
     toast.success(`Signed in as ${personaName}`);
-    if (redirectTo) router.push(redirectTo);
+    // Every switch — not just the initial /login pick — lands on that
+    // persona's configured primary module (BRD §5.3), not a fixed page.
+    router.push(dashboardConfigs[roleId]?.landingRoute ?? redirectTo ?? "/dashboard");
   };
 
   return (

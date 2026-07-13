@@ -6,14 +6,19 @@ import {
   ConditionGroup,
   DecisionOutcome,
   Domain,
+  ExecutionSettings,
   Operator,
+  QuantifierCondition,
   RuleAction,
   RuleEnvironment,
   SimulationResult,
   TraceStep,
 } from "./types";
 
-type InputMap = Record<string, string | number | boolean>;
+const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = { conflictResolution: "execute-all" };
+
+type ScalarValue = string | number | boolean;
+type InputMap = Record<string, ScalarValue | ScalarValue[]>;
 
 // Promotion order — a rule "reaches" Prod by first passing through Dev and
 // UAT, so anything already at Prod is also valid to see in a Dev or UAT
@@ -31,7 +36,7 @@ function coerceNumber(v: unknown): number {
 
 function evaluateOperator(
   operator: Operator,
-  actual: string | number | boolean | undefined,
+  actual: ScalarValue | undefined,
   expected: string,
   expected2?: string
 ): boolean {
@@ -86,6 +91,9 @@ export function evaluateGroup(
     if (child.type === "condition") {
       return evaluateConditionLeaf(child, input, details, catalog);
     }
+    if (child.type === "quantifier") {
+      return evaluateQuantifierCondition(child, input, details, catalog);
+    }
     return evaluateGroup(child, input, details, catalog);
   });
   return group.logic === "AND" ? results.every(Boolean) : results.some(Boolean);
@@ -97,7 +105,11 @@ function evaluateConditionLeaf(
   details: ConditionEvalDetail[],
   catalog: BusinessField[]
 ): boolean {
-  const actual = input[cond.field];
+  const raw = input[cond.field];
+  // A plain Condition should only ever point at a scalar field — the UI
+  // filters field pickers by type — but stay defensive rather than crash if
+  // one somehow references a list field.
+  const actual = Array.isArray(raw) ? undefined : raw;
   const passed = evaluateOperator(cond.operator, actual, cond.value, cond.value2);
   const field = getField(catalog, cond.field);
   const expectedLabel =
@@ -109,6 +121,56 @@ function evaluateConditionLeaf(
     operator: cond.operator,
     expected: expectedLabel,
     actual: actual === undefined ? "—" : String(actual),
+    passed,
+  });
+  return passed;
+}
+
+// The declarative "for each" — tests every item of a list-type field against
+// a per-item operator/value, then reduces the per-item results with a
+// quantifier (ANY/ALL/NONE/COUNT). An empty list is treated as ALL failing
+// (not vacuously true) since that reads more predictably to a business user
+// authoring a policy than the mathematical convention would.
+function evaluateQuantifierCondition(
+  q: QuantifierCondition,
+  input: InputMap,
+  details: ConditionEvalDetail[],
+  catalog: BusinessField[]
+): boolean {
+  const raw = input[q.field];
+  const items: ScalarValue[] = Array.isArray(raw) ? raw : [];
+  const field = getField(catalog, q.field);
+  const matchCount = items.filter((item) => evaluateOperator(q.operator, item, q.value, q.value2)).length;
+
+  let passed: boolean;
+  switch (q.quantifier) {
+    case "ANY":
+      passed = matchCount > 0;
+      break;
+    case "ALL":
+      passed = items.length > 0 && matchCount === items.length;
+      break;
+    case "NONE":
+      passed = matchCount === 0;
+      break;
+    case "COUNT": {
+      const comparator = q.countComparator ?? ">=";
+      passed = evaluateOperator(comparator, matchCount, q.countValue ?? "0");
+      break;
+    }
+  }
+
+  const perItemTest = `${q.operator} ${q.value}${q.operator === "between" ? ` – ${q.value2}` : ""}`;
+  const expectedLabel =
+    q.quantifier === "COUNT"
+      ? `COUNT(item ${perItemTest}) ${q.countComparator ?? ">="} ${q.countValue}`
+      : `${q.quantifier} item ${perItemTest}`;
+
+  details.push({
+    field: field?.label ?? q.field,
+    operator: q.operator,
+    expected: expectedLabel,
+    actual: `${matchCount} of ${items.length} item${items.length === 1 ? "" : "s"} matched`,
     passed,
   });
   return passed;
@@ -137,6 +199,7 @@ export function evaluateRule(
 
   const passed = evaluateGroup(rule.rootGroup, input, details, catalog);
   const durationMs = Math.max(0.1, performance.now() - start);
+  const hasElse = !!rule.elseActions?.length;
 
   return {
     ruleId: rule.id,
@@ -150,7 +213,8 @@ export function evaluateRule(
       actual: d.actual,
       passed: d.passed,
     })),
-    actionsApplied: passed ? rule.actions : [],
+    actionsApplied: passed ? rule.actions : hasElse ? rule.elseActions! : [],
+    branch: passed ? "then" : hasElse ? "else" : undefined,
     durationMs,
     sandbox: rule.status !== "Active" && opts.forceEvaluate ? true : undefined,
   };
@@ -168,12 +232,14 @@ export function runSimulation(
   input: InputMap,
   catalog: BusinessField[] = [],
   sandboxRuleIds: string[] = [],
-  environment: RuleEnvironment = "Prod"
+  environment: RuleEnvironment = "Prod",
+  executionSettings: ExecutionSettings = DEFAULT_EXECUTION_SETTINGS
 ): SimulationResult {
   const start = performance.now();
+  const sortDirection = executionSettings.conflictResolution === "lowest-priority" ? -1 : 1;
   const domainRules = rules
     .filter((r) => r.domain === domain && r.simulatable)
-    .sort((a, b) => a.priority - b.priority);
+    .sort((a, b) => sortDirection * (a.priority - b.priority));
 
   const trace: TraceStep[] = [];
   let outcome: DecisionOutcome = "Approved";
@@ -220,9 +286,12 @@ export function runSimulation(
     const step = evaluateRule(rule, input, catalog, { forceEvaluate: sandboxed });
     trace.push(step);
 
-    if (step.status === "Passed") {
+    // A rule "fires" if either its THEN or ELSE branch actually ran —
+    // step.actionsApplied already holds whichever one applies (see
+    // evaluateRule), so this uniformly covers both without branching on status.
+    if (step.actionsApplied.length > 0) {
       triggeredRules.push(rule.id);
-      for (const action of rule.actions) {
+      for (const action of step.actionsApplied) {
         applyAction(action, calculatedValues);
         if (action.type === "Reject") {
           // Reject always wins and halts further evaluation.
@@ -245,6 +314,11 @@ export function runSimulation(
             decidingRuleId = rule.id;
           }
         }
+      }
+      // "first-match" stops evaluation at the first rule whose IF/ELSE
+      // actually fired — the declarative equivalent of a switch/case's break.
+      if (executionSettings.conflictResolution === "first-match") {
+        halted = true;
       }
     }
   }

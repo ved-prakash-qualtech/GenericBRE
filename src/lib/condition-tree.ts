@@ -1,4 +1,4 @@
-import { Condition, ConditionGroup } from "./types";
+import { BusinessRule, Condition, ConditionGroup, QuantifierCondition } from "./types";
 
 let seq = 0;
 export function newId(prefix: string) {
@@ -8,6 +8,19 @@ export function newId(prefix: string) {
 
 export function emptyCondition(field = ""): Condition {
   return { id: newId("cond"), type: "condition", field, operator: "=", value: "" };
+}
+
+export function emptyQuantifierCondition(field = ""): QuantifierCondition {
+  return {
+    id: newId("quant"),
+    type: "quantifier",
+    field,
+    quantifier: "ANY",
+    operator: "=",
+    value: "",
+    countComparator: ">=",
+    countValue: "",
+  };
 }
 
 export function emptyGroup(logic: "AND" | "OR" = "AND"): ConditionGroup {
@@ -21,18 +34,18 @@ export function cloneGroupWithFreshIds(group: ConditionGroup): ConditionGroup {
     ...group,
     id: newId("grp"),
     children: group.children.map((c) =>
-      c.type === "group" ? cloneGroupWithFreshIds(c) : { ...c, id: newId("cond") }
+      c.type === "group" ? cloneGroupWithFreshIds(c) : { ...c, id: newId(c.type === "quantifier" ? "quant" : "cond") }
     ),
   };
 }
 
-type Node = Condition | ConditionGroup;
+type Node = Condition | ConditionGroup | QuantifierCondition;
 
 export function mapTree(node: ConditionGroup, fn: (n: Node) => Node): ConditionGroup {
   const mapped = fn(node) as ConditionGroup;
   return {
     ...mapped,
-    children: mapped.children.map((c) => (c.type === "group" ? mapTree(c, fn) : (fn(c) as Condition))),
+    children: mapped.children.map((c) => (c.type === "group" ? mapTree(c, fn) : (fn(c) as Condition | QuantifierCondition))),
   };
 }
 
@@ -66,18 +79,32 @@ export function addChildToGroup(root: ConditionGroup, groupId: string, child: No
 }
 
 export function countConditions(node: ConditionGroup): number {
-  return node.children.reduce((sum, c) => (c.type === "condition" ? sum + 1 : sum + countConditions(c)), 0);
+  return node.children.reduce((sum, c) => (c.type === "group" ? sum + countConditions(c) : sum + 1), 0);
 }
 
 export function collectFieldKeys(node: ConditionGroup, out = new Set<string>()): Set<string> {
   for (const c of node.children) {
-    if (c.type === "condition") {
-      if (c.field) out.add(c.field);
-    } else {
+    if (c.type === "group") {
       collectFieldKeys(c, out);
+    } else if (c.field) {
+      out.add(c.field);
     }
   }
   return out;
+}
+
+// Where a Field Catalog entry is actually used — walks each rule's condition
+// tree (IF) plus its THEN/ELSE action output fields, so the Field Catalog can
+// show a real "N rules depend on this" count instead of a guess.
+export function fieldUsage(fieldKey: string, rules: BusinessRule[]): { count: number; ruleIds: string[] } {
+  const ruleIds = rules
+    .filter((r) => {
+      if (collectFieldKeys(r.rootGroup).has(fieldKey)) return true;
+      const actions = [...r.actions, ...(r.elseActions ?? [])];
+      return actions.some((a) => a.outputField === fieldKey);
+    })
+    .map((r) => r.id);
+  return { count: ruleIds.length, ruleIds };
 }
 
 export function validateTree(node: ConditionGroup, errors: string[] = [], path = "IF"): string[] {
@@ -88,6 +115,16 @@ export function validateTree(node: ConditionGroup, errors: string[] = [], path =
       if (c.value === "" || c.value === undefined) errors.push(`${path}: condition ${i + 1} is missing a value.`);
       if (c.operator === "between" && (!c.value2 || c.value2 === "")) {
         errors.push(`${path}: condition ${i + 1} needs both a from and to value for "Between".`);
+      }
+    } else if (c.type === "quantifier") {
+      if (!c.field) errors.push(`${path}: quantifier condition ${i + 1} is missing a list field.`);
+      if (!c.operator) errors.push(`${path}: quantifier condition ${i + 1} is missing a per-item operator.`);
+      if (c.value === "" || c.value === undefined) errors.push(`${path}: quantifier condition ${i + 1} is missing a per-item value.`);
+      if (c.operator === "between" && (!c.value2 || c.value2 === "")) {
+        errors.push(`${path}: quantifier condition ${i + 1} needs both a from and to value for "Between".`);
+      }
+      if (c.quantifier === "COUNT" && (c.countValue === "" || c.countValue === undefined)) {
+        errors.push(`${path}: quantifier condition ${i + 1} needs a count threshold.`);
       }
     } else {
       validateTree(c, errors, `${path} → group`);

@@ -21,9 +21,14 @@ import {
   Capability,
   ColorMode,
   CurrentUser,
+  DashboardConfig,
   DecisionMatrix,
   Domain,
+  Entity,
+  ExecutionSettings,
   Industry,
+  JsonMapping,
+  RuleCategory,
   MatrixRow,
   Role,
   RuleEnvironment,
@@ -34,7 +39,9 @@ import {
   SimulationResult,
 } from "./types";
 import { DEFAULT_INDUSTRIES } from "./industries";
-import { DEFAULT_FIELD_CATALOG, DEFAULT_CATEGORIES, DEFAULT_OWNERS } from "./fields";
+import { DEFAULT_ENTITIES } from "./entities";
+import { DEFAULT_FIELD_CATALOG, DEFAULT_RULE_CATEGORIES, DEFAULT_OWNERS } from "./fields";
+import { DEFAULT_DASHBOARD_CONFIGS } from "./dashboards";
 import { hashAuditEntry, buildHashChain } from "./audit-chain";
 
 export type {
@@ -98,6 +105,7 @@ function snapshotFromRule(
     description: rule.description,
     rootGroup: rule.rootGroup,
     actions: rule.actions,
+    elseActions: rule.elseActions,
   };
 }
 
@@ -129,6 +137,8 @@ interface AppState {
   simulations: SimulationResult[];
   appearance: AppearanceSettings;
   widgets: DashboardWidgetState[];
+  dashboardConfigs: Record<string, DashboardConfig>;
+  setDashboardConfig: (roleId: string, config: DashboardConfig) => void;
   currentUser: CurrentUser;
   sidebarCollapsed: boolean;
   globalFilters: GlobalFilters;
@@ -147,19 +157,35 @@ interface AppState {
   // configuration studio — the "no hardcoding" layer. Every industry/vertical,
   // business field, category and owner in the app is data here, not code.
   industries: Industry[];
+  entities: Entity[];
   fieldCatalog: BusinessField[];
-  categories: string[];
+  ruleCategories: RuleCategory[];
   owners: string[];
   addIndustry: (industry: Industry) => void;
   updateIndustry: (id: string, patch: Partial<Industry>) => void;
   deleteIndustry: (id: string) => void;
+  addEntity: (entity: Entity) => void;
+  updateEntity: (id: string, patch: Partial<Entity>) => void;
+  deleteEntity: (id: string) => void;
   addField: (field: BusinessField) => void;
   updateField: (key: string, patch: Partial<BusinessField>) => void;
   deleteField: (key: string) => void;
-  addCategory: (name: string) => void;
-  deleteCategory: (name: string) => void;
+  addRuleCategory: (category: RuleCategory) => void;
+  updateRuleCategory: (id: string, patch: Partial<RuleCategory>) => void;
+  deleteRuleCategory: (id: string) => void;
   addOwner: (name: string) => void;
   deleteOwner: (name: string) => void;
+
+  // per-industry (or "default") conflict-resolution strategy — read by
+  // runSimulation to decide execution order / stop-on-first-match.
+  executionSettings: Record<string, ExecutionSettings>;
+  setExecutionSettings: (scope: string, settings: ExecutionSettings) => void;
+
+  // foundational JSON Mapping — named, reusable attribute-to-field mapping sets.
+  jsonMappings: JsonMapping[];
+  addJsonMapping: (mapping: JsonMapping) => void;
+  updateJsonMapping: (id: string, patch: Partial<JsonMapping>) => void;
+  deleteJsonMapping: (id: string) => void;
 
   // roles & capabilities — client-side RBAC preview (no backend enforcement)
   roles: Role[];
@@ -273,78 +299,166 @@ export const useAppStore = create<AppState>()(
       },
 
       industries: DEFAULT_INDUSTRIES,
+      entities: DEFAULT_ENTITIES,
       fieldCatalog: DEFAULT_FIELD_CATALOG,
-      categories: DEFAULT_CATEGORIES,
+      ruleCategories: DEFAULT_RULE_CATEGORIES,
       owners: DEFAULT_OWNERS,
+      executionSettings: {},
+      jsonMappings: [],
 
       addIndustry: (industry) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ industries: [...s.industries, industry] }));
         get().logAudit({ user: get().currentUser.name, action: "Created Industry", entity: "Industry", entityId: industry.id, details: `Added "${industry.name}" as a new configurable industry.` });
       },
       updateIndustry: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ industries: s.industries.map((i) => (i.id === id ? { ...i, ...patch } : i)) }));
         get().logAudit({ user: get().currentUser.name, action: "Updated Industry", entity: "Industry", entityId: id, details: `Industry "${id}" updated.` });
       },
       deleteIndustry: (id) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ industries: s.industries.filter((i) => i.id !== id) }));
         get().logAudit({ user: get().currentUser.name, action: "Deleted Industry", entity: "Industry", entityId: id, details: `Industry "${id}" removed.` });
       },
 
+      addEntity: (entity) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ entities: [...s.entities, entity] }));
+        get().logAudit({ user: get().currentUser.name, action: "Created Entity", entity: "Entity", entityId: entity.id, details: `Added entity "${entity.name}" to the catalog.` });
+      },
+      updateEntity: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ entities: s.entities.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
+        get().logAudit({ user: get().currentUser.name, action: "Updated Entity", entity: "Entity", entityId: id, details: `Entity "${id}" updated.` });
+      },
+      deleteEntity: (id) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ entities: s.entities.filter((e) => e.id !== id) }));
+        get().logAudit({ user: get().currentUser.name, action: "Deleted Entity", entity: "Entity", entityId: id, details: `Entity "${id}" removed.` });
+      },
+
       addField: (field) => {
-        set((s) => ({ fieldCatalog: [...s.fieldCatalog, field] }));
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        const stamped: BusinessField = { ...field, updatedAt: new Date().toISOString(), updatedBy: currentUser.name };
+        set((s) => ({ fieldCatalog: [...s.fieldCatalog, stamped] }));
         get().logAudit({ user: get().currentUser.name, action: "Created Field", entity: "BusinessField", entityId: field.key, details: `Added field "${field.label}" to the catalog.` });
       },
       updateField: (key, patch) => {
-        set((s) => ({ fieldCatalog: s.fieldCatalog.map((f) => (f.key === key ? { ...f, ...patch } : f)) }));
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        const stampedPatch = { ...patch, updatedAt: new Date().toISOString(), updatedBy: currentUser.name };
+        set((s) => ({ fieldCatalog: s.fieldCatalog.map((f) => (f.key === key ? { ...f, ...stampedPatch } : f)) }));
         get().logAudit({ user: get().currentUser.name, action: "Updated Field", entity: "BusinessField", entityId: key, details: `Field "${key}" updated.` });
       },
       deleteField: (key) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ fieldCatalog: s.fieldCatalog.filter((f) => f.key !== key) }));
         get().logAudit({ user: get().currentUser.name, action: "Deleted Field", entity: "BusinessField", entityId: key, details: `Field "${key}" removed from the catalog.` });
       },
 
-      addCategory: (name) => {
-        set((s) => (s.categories.includes(name) ? s : { categories: [...s.categories, name] }));
-        get().logAudit({ user: get().currentUser.name, action: "Created Category", entity: "Category", entityId: name, details: `Added category "${name}".` });
+      addRuleCategory: (category) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ ruleCategories: [...s.ruleCategories, category] }));
+        get().logAudit({ user: get().currentUser.name, action: "Created Category", entity: "RuleCategory", entityId: category.id, details: `Added category "${category.name}".` });
       },
-      deleteCategory: (name) => {
-        set((s) => ({ categories: s.categories.filter((c) => c !== name) }));
-        get().logAudit({ user: get().currentUser.name, action: "Deleted Category", entity: "Category", entityId: name, details: `Removed category "${name}".` });
+      updateRuleCategory: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ ruleCategories: s.ruleCategories.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
+        get().logAudit({ user: get().currentUser.name, action: "Updated Category", entity: "RuleCategory", entityId: id, details: `Category "${id}" updated.` });
+      },
+      deleteRuleCategory: (id) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ ruleCategories: s.ruleCategories.filter((c) => c.id !== id) }));
+        get().logAudit({ user: get().currentUser.name, action: "Deleted Category", entity: "RuleCategory", entityId: id, details: `Category "${id}" removed.` });
+      },
+
+      setExecutionSettings: (scope, settings) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ executionSettings: { ...s.executionSettings, [scope]: settings } }));
+        get().logAudit({ user: get().currentUser.name, action: "Updated Execution Settings", entity: "ExecutionSettings", entityId: scope, details: `Conflict resolution for "${scope}" set to ${settings.conflictResolution}.` });
+      },
+
+      addJsonMapping: (mapping) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ jsonMappings: [mapping, ...s.jsonMappings] }));
+        get().logAudit({ user: get().currentUser.name, action: "Created JSON Mapping", entity: "JsonMapping", entityId: mapping.id, details: `Added mapping "${mapping.name}".` });
+      },
+      updateJsonMapping: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ jsonMappings: s.jsonMappings.map((m) => (m.id === id ? { ...m, ...patch, updatedAt: new Date().toISOString() } : m)) }));
+        get().logAudit({ user: get().currentUser.name, action: "Updated JSON Mapping", entity: "JsonMapping", entityId: id, details: `Mapping "${id}" updated.` });
+      },
+      deleteJsonMapping: (id) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ jsonMappings: s.jsonMappings.filter((m) => m.id !== id) }));
+        get().logAudit({ user: get().currentUser.name, action: "Deleted JSON Mapping", entity: "JsonMapping", entityId: id, details: `Mapping "${id}" removed.` });
       },
 
       addOwner: (name) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => (s.owners.includes(name) ? s : { owners: [...s.owners, name] }));
         get().logAudit({ user: get().currentUser.name, action: "Created Owner", entity: "Owner", entityId: name, details: `Added owner "${name}".` });
       },
       deleteOwner: (name) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ owners: s.owners.filter((o) => o !== name) }));
         get().logAudit({ user: get().currentUser.name, action: "Deleted Owner", entity: "Owner", entityId: name, details: `Removed owner "${name}".` });
       },
 
       roles: DEFAULT_ROLES,
       addRole: (role) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ roles: [...s.roles, role] }));
         get().logAudit({ user: get().currentUser.name, action: "Created Role", entity: "Role", entityId: role.id, details: `Added role "${role.name}".` });
       },
       updateRole: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ roles: s.roles.map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
         get().logAudit({ user: get().currentUser.name, action: "Updated Role", entity: "Role", entityId: id, details: `Role "${id}" updated.` });
       },
       deleteRole: (id) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ roles: s.roles.filter((r) => r.id !== id) }));
         get().logAudit({ user: get().currentUser.name, action: "Deleted Role", entity: "Role", entityId: id, details: `Role "${id}" removed.` });
       },
 
       ruleGroups: DEFAULT_RULE_GROUPS,
       addRuleGroup: (group) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ ruleGroups: [...s.ruleGroups, group] }));
         get().logAudit({ user: get().currentUser.name, action: "Created Rule Group", entity: "RuleGroup", entityId: group.id, details: `Added rule group "${group.name}".` });
       },
       updateRuleGroup: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ ruleGroups: s.ruleGroups.map((g) => (g.id === id ? { ...g, ...patch } : g)) }));
         get().logAudit({ user: get().currentUser.name, action: "Updated Rule Group", entity: "RuleGroup", entityId: id, details: `Rule group "${id}" updated.` });
       },
       deleteRuleGroup: (id) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ ruleGroups: s.ruleGroups.filter((g) => g.id !== id) }));
         get().logAudit({ user: get().currentUser.name, action: "Deleted Rule Group", entity: "RuleGroup", entityId: id, details: `Rule group "${id}" removed.` });
       },
@@ -498,6 +612,7 @@ export const useAppStore = create<AppState>()(
           description: snapshot.description,
           rootGroup: snapshot.rootGroup,
           actions: snapshot.actions,
+          elseActions: snapshot.elseActions,
           version: rule.version + 1,
           updatedAt: new Date().toISOString(),
         };
@@ -682,7 +797,24 @@ export const useAppStore = create<AppState>()(
       resetAppearance: () => set({ appearance: DEFAULT_APPEARANCE }),
 
       setWidgets: (widgets) => set({ widgets }),
-      resetWidgets: () => set({ widgets: DEFAULT_WIDGETS }),
+      resetWidgets: () =>
+        set((s) => ({
+          widgets: s.dashboardConfigs[s.currentUser.role]?.widgets.map((w) => ({ ...w })) ?? DEFAULT_WIDGETS,
+        })),
+
+      dashboardConfigs: DEFAULT_DASHBOARD_CONFIGS,
+      setDashboardConfig: (roleId, config) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ dashboardConfigs: { ...s.dashboardConfigs, [roleId]: config } }));
+        get().logAudit({
+          user: currentUser.name,
+          action: "Updated Dashboard Config",
+          entity: "DashboardConfig",
+          entityId: roleId,
+          details: `Dashboard defaults for role "${roleId}" updated.`,
+        });
+      },
 
       // "Logs in" as the role's demo persona — Demo Mode picks a named person,
       // not just a permission set, matching the Universal CRM pattern.
@@ -701,6 +833,11 @@ export const useAppStore = create<AppState>()(
                 .slice(0, 2)
                 .toUpperCase(),
             },
+            // Switching roles loads that persona's admin-configured dashboard
+            // default (BRD §5.3) — in-session personal tweaks made under the
+            // previous role aren't carried over; each role starts from its
+            // own configured layout.
+            widgets: s.dashboardConfigs[roleId]?.widgets.map((w) => ({ ...w })) ?? DEFAULT_WIDGETS,
           };
         }),
 
@@ -708,12 +845,18 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 8,
+      version: 10,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v9 -> v10 added `dashboardConfigs` (role-based dashboards, BRD
+        // §5.3). It's a brand-new key with no prior shape to transform —
+        // the default shallow merge fills it in from DEFAULT_DASHBOARD_CONFIGS
+        // automatically for any persisted state that predates it, so there's
+        // nothing to backfill here explicitly.
         const state = persistedState as Partial<AppState> & {
           currentUser?: CurrentUser;
           roles?: Role[];
+          categories?: string[];
           appearance?: Partial<AppearanceSettings> & {
             wallpaper?: string | null;
             wallpaperOpacity?: number;
@@ -722,6 +865,43 @@ export const useAppStore = create<AppState>()(
             glassPanels?: boolean;
           };
         };
+
+        // v8 -> v9 added the `config.manage` capability (Configuration Studio
+        // is now RBAC-gated, where it used to be open to every role). Backfill
+        // it onto any persisted role whose id matches a seed role that grants
+        // it by default, so an existing sysadmin/product-manager doesn't lose
+        // Settings access the moment they load the app post-upgrade.
+        if (state?.roles) {
+          state.roles = state.roles.map((r) => {
+            if (r.capabilities?.includes("config.manage")) return r;
+            const fallback = DEFAULT_ROLES.find((d) => d.id === r.id);
+            if (fallback?.capabilities.includes("config.manage")) {
+              return { ...r, capabilities: [...r.capabilities, "config.manage"] };
+            }
+            return r;
+          });
+        }
+
+        // v8 -> v9 also added `status` to BusinessField (Field Catalog
+        // metadata upgrade). Every pre-existing field is treated as Active —
+        // the same default new fields get — so nothing silently disappears
+        // from a "Status: Active" filter after the upgrade.
+        if (state?.fieldCatalog) {
+          state.fieldCatalog = state.fieldCatalog.map((f) => (f.status ? f : { ...f, status: "Active" }));
+        }
+
+        // v8 -> v9 also replaced the flat `categories: string[]` list with a
+        // richer `ruleCategories: RuleCategory[]` catalog. Convert each old
+        // string into an object (name preserved, so every persisted
+        // `rule.category` string value still matches by name unchanged) and
+        // drop the old key.
+        if (state?.categories && !state.ruleCategories) {
+          state.ruleCategories = state.categories.map((name) => ({
+            id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+            name,
+          }));
+          delete state.categories;
+        }
 
         // v7 -> v8 added `environment` (Dev/UAT/Prod) to BusinessRule. Backfill
         // any persisted rule missing it using the same default the seed data

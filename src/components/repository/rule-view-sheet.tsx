@@ -19,15 +19,21 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { StatusBadge, PriorityBadge, EnvironmentBadge } from "@/components/status-badge";
-import { BusinessField, BusinessRule, Condition, ConditionGroup, RuleVersion } from "@/lib/types";
+import { BusinessField, BusinessRule, Condition, ConditionGroup, QuantifierCondition, RuleAction, RuleVersion } from "@/lib/types";
 import { getField } from "@/lib/fields";
-import { flattenConditions } from "@/lib/conflict-detection";
+import { flattenConditions, flattenQuantifiers } from "@/lib/conflict-detection";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 function describeCondition(c: Condition, catalog: BusinessField[]): string {
   const label = getField(catalog, c.field)?.label ?? c.field;
   return `${label} ${c.operator} ${c.value}${c.value2 ? ` – ${c.value2}` : ""}`;
+}
+
+function describeQuantifier(q: QuantifierCondition, catalog: BusinessField[]): string {
+  const label = getField(catalog, q.field)?.label ?? q.field;
+  const base = `${q.quantifier} ${label} item ${q.operator} ${q.value}${q.value2 ? ` – ${q.value2}` : ""}`;
+  return q.quantifier === "COUNT" ? `${base} (count ${q.countComparator ?? ">="} ${q.countValue})` : base;
 }
 
 function describeAction(a: RuleVersion["actions"][number]): string {
@@ -51,15 +57,25 @@ function diffVersions(prev: RuleVersion | undefined, curr: RuleVersion, catalog:
     (m) => prev !== undefined && m.before !== m.after
   );
 
-  const prevConds = prev ? flattenConditions(prev.rootGroup).map((c) => describeCondition(c, catalog)) : [];
-  const currConds = flattenConditions(curr.rootGroup).map((c) => describeCondition(c, catalog));
+  const prevConds = prev
+    ? [
+        ...flattenConditions(prev.rootGroup).map((c) => describeCondition(c, catalog)),
+        ...flattenQuantifiers(prev.rootGroup).map((q) => describeQuantifier(q, catalog)),
+      ]
+    : [];
+  const currConds = [
+    ...flattenConditions(curr.rootGroup).map((c) => describeCondition(c, catalog)),
+    ...flattenQuantifiers(curr.rootGroup).map((q) => describeQuantifier(q, catalog)),
+  ];
   const conditionsAdded = currConds.filter((c) => !prevConds.includes(c));
   const conditionsRemoved = prevConds.filter((c) => !currConds.includes(c));
 
-  const prevActions = (prev?.actions ?? []).map(describeAction);
-  const currActions = curr.actions.map(describeAction);
-  const actionsAdded = currActions.filter((a) => !prevActions.includes(a));
-  const actionsRemoved = prevActions.filter((a) => !currActions.includes(a));
+  const prevActions = (prev?.actions ?? []).map((a) => `THEN: ${describeAction(a)}`);
+  const currActions = curr.actions.map((a) => `THEN: ${describeAction(a)}`);
+  const prevElse = (prev?.elseActions ?? []).map((a) => `ELSE: ${describeAction(a)}`);
+  const currElse = (curr.elseActions ?? []).map((a) => `ELSE: ${describeAction(a)}`);
+  const actionsAdded = [...currActions, ...currElse].filter((a) => ![...prevActions, ...prevElse].includes(a));
+  const actionsRemoved = [...prevActions, ...prevElse].filter((a) => ![...currActions, ...currElse].includes(a));
 
   return { metaChanges, conditionsAdded, conditionsRemoved, actionsAdded, actionsRemoved };
 }
@@ -81,8 +97,41 @@ function GroupView({ group, depth = 0, catalog }: { group: ConditionGroup; depth
               <span className="text-muted-foreground">{child.operator}</span>{" "}
               <span className="font-mono">{child.value}{child.value2 ? ` – ${child.value2}` : ""}</span>
             </div>
+          ) : child.type === "quantifier" ? (
+            <div className="rounded-md border border-violet-500/30 bg-violet-500/5 px-2.5 py-1.5 text-xs">
+              <span className="font-semibold text-violet-600 dark:text-violet-400">{child.quantifier}</span>{" "}
+              <span className="font-medium">{getField(catalog, child.field)?.label ?? child.field}</span>{" "}
+              <span className="text-muted-foreground">where item {child.operator}</span>{" "}
+              <span className="font-mono">{child.value}{child.value2 ? ` – ${child.value2}` : ""}</span>
+              {child.quantifier === "COUNT" && (
+                <>
+                  {" "}
+                  <span className="text-muted-foreground">is {child.countComparator ?? ">="}</span>{" "}
+                  <span className="font-mono">{child.countValue}</span>
+                </>
+              )}
+            </div>
           ) : (
             <GroupView group={child} depth={depth + 1} catalog={catalog} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ActionRowList({ actions }: { actions: RuleAction[] }) {
+  return (
+    <div className="space-y-1.5">
+      {actions.map((a) => (
+        <div key={a.id} className="rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs">
+          <span className="font-medium">{a.type}</span>
+          {a.message && <span className="text-muted-foreground"> — {a.message}</span>}
+          {a.outputField && (
+            <span className="text-muted-foreground">
+              {" "}
+              — set <span className="font-mono">{a.outputField}</span> = <span className="font-mono">{a.outputValue}</span>
+            </span>
           )}
         </div>
       ))}
@@ -258,21 +307,17 @@ export function RuleViewSheet({ rule, open, onOpenChange }: { rule: BusinessRule
               <Separator />
               <div className="py-4">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">THEN Actions</p>
-                <div className="space-y-1.5">
-                  {rule.actions.map((a) => (
-                    <div key={a.id} className="rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs">
-                      <span className="font-medium">{a.type}</span>
-                      {a.message && <span className="text-muted-foreground"> — {a.message}</span>}
-                      {a.outputField && (
-                        <span className="text-muted-foreground">
-                          {" "}
-                          — set <span className="font-mono">{a.outputField}</span> = <span className="font-mono">{a.outputValue}</span>
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <ActionRowList actions={rule.actions} />
               </div>
+              {rule.elseActions && rule.elseActions.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="py-4">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">ELSE Actions</p>
+                    <ActionRowList actions={rule.elseActions} />
+                  </div>
+                </>
+              )}
               <VersionHistorySection key={rule.id} rule={rule} catalog={fieldCatalog} />
             </ScrollArea>
           </>

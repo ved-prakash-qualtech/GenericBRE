@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PlayCircle, CheckCircle2, XCircle, FlaskConical } from "lucide-react";
-import { ConditionGroup, RuleAction } from "@/lib/types";
+import { BusinessField, ConditionGroup, RuleAction } from "@/lib/types";
 import { collectFieldKeys } from "@/lib/condition-tree";
 import { evaluateGroup, ConditionEvalDetail } from "@/lib/engine";
 import { getField } from "@/lib/fields";
@@ -12,7 +12,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export function InlineTestPanel({ rootGroup, actions }: { rootGroup: ConditionGroup; actions: RuleAction[] }) {
+function coerceListValue(raw: string, itemType: BusinessField["itemType"]): (string | number | boolean)[] {
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => {
+      if (itemType === "number" || itemType === "currency") return parseFloat(s) || 0;
+      if (itemType === "boolean") return s.toLowerCase() === "true" || s === "yes";
+      return s;
+    });
+}
+
+export function InlineTestPanel({
+  rootGroup,
+  actions,
+  elseActions,
+}: {
+  rootGroup: ConditionGroup;
+  actions: RuleAction[];
+  elseActions?: RuleAction[];
+}) {
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   const fieldKeys = useMemo(() => Array.from(collectFieldKeys(rootGroup)), [rootGroup]);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -20,10 +40,15 @@ export function InlineTestPanel({ rootGroup, actions }: { rootGroup: ConditionGr
 
   const runTest = () => {
     const details: ConditionEvalDetail[] = [];
-    const input: Record<string, string | number | boolean> = {};
+    const input: Record<string, string | number | boolean | (string | number | boolean)[]> = {};
     for (const key of fieldKeys) {
       const field = getField(fieldCatalog, key);
-      let v: string | number | boolean = values[key] ?? "";
+      const raw = values[key] ?? "";
+      if (field?.type === "list") {
+        input[key] = coerceListValue(raw, field.itemType);
+        continue;
+      }
+      let v: string | number | boolean = raw;
       if (field?.type === "number" || field?.type === "currency") v = parseFloat(String(v)) || 0;
       if (field?.type === "boolean") v = v === "true";
       input[key] = v;
@@ -31,6 +56,9 @@ export function InlineTestPanel({ rootGroup, actions }: { rootGroup: ConditionGr
     const passed = evaluateGroup(rootGroup, input, details, fieldCatalog);
     setResult({ passed, details });
   };
+
+  const activeActions = result?.passed ? actions : elseActions;
+  const activeBranch = result?.passed ? "THEN" : elseActions?.length ? "ELSE" : null;
 
   return (
     <div className="rounded-xl border bg-card p-4">
@@ -46,7 +74,7 @@ export function InlineTestPanel({ rootGroup, actions }: { rootGroup: ConditionGr
             {fieldKeys.map((key) => {
               const field = getField(fieldCatalog, key);
               return (
-                <div key={key} className="space-y-1">
+                <div key={key} className={cn("space-y-1", field?.type === "list" && "col-span-2")}>
                   <label className="text-[11px] text-muted-foreground">{field?.label ?? key}</label>
                   {field?.type === "boolean" ? (
                     <Select items={{ true: "Yes", false: "No" }} value={values[key]} onValueChange={(v) => setValues((s) => ({ ...s, [key]: v as string }))}>
@@ -65,6 +93,13 @@ export function InlineTestPanel({ rootGroup, actions }: { rootGroup: ConditionGr
                         ))}
                       </SelectContent>
                     </Select>
+                  ) : field?.type === "list" ? (
+                    <Input
+                      value={values[key] ?? ""}
+                      onChange={(e) => setValues((s) => ({ ...s, [key]: e.target.value }))}
+                      placeholder={`e.g. ${field.itemType === "number" ? "10, 20, 30" : "item1, item2, item3"}`}
+                      className="h-8 text-xs"
+                    />
                   ) : (
                     <Input
                       type={field?.type === "number" || field?.type === "currency" ? "number" : "text"}
@@ -91,11 +126,14 @@ export function InlineTestPanel({ rootGroup, actions }: { rootGroup: ConditionGr
                 )}
               >
                 {result.passed ? <CheckCircle2 className="size-3.5" /> : <XCircle className="size-3.5" />}
-                {result.passed ? "RULE PASSED" : "RULE FAILED"}
-                {result.passed && actions.length > 0 && (
+                {result.passed ? "IF MATCHED" : "IF DID NOT MATCH"}
+                {activeBranch && activeActions && activeActions.length > 0 && (
                   <span className="ml-auto font-normal text-foreground/70">
-                    Action: {actions.map((a) => a.type).join(", ")}
+                    {activeBranch}: {activeActions.map((a) => a.type).join(", ")}
                   </span>
+                )}
+                {!result.passed && !elseActions?.length && (
+                  <span className="ml-auto font-normal text-foreground/70">no ELSE branch — nothing fires</span>
                 )}
               </div>
               <div className="space-y-1">

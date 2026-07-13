@@ -1,6 +1,6 @@
 "use client";
 
-import { BusinessField, BusinessRule, ConditionGroup } from "@/lib/types";
+import { BusinessField, BusinessRule, ConditionGroup, RuleAction } from "@/lib/types";
 import { getField } from "@/lib/fields";
 import { useAppStore } from "@/lib/store";
 import { Sparkles } from "lucide-react";
@@ -21,6 +21,13 @@ function operatorText(op: string) {
   return map[op] ?? op;
 }
 
+const QUANTIFIER_TEXT: Record<string, string> = {
+  ANY: "any item",
+  ALL: "every item",
+  NONE: "no item",
+  COUNT: "the count of matching items",
+};
+
 function groupToText(group: ConditionGroup, catalog: BusinessField[]): string {
   if (group.children.length === 0) return "always";
   return group.children
@@ -30,12 +37,34 @@ function groupToText(group: ConditionGroup, catalog: BusinessField[]): string {
         const val = c.operator === "between" ? `${c.value} and ${c.value2}` : c.value || "…";
         return `${field} ${operatorText(c.operator)} ${val}`;
       }
+      if (c.type === "quantifier") {
+        const field = getField(catalog, c.field)?.label ?? c.field ?? "…";
+        const val = c.operator === "between" ? `${c.value} and ${c.value2}` : c.value || "…";
+        if (c.quantifier === "COUNT") {
+          return `${QUANTIFIER_TEXT.COUNT} in ${field} where item ${operatorText(c.operator)} ${val} is ${operatorText(c.countComparator ?? ">=")} ${c.countValue || "…"}`;
+        }
+        return `${QUANTIFIER_TEXT[c.quantifier]} in ${field} ${operatorText(c.operator)} ${val}`;
+      }
       return `(${groupToText(c, catalog)})`;
     })
     .join(` ${group.logic} `);
 }
 
-export function RuleSummary({ rule }: { rule: Pick<BusinessRule, "name" | "rootGroup" | "actions" | "priority" | "status"> }) {
+function actionsToText(actions: RuleAction[]): string {
+  return actions
+    .map((a) => {
+      if (a.type === "Approve" || a.type === "Reject") return `${a.type.toLowerCase()} the application${a.reasonCode ? ` (${a.reasonCode})` : ""}`;
+      if (a.type === "Calculate" || a.type === "Assign Value") return `set ${a.outputField || "…"} = ${a.outputValue || "…"}`;
+      return `show message "${a.message || "…"}"`;
+    })
+    .join("; ");
+}
+
+export function RuleSummary({
+  rule,
+}: {
+  rule: Pick<BusinessRule, "name" | "rootGroup" | "actions" | "elseActions" | "priority" | "status">;
+}) {
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   const conditionText = groupToText(rule.rootGroup, fieldCatalog);
   return (
@@ -48,17 +77,16 @@ export function RuleSummary({ rule }: { rule: Pick<BusinessRule, "name" | "rootG
         <span className="font-medium text-primary">IF</span> {conditionText}{" "}
         {rule.actions.length > 0 && (
           <>
-            <span className="font-medium text-primary">THEN</span>{" "}
-            {rule.actions
-              .map((a) => {
-                if (a.type === "Approve" || a.type === "Reject") return `${a.type.toLowerCase()} the application${a.reasonCode ? ` (${a.reasonCode})` : ""}`;
-                if (a.type === "Calculate" || a.type === "Assign Value") return `set ${a.outputField || "…"} = ${a.outputValue || "…"}`;
-                return `show message "${a.message || "…"}"`;
-              })
-              .join("; ")}
+            <span className="font-medium text-primary">THEN</span> {actionsToText(rule.actions)}
           </>
         )}
         {rule.actions.length === 0 && <span className="text-muted-foreground">no actions configured yet</span>}
+        {rule.elseActions && rule.elseActions.length > 0 && (
+          <>
+            {" "}
+            <span className="font-medium text-primary">ELSE</span> {actionsToText(rule.elseActions)}
+          </>
+        )}
         .
       </p>
     </div>

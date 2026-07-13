@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, FolderPlus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, FolderPlus, Trash2, ChevronDown, ChevronRight, Layers } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Condition, ConditionGroup, Domain } from "@/lib/types";
-import { emptyCondition, emptyGroup } from "@/lib/condition-tree";
+import { Condition, ConditionGroup, Domain, QuantifierCondition } from "@/lib/types";
+import { emptyCondition, emptyGroup, emptyQuantifierCondition } from "@/lib/condition-tree";
 import { ConditionEditor } from "./condition-editor";
+import { QuantifierConditionEditor } from "./quantifier-condition-editor";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+type TreeNode = Condition | ConditionGroup | QuantifierCondition;
 
 interface GroupEditorProps {
   group: ConditionGroup;
   domain: Domain;
-  onUpdate: (id: string, patch: Partial<Condition | ConditionGroup>) => void;
+  onUpdate: (id: string, patch: Partial<TreeNode>) => void;
   onDelete: (id: string) => void;
-  onAddChild: (groupId: string, child: Condition | ConditionGroup) => void;
+  onAddChild: (groupId: string, child: TreeNode) => void;
   isRoot?: boolean;
 }
 
@@ -52,6 +55,9 @@ export function ConditionGroupEditor({ group, domain, onUpdate, onDelete, onAddC
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => onAddChild(group.id, emptyCondition())}>
             <Plus className="size-3" /> Condition
           </Button>
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => onAddChild(group.id, emptyQuantifierCondition())}>
+            <Layers className="size-3" /> Quantifier
+          </Button>
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => onAddChild(group.id, emptyGroup())}>
             <FolderPlus className="size-3" /> Group
           </Button>
@@ -85,6 +91,13 @@ export function ConditionGroupEditor({ group, domain, onUpdate, onDelete, onAddC
                   )}
                   {child.type === "condition" ? (
                     <ConditionEditor
+                      condition={child}
+                      domain={domain}
+                      onChange={(patch) => onUpdate(child.id, patch)}
+                      onDelete={() => onDelete(child.id)}
+                    />
+                  ) : child.type === "quantifier" ? (
+                    <QuantifierConditionEditor
                       condition={child}
                       domain={domain}
                       onChange={(patch) => onUpdate(child.id, patch)}

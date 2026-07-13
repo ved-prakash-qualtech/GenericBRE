@@ -26,7 +26,7 @@ interface MetadataFormProps {
 
 export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps) {
   const industries = useAppStore((s) => s.industries);
-  const categories = useAppStore((s) => s.categories);
+  const ruleCategories = useAppStore((s) => s.ruleCategories);
   const owners = useAppStore((s) => s.owners);
   const ruleGroups = useAppStore((s) => s.ruleGroups);
 
@@ -82,8 +82,8 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
           <Select value={data.category} onValueChange={(v) => onChange({ category: v ?? "" })}>
             <SelectTrigger className={cn("w-full", errors.category && "border-destructive")}><SelectValue placeholder="Select category" /></SelectTrigger>
             <SelectContent>
-              {categories.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
+              {ruleCategories.map((c) => (
+                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>

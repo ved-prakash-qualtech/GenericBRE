@@ -3,9 +3,9 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Save, FlaskConical, LayoutTemplate, AlertTriangle, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Save, FlaskConical, LayoutTemplate, AlertTriangle, ShieldAlert, Plus } from "lucide-react";
 import { useAppStore, useHasCapability } from "@/lib/store";
-import { BusinessRule, Condition, ConditionGroup, RuleAction, RuleTemplate } from "@/lib/types";
+import { BusinessRule, Condition, ConditionGroup, QuantifierCondition, RuleAction, RuleTemplate } from "@/lib/types";
 import { emptyGroup, updateNode, removeNode, addChildToGroup, validateTree, cloneGroupWithFreshIds } from "@/lib/condition-tree";
 import { MetadataForm } from "@/components/rule-builder/metadata-form";
 import { ConditionGroupEditor } from "@/components/rule-builder/condition-group-editor";
@@ -66,12 +66,15 @@ function RuleBuilderContent() {
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [templatePickerOpen, setTemplatePickerOpen] = useState(!existingRule);
+  const [showElseBranch, setShowElseBranch] = useState(() => !!existingRule?.elseActions?.length);
 
   useEffect(() => {
     // Re-seed the editable draft whenever the ?id= query param points at a different
     // stored rule (e.g. navigating from one rule's edit page to another's).
+    if (!existingRule) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (existingRule) setRule(existingRule);
+    setRule(existingRule);
+    setShowElseBranch(!!existingRule.elseActions?.length);
   }, [existingRule?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const patchRule = (patch: Partial<BusinessRule>) => setRule((r) => ({ ...r, ...patch }));
@@ -81,17 +84,19 @@ function RuleBuilderContent() {
       ...r,
       rootGroup: cloneGroupWithFreshIds(template.rootGroup),
       actions: template.actions.map((a) => ({ ...a })),
+      elseActions: template.elseActions?.map((a) => ({ ...a })),
     }));
     setTemplatePickerOpen(false);
     toast.success(`"${template.name}" applied`, { description: "Fully editable below — adjust fields and values as needed." });
   };
 
-  const updateTreeNode = (id: string, patch: Partial<Condition | ConditionGroup>) =>
+  const updateTreeNode = (id: string, patch: Partial<Condition | ConditionGroup | QuantifierCondition>) =>
     setRule((r) => ({ ...r, rootGroup: updateNode(r.rootGroup, id, patch) }));
   const deleteTreeNode = (id: string) => setRule((r) => ({ ...r, rootGroup: removeNode(r.rootGroup, id) }));
-  const addTreeChild = (groupId: string, child: Condition | ConditionGroup) =>
+  const addTreeChild = (groupId: string, child: Condition | ConditionGroup | QuantifierCondition) =>
     setRule((r) => ({ ...r, rootGroup: addChildToGroup(r.rootGroup, groupId, child) }));
   const setActions = (actions: RuleAction[]) => setRule((r) => ({ ...r, actions }));
+  const setElseActions = (elseActions: RuleAction[]) => setRule((r) => ({ ...r, elseActions }));
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
@@ -241,11 +246,52 @@ function RuleBuilderContent() {
                 <ActionListEditor actions={rule.actions} onChange={setActions} />
                 {errors.actions && <p className="mt-1.5 px-1 text-[11px] text-destructive">{errors.actions}</p>}
               </div>
+              <div>
+                <div className="mb-2 flex items-center justify-between px-1">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    ELSE — Otherwise
+                  </h2>
+                  {!showElseBranch && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 text-[11px]"
+                      onClick={() => setShowElseBranch(true)}
+                    >
+                      <Plus className="size-3" /> Add ELSE Branch
+                    </Button>
+                  )}
+                </div>
+                {showElseBranch ? (
+                  <>
+                    <p className="mb-2 px-1 text-[11px] text-muted-foreground">
+                      Runs instead of THEN when the IF conditions don&apos;t match. Leave empty and this rule simply
+                      does nothing on a non-match, same as before.
+                    </p>
+                    <ActionListEditor actions={rule.elseActions ?? []} onChange={setElseActions} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 h-6 text-[11px] text-muted-foreground"
+                      onClick={() => {
+                        setShowElseBranch(false);
+                        setElseActions([]);
+                      }}
+                    >
+                      Remove ELSE Branch
+                    </Button>
+                  </>
+                ) : (
+                  <p className="rounded-lg border border-dashed px-3 py-3 text-center text-xs text-muted-foreground">
+                    No ELSE branch — this rule does nothing when its conditions don&apos;t match.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col gap-4">
               <RuleSummary rule={rule} />
-              <InlineTestPanel rootGroup={rule.rootGroup} actions={rule.actions} />
+              <InlineTestPanel rootGroup={rule.rootGroup} actions={rule.actions} elseActions={rule.elseActions} />
             </div>
           </div>
         </div>

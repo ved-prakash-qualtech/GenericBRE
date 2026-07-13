@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { BusinessRule, RuleEnvironment, RuleGroup } from "@/lib/types";
 import { StatusBadge, PriorityBadge, EnvironmentBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +51,27 @@ export interface RepositoryColumnContext {
 
 export function buildColumns(actions: RepositoryActions, context: RepositoryColumnContext): ColumnDef<BusinessRule>[] {
   return [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          indeterminate={!table.getIsAllPageRowsSelected() && table.getIsSomePageRowsSelected()}
+          onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+          aria-label="Select all rules on this page"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(v) => row.toggleSelected(!!v)}
+          aria-label={`Select ${row.original.id}`}
+        />
+      ),
+      size: 36,
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: "id",
       header: ({ column }) => <SortHeader label="Rule ID" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} />,

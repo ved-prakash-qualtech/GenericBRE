@@ -24,7 +24,7 @@ export function DemoScenariosPanel() {
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
       <PanelHeader title="Preconfigured Demo Scenarios" />
-      <div className="grid flex-1 grid-cols-1 gap-2.5 p-3 sm:grid-cols-3">
+      <div className="grid flex-1 grid-cols-1 gap-2 overflow-y-auto p-2.5 sm:grid-cols-3">
         {industries.map((ind, i) => {
           const Icon = iconForIndustry(ind.icon);
           return (
@@ -35,10 +35,10 @@ export function DemoScenariosPanel() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
               whileHover={{ y: -2 }}
-              className={`group relative overflow-hidden rounded-lg border bg-gradient-to-br p-3.5 text-left ${ACCENTS[i % ACCENTS.length]}`}
+              className={`group relative overflow-hidden rounded-lg border bg-gradient-to-br p-3 text-left ${ACCENTS[i % ACCENTS.length]}`}
             >
               <Icon className="size-5" />
-              <p className="mt-2.5 text-[13px] font-semibold text-foreground">{ind.name}</p>
+              <p className="mt-2 text-[13px] font-semibold text-foreground">{ind.name}</p>
               <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
                 {ind.description ?? "Run a live simulation against this industry's configured rules."}
               </p>

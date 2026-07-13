@@ -1,9 +1,23 @@
-import { BusinessRule, Condition, ConditionGroup } from "./types";
+import { BusinessRule, Condition, ConditionGroup, QuantifierCondition } from "./types";
 
+// Quantifier (list) conditions are deliberately skipped here — the
+// scalar-overlap comparison below doesn't have a meaningful equivalent for
+// "ANY item matches X", so this advisory check simply doesn't cover them
+// rather than guessing.
 export function flattenConditions(node: ConditionGroup, out: Condition[] = []): Condition[] {
   for (const child of node.children) {
     if (child.type === "condition") out.push(child);
-    else flattenConditions(child, out);
+    else if (child.type === "group") flattenConditions(child, out);
+  }
+  return out;
+}
+
+// Companion to flattenConditions, for callers (e.g. version-history diffing)
+// that need to describe quantifier nodes rather than skip them.
+export function flattenQuantifiers(node: ConditionGroup, out: QuantifierCondition[] = []): QuantifierCondition[] {
+  for (const child of node.children) {
+    if (child.type === "quantifier") out.push(child);
+    else if (child.type === "group") flattenQuantifiers(child, out);
   }
   return out;
 }

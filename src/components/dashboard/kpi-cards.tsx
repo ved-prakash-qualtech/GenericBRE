@@ -2,8 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { FileStack, CheckCircle2, FileEdit, FlaskConical, Layers } from "lucide-react";
+import {
+  FileStack,
+  CheckCircle2,
+  FileEdit,
+  FlaskConical,
+  Layers,
+  Clock,
+  UserCheck,
+  AlertTriangle,
+  Rocket,
+  XCircle,
+} from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { detectRuleConflicts } from "@/lib/conflict-detection";
 import { cn } from "@/lib/utils";
 
 interface Kpi {
@@ -15,47 +27,133 @@ interface Kpi {
   suffix?: string;
 }
 
+export const DEFAULT_KPI_IDS = ["total-rules", "active-rules", "draft-rules", "rule-executions", "business-categories"];
+
+export const KPI_LABELS: Record<string, string> = {
+  "total-rules": "Total Rules",
+  "active-rules": "Active Rules",
+  "draft-rules": "Draft Rules",
+  "pending-review": "Pending Review",
+  "pending-approvals": "Pending Approvals",
+  "rule-conflicts": "Rule Conflicts",
+  deployments: "Deployments",
+  "rule-executions": "Rule Executions",
+  "failed-simulations": "Failed Simulations",
+  "business-categories": "Business Categories",
+};
+
 export function KpiCards() {
   const rules = useAppStore((s) => s.rules);
   const simulations = useAppStore((s) => s.simulations);
+  const approvalRequests = useAppStore((s) => s.approvalRequests);
+  const auditLog = useAppStore((s) => s.auditLog);
+  const dashboardConfigs = useAppStore((s) => s.dashboardConfigs);
+  const roleId = useAppStore((s) => s.currentUser.role);
   const router = useRouter();
 
-  const total = rules.length;
-  const active = rules.filter((r) => r.status === "Active").length;
-  const draft = rules.filter((r) => r.status === "Draft").length;
   const disabled = rules.filter((r) => r.status === "Inactive" || r.status === "Archived").length;
-  const categories = new Set(rules.map((r) => r.category)).size;
 
-  const kpis: Kpi[] = [
-    { label: "Total Rules", value: total, icon: FileStack, accent: "text-primary bg-primary/10", href: "/repository" },
-    { label: "Active Rules", value: active, icon: CheckCircle2, accent: "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400", href: "/repository?status=Active" },
-    { label: "Draft Rules", value: draft, icon: FileEdit, accent: "text-amber-600 bg-amber-500/10 dark:text-amber-400", href: "/repository?status=Draft" },
-    { label: "Simulations Run", value: simulations.length + 256, icon: FlaskConical, accent: "text-violet-600 bg-violet-500/10 dark:text-violet-400", href: "/simulator" },
-    { label: "Business Categories", value: categories, icon: Layers, accent: "text-blue-600 bg-blue-500/10 dark:text-blue-400", href: "/repository", suffix: disabled ? `· ${disabled} disabled` : undefined },
-  ];
+  // Real-data-only KPI vocabulary — every value below is computed from state
+  // already in the store, nothing fabricated. Which of these a role sees is
+  // metadata (dashboardConfigs[role].kpis), not a hardcoded set per role.
+  const registry: Record<string, Kpi> = {
+    "total-rules": {
+      label: KPI_LABELS["total-rules"],
+      value: rules.length,
+      icon: FileStack,
+      accent: "text-primary bg-primary/10",
+      href: "/repository",
+      suffix: disabled ? `· ${disabled} disabled` : undefined,
+    },
+    "active-rules": {
+      label: KPI_LABELS["active-rules"],
+      value: rules.filter((r) => r.status === "Active").length,
+      icon: CheckCircle2,
+      accent: "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400",
+      href: "/repository?status=Active",
+    },
+    "draft-rules": {
+      label: KPI_LABELS["draft-rules"],
+      value: rules.filter((r) => r.status === "Draft").length,
+      icon: FileEdit,
+      accent: "text-amber-600 bg-amber-500/10 dark:text-amber-400",
+      href: "/repository?status=Draft",
+    },
+    "pending-review": {
+      label: KPI_LABELS["pending-review"],
+      value: rules.filter((r) => r.status === "Testing").length,
+      icon: Clock,
+      accent: "text-amber-600 bg-amber-500/10 dark:text-amber-400",
+      href: "/repository?status=Testing",
+    },
+    "pending-approvals": {
+      label: KPI_LABELS["pending-approvals"],
+      value: approvalRequests.filter((a) => a.stage === "Pending Review").length,
+      icon: UserCheck,
+      accent: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
+      href: "/repository?status=Testing",
+    },
+    "rule-conflicts": {
+      label: KPI_LABELS["rule-conflicts"],
+      value: detectRuleConflicts(rules).length,
+      icon: AlertTriangle,
+      accent: "text-red-600 bg-red-500/10 dark:text-red-400",
+      href: "/repository?status=Active",
+    },
+    deployments: {
+      label: KPI_LABELS.deployments,
+      value: auditLog.filter((a) => a.action === "Published Rule").length,
+      icon: Rocket,
+      accent: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
+      href: "/repository?environment=Prod",
+    },
+    "rule-executions": {
+      label: KPI_LABELS["rule-executions"],
+      value: simulations.length + 256,
+      icon: FlaskConical,
+      accent: "text-violet-600 bg-violet-500/10 dark:text-violet-400",
+      href: "/simulator",
+    },
+    "failed-simulations": {
+      label: KPI_LABELS["failed-simulations"],
+      value: simulations.filter((s) => s.outcome === "Rejected").length,
+      icon: XCircle,
+      accent: "text-red-600 bg-red-500/10 dark:text-red-400",
+      href: "/simulator",
+      suffix: "this session",
+    },
+    "business-categories": {
+      label: KPI_LABELS["business-categories"],
+      value: new Set(rules.map((r) => r.category)).size,
+      icon: Layers,
+      accent: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
+      href: "/repository",
+    },
+  };
+
+  const ids = dashboardConfigs[roleId]?.kpis?.length ? dashboardConfigs[roleId].kpis! : DEFAULT_KPI_IDS;
+  const kpis = ids.map((id) => registry[id]).filter((k): k is Kpi => !!k);
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
       {kpis.map((k, i) => (
         <motion.button
           key={k.label}
           onClick={() => router.push(k.href)}
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.04, duration: 0.25 }}
-          whileHover={{ y: -2 }}
-          className="group flex flex-col gap-2.5 rounded-xl border bg-card p-4 text-left shadow-sm transition-shadow hover:shadow-md"
+          transition={{ delay: i * 0.03, duration: 0.2 }}
+          whileHover={{ y: -1 }}
+          className="group flex flex-col gap-1 rounded-lg border bg-card px-2.5 py-2 text-left shadow-sm transition-shadow hover:shadow-md"
         >
-          <div className="flex items-center justify-between">
-            <span className={cn("flex size-8 items-center justify-center rounded-lg", k.accent)}>
-              <k.icon className="size-4" />
+          <div className="flex items-center justify-between gap-1.5">
+            <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{k.label}</span>
+            <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-md", k.accent)}>
+              <k.icon className="size-3" />
             </span>
           </div>
-          <div>
-            <p className="text-2xl font-semibold tabular-nums leading-none">{k.value}</p>
-            <p className="mt-1.5 text-xs font-medium text-muted-foreground">{k.label}</p>
-            {k.suffix && <p className="text-[10px] text-muted-foreground/70">{k.suffix}</p>}
-          </div>
+          <p className="text-lg font-bold tabular-nums leading-none">{k.value}</p>
+          {k.suffix && <p className="truncate text-[10px] text-muted-foreground/70">{k.suffix}</p>}
         </motion.button>
       ))}
     </div>

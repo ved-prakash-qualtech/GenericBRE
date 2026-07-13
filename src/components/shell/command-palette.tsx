@@ -12,13 +12,15 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-import { NAV_ITEMS, NAV_ITEMS_SECONDARY } from "@/lib/nav";
+import { NAV_ITEMS, NAV_ITEMS_SECONDARY, visibleNavItems } from "@/lib/nav";
 import { useAppStore } from "@/lib/store";
 import { StatusBadge } from "@/components/status-badge";
 
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const router = useRouter();
   const rules = useAppStore((s) => s.rules);
+  const roles = useAppStore((s) => s.roles);
+  const roleId = useAppStore((s) => s.currentUser.role);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Navigate">
-          {[...NAV_ITEMS, ...NAV_ITEMS_SECONDARY].filter((i) => !i.disabled).map((item) => (
+          {visibleNavItems([...NAV_ITEMS, ...NAV_ITEMS_SECONDARY], roles, roleId).filter((i) => !i.disabled).map((item) => (
             <CommandItem key={item.href} onSelect={() => go(item.href)}>
               <item.icon className="size-4" />
               {item.label}

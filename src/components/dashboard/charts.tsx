@@ -50,8 +50,8 @@ export function DomainDistributionChart() {
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
       <PanelHeader title="Domain Distribution" />
-      <div className="flex flex-1 items-center gap-4 p-3">
-        <div className="h-36 w-36 shrink-0">
+      <div className="flex flex-1 items-center gap-3 p-2.5">
+        <div className="h-28 w-28 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie

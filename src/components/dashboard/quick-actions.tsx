@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Plus, Library, Grid3x3, FlaskConical, type LucideIcon } from "lucide-react";
+import { Plus, Library, Grid3x3, FlaskConical, Settings, UserCheck, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAppStore } from "@/lib/store";
 
 interface Action {
   label: string;
@@ -12,18 +13,37 @@ interface Action {
   accent: string;
 }
 
-const ACTIONS: Action[] = [
-  { label: "Create Rule", desc: "Start a new no-code rule", icon: Plus, href: "/rule-builder", accent: "bg-primary text-primary-foreground" },
-  { label: "Open Repository", desc: "Browse the full catalogue", icon: Library, href: "/repository", accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-  { label: "Decision Matrix", desc: "Edit pricing & threshold slabs", icon: Grid3x3, href: "/matrix", accent: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
-  { label: "Run Simulator", desc: "Test a live customer scenario", icon: FlaskConical, href: "/simulator", accent: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-];
+export const DEFAULT_ACTION_IDS = ["create-rule", "open-repository", "decision-matrix", "run-simulator"];
+
+export const ACTION_LABELS: Record<string, string> = {
+  "create-rule": "Create Rule",
+  "open-repository": "Open Repository",
+  "decision-matrix": "Decision Matrix",
+  "run-simulator": "Run Simulator",
+  "view-approvals": "View Approvals",
+  "configuration-studio": "Configuration Studio",
+};
+
+const ACTION_REGISTRY: Record<string, Action> = {
+  "create-rule": { label: ACTION_LABELS["create-rule"], desc: "Start a new no-code rule", icon: Plus, href: "/rule-builder", accent: "bg-primary text-primary-foreground" },
+  "open-repository": { label: ACTION_LABELS["open-repository"], desc: "Browse the full catalogue", icon: Library, href: "/repository", accent: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
+  "decision-matrix": { label: ACTION_LABELS["decision-matrix"], desc: "Edit pricing & threshold slabs", icon: Grid3x3, href: "/matrix", accent: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
+  "run-simulator": { label: ACTION_LABELS["run-simulator"], desc: "Test a live customer scenario", icon: FlaskConical, href: "/simulator", accent: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  "view-approvals": { label: ACTION_LABELS["view-approvals"], desc: "Rules submitted and awaiting review", icon: UserCheck, href: "/repository?status=Testing", accent: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+  "configuration-studio": { label: ACTION_LABELS["configuration-studio"], desc: "Manage metadata, roles & dashboards", icon: Settings, href: "/settings", accent: "bg-slate-500/10 text-slate-600 dark:text-slate-400" },
+};
 
 export function QuickActions() {
   const router = useRouter();
+  const dashboardConfigs = useAppStore((s) => s.dashboardConfigs);
+  const roleId = useAppStore((s) => s.currentUser.role);
+
+  const ids = dashboardConfigs[roleId]?.quickActions?.length ? dashboardConfigs[roleId].quickActions! : DEFAULT_ACTION_IDS;
+  const actions = ids.map((id) => ACTION_REGISTRY[id]).filter((a): a is Action => !!a);
+
   return (
-    <div className="grid grid-cols-2 gap-2.5">
-      {ACTIONS.map((a, i) => (
+    <div className="grid grid-cols-2 gap-2 overflow-y-auto">
+      {actions.map((a, i) => (
         <motion.button
           key={a.label}
           onClick={() => router.push(a.href)}
@@ -32,10 +52,10 @@ export function QuickActions() {
           transition={{ delay: i * 0.04 }}
           whileHover={{ scale: 1.015 }}
           whileTap={{ scale: 0.98 }}
-          className="flex flex-col items-start gap-2 rounded-xl border bg-card p-3.5 text-left transition-shadow hover:shadow-md"
+          className="flex flex-col items-start gap-1.5 rounded-xl border bg-card p-3 text-left transition-shadow hover:shadow-md"
         >
-          <span className={`flex size-8 items-center justify-center rounded-lg ${a.accent}`}>
-            <a.icon className="size-4" />
+          <span className={`flex size-7 items-center justify-center rounded-lg ${a.accent}`}>
+            <a.icon className="size-3.5" />
           </span>
           <div>
             <p className="text-[13px] font-semibold leading-tight">{a.label}</p>

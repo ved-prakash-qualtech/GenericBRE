@@ -11,7 +11,7 @@
     "name": "Product Manager",
     "personaName": "Rohan Mehta",
     "icon": "Briefcase",
-    "capabilities": ["rule.view", "rule.create", "rule.edit", "rule.simulate", "rule.publish"]
+    "capabilities": ["rule.view", "rule.create", "rule.edit", "rule.simulate", "rule.publish", "config.manage"]
   },
   {
     "id": "risk-manager",
@@ -39,6 +39,6 @@
     "name": "System Administrator",
     "personaName": "Vikram Chawla",
     "icon": "Settings",
-    "capabilities": ["rule.view", "rule.create", "rule.edit", "rule.delete", "rule.simulate", "rule.publish", "system.manage"]
+    "capabilities": ["rule.view", "rule.create", "rule.edit", "rule.delete", "rule.simulate", "rule.publish", "system.manage", "config.manage"]
   }
 ]

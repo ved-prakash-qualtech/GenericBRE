@@ -51,7 +51,7 @@ function EmptyRow({ label }: { label: string }) {
 
 export default function MetadataExplorerPage() {
   const industries = useAppStore((s) => s.industries);
-  const categories = useAppStore((s) => s.categories);
+  const ruleCategories = useAppStore((s) => s.ruleCategories);
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   const ruleGroups = useAppStore((s) => s.ruleGroups);
   const ruleTemplates = useAppStore((s) => s.ruleTemplates);
@@ -95,14 +95,14 @@ export default function MetadataExplorerPage() {
             </div>
           </SectionCard>
 
-          <SectionCard icon={Tag} title="Categories" count={categories.length} manageHref="/settings">
+          <SectionCard icon={Tag} title="Categories" count={ruleCategories.length} manageHref="/settings">
             <div className="flex flex-wrap gap-1.5">
-              {categories.map((c) => (
-                <Badge key={c} variant="secondary" className="text-[11px]">
-                  {c} · {rules.filter((r) => r.category === c).length}
+              {ruleCategories.map((c) => (
+                <Badge key={c.id} variant="secondary" className="text-[11px]">
+                  {c.name} · {rules.filter((r) => r.category === c.name).length}
                 </Badge>
               ))}
-              {categories.length === 0 && <EmptyRow label="No categories configured yet." />}
+              {ruleCategories.length === 0 && <EmptyRow label="No categories configured yet." />}
             </div>
           </SectionCard>
 

@@ -1,13 +1,14 @@
 "use client";
 
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Download, Plus, AlertTriangle } from "lucide-react";
+import { Search, Download, Upload, Plus, AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore, useHasCapability } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -21,12 +22,26 @@ import {
 import { buildColumns } from "@/components/repository/columns";
 import { DataTable } from "@/components/repository/data-table";
 import { RuleViewSheet } from "@/components/repository/rule-view-sheet";
-import { downloadCsv } from "@/lib/csv";
+import { downloadCsv, parseCsv } from "@/lib/csv";
+import { emptyGroup } from "@/lib/condition-tree";
 import { BusinessRule } from "@/lib/types";
 import { detectRuleConflicts, detectConflictsForCandidate, RuleConflict } from "@/lib/conflict-detection";
 
+function nextRuleId(existing: BusinessRule[], taken: Set<string>) {
+  const nums = existing.map((r) => parseInt(r.id.replace(/\D/g, ""), 10)).filter((n) => !Number.isNaN(n));
+  let max = nums.length ? Math.max(...nums) : 100;
+  let id = `RL-${max + 1}`;
+  while (taken.has(id)) {
+    max += 1;
+    id = `RL-${max + 1}`;
+  }
+  taken.add(id);
+  return id;
+}
+
 function RepositoryContent() {
   const rules = useAppStore((s) => s.rules);
+  const addRule = useAppStore((s) => s.addRule);
   const cloneRule = useAppStore((s) => s.cloneRule);
   const setRuleStatus = useAppStore((s) => s.setRuleStatus);
   const submitForReview = useAppStore((s) => s.submitForReview);
@@ -34,8 +49,9 @@ function RepositoryContent() {
   const rejectRule = useAppStore((s) => s.rejectRule);
   const promoteRuleEnvironment = useAppStore((s) => s.promoteRuleEnvironment);
   const deleteRule = useAppStore((s) => s.deleteRule);
+  const updateRule = useAppStore((s) => s.updateRule);
   const industries = useAppStore((s) => s.industries);
-  const categories = useAppStore((s) => s.categories);
+  const ruleCategories = useAppStore((s) => s.ruleCategories);
   const owners = useAppStore((s) => s.owners);
   const ruleGroups = useAppStore((s) => s.ruleGroups);
   const canPublish = useHasCapability("rule.publish");
@@ -45,19 +61,106 @@ function RepositoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
   const [domains, setDomains] = useState<string[]>(searchParams.get("domain") ? [searchParams.get("domain")!] : []);
   const [statuses, setStatuses] = useState<string[]>(searchParams.get("status") ? [searchParams.get("status")!] : []);
   const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
   const [ownerFilters, setOwnerFilters] = useState<string[]>([]);
   const [groupFilters, setGroupFilters] = useState<string[]>([]);
-  const [environmentFilters, setEnvironmentFilters] = useState<string[]>([]);
+  const [environmentFilters, setEnvironmentFilters] = useState<string[]>(
+    searchParams.get("environment") ? [searchParams.get("environment")!] : []
+  );
   const [viewRule, setViewRule] = useState<BusinessRule | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [approvalConfirm, setApprovalConfirm] = useState<{ rule: BusinessRule; conflicts: RuleConflict[] } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<BusinessRule | null>(null);
+  const [selectedRows, setSelectedRows] = useState<BusinessRule[]>([]);
+  const [resetSelectionSignal, setResetSelectionSignal] = useState(0);
+  const [bulkGroupChoice, setBulkGroupChoice] = useState<string>("");
+  const importRef = useRef<HTMLInputElement>(null);
 
   const conflicts = useMemo(() => detectRuleConflicts(rules), [rules]);
+
+  const clearSelection = () => {
+    setSelectedRows([]);
+    setResetSelectionSignal((n) => n + 1);
+  };
+
+  function runBulk(label: string, action: (r: BusinessRule) => { ok: boolean; reason?: string }) {
+    let succeeded = 0;
+    const failures: string[] = [];
+    for (const r of selectedRows) {
+      const result = action(r);
+      if (result.ok) succeeded++;
+      else failures.push(`${r.id}${result.reason ? `: ${result.reason}` : ""}`);
+    }
+    if (succeeded > 0) {
+      toast.success(`${label}: ${succeeded} of ${selectedRows.length} rule${selectedRows.length === 1 ? "" : "s"}${failures.length ? `, ${failures.length} blocked` : ""}`, {
+        description: failures.length ? failures.slice(0, 4).join(" · ") + (failures.length > 4 ? " …" : "") : undefined,
+      });
+    } else {
+      toast.error(`${label} blocked for all ${selectedRows.length} selected rule(s)`, {
+        description: failures.slice(0, 4).join(" · "),
+      });
+    }
+    clearSelection();
+  }
+
+  const handleImportFile = (file: File) => {
+    const finish = (rows: Record<string, string>[]) => {
+      const taken = new Set(rules.map((r) => r.id));
+      let added = 0;
+      const skipped: string[] = [];
+      rows.forEach((row, i) => {
+        const name = row.name || row.Name;
+        const domain = row.domain || row.Domain;
+        const category = row.category || row.Category;
+        const owner = row.owner || row.Owner;
+        const priority = Number(row.priority || row.Priority || 3);
+        if (!name || !domain || !category || !owner) {
+          skipped.push(`Row ${i + 2}: missing name, domain, category or owner`);
+          return;
+        }
+        const rule: BusinessRule = {
+          id: nextRuleId(rules, taken),
+          name,
+          domain,
+          category,
+          subCategory: "",
+          priority: (Number.isFinite(priority) ? Math.min(5, Math.max(1, priority)) : 3) as BusinessRule["priority"],
+          status: "Draft",
+          environment: "Dev",
+          description: row.description || row.Description || "",
+          owner,
+          rootGroup: emptyGroup("AND"),
+          actions: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          version: 1,
+          simulatable: true,
+        };
+        const result = addRule(rule);
+        if (result.ok) added++;
+        else skipped.push(`${rule.id}: ${result.reason}`);
+      });
+      toast.success(`Import complete: ${added} rule${added === 1 ? "" : "s"} added as Draft${skipped.length ? `, ${skipped.length} skipped` : ""}.`, {
+        description: skipped.length ? skipped.slice(0, 5).join(" · ") + (skipped.length > 5 ? " …" : "") : "Open each in Rule Builder to finish its conditions & actions.",
+      });
+    };
+
+    if (file.name.endsWith(".json")) {
+      file.text().then((text) => {
+        try {
+          const data = JSON.parse(text);
+          finish(Array.isArray(data) ? data : [data]);
+        } catch {
+          toast.error("Invalid JSON file.");
+        }
+      });
+    } else {
+      file.text().then((text) => finish(parseCsv(text)));
+    }
+  };
 
   const performApprove = useCallback(
     (r: BusinessRule) => {
@@ -193,6 +296,22 @@ function RepositoryContent() {
           <h1 className="text-lg font-semibold tracking-tight">Rule Repository</h1>
           <p className="text-xs text-muted-foreground">Searchable catalogue of every configured business rule</p>
         </div>
+        <input
+          ref={importRef}
+          type="file"
+          accept=".csv,.json"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleImportFile(file);
+            e.target.value = "";
+          }}
+        />
+        {canCreate && (
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => importRef.current?.click()}>
+            <Upload className="size-3.5" /> Import Rules
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -253,7 +372,7 @@ function RepositoryContent() {
         />
         <MultiSelect
           label="Category"
-          options={categories.map((c) => ({ value: c, label: c }))}
+          options={ruleCategories.map((c) => ({ value: c.name, label: c.name }))}
           selected={categoryFilters}
           onChange={setCategoryFilters}
         />
@@ -302,8 +421,79 @@ function RepositoryContent() {
         </div>
       )}
 
+      {selectedRows.length > 0 && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-primary/5 px-5 py-2 sm:px-6">
+          <span className="text-xs font-semibold">
+            {selectedRows.length} rule{selectedRows.length === 1 ? "" : "s"} selected
+          </span>
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => runBulk("Submitted for review", (r) => (r.status === "Draft" ? submitForReview(r.id) : { ok: false, reason: "Not a Draft rule" }))}
+            >
+              Submit for Review
+            </Button>
+          )}
+          {canPublish && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => runBulk("Archived", (r) => (r.status !== "Archived" ? setRuleStatus(r.id, "Archived") : { ok: false, reason: "Already archived" }))}
+            >
+              Archive
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs text-destructive hover:text-destructive"
+              onClick={() => runBulk("Deleted", (r) => deleteRule(r.id))}
+            >
+              Delete
+            </Button>
+          )}
+          {canEdit && (
+            <div className="flex items-center gap-1.5">
+              <Select value={bulkGroupChoice} onValueChange={(v) => setBulkGroupChoice((v as string) ?? "")}>
+                <SelectTrigger size="sm" className="h-7 w-40 text-xs"><SelectValue placeholder="Assign Rule Group..." /></SelectTrigger>
+                <SelectContent>
+                  {ruleGroups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                disabled={!bulkGroupChoice}
+                onClick={() => {
+                  runBulk("Rule group assigned", (r) => updateRule(r.id, (rule) => ({ ...rule, groupId: bulkGroupChoice })));
+                  setBulkGroupChoice("");
+                }}
+              >
+                Apply
+              </Button>
+            </div>
+          )}
+          <Button variant="ghost" size="icon-sm" className="ml-auto" onClick={clearSelection}>
+            <X className="size-3.5" />
+          </Button>
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 p-5 sm:p-6">
-        <DataTable columns={columns} data={filtered} />
+        <DataTable
+          columns={columns}
+          data={filtered}
+          getRowId={(r) => r.id}
+          onSelectionChange={setSelectedRows}
+          resetSelectionSignal={resetSelectionSignal}
+        />
       </div>
 
       <RuleViewSheet rule={viewRule} open={viewOpen} onOpenChange={setViewOpen} />

@@ -1,4 +1,4 @@
-import { BusinessField, Domain, Operator } from "./types";
+import { BusinessField, Domain, Operator, RuleCategory } from "./types";
 
 // Seed content only — the live catalog lives in the store (`fieldCatalog`) and
 // is fully editable from the Configuration Studio. New industries add their
@@ -55,9 +55,9 @@ export function getField(catalog: BusinessField[], key: string): BusinessField |
   return catalog.find((f) => f.key === key);
 }
 
-// Seed content only — the live list lives in the store (`categories`) and is
-// fully editable from the Configuration Studio.
-export const DEFAULT_CATEGORIES = [
+// Seed content only — the live list lives in the store (`ruleCategories`) and
+// is fully editable from the Configuration Studio.
+const DEFAULT_CATEGORY_NAMES = [
   "Eligibility",
   "Pricing",
   "Underwriting",
@@ -66,6 +66,11 @@ export const DEFAULT_CATEGORIES = [
   "Collateral",
   "Claims",
 ];
+
+export const DEFAULT_RULE_CATEGORIES: RuleCategory[] = DEFAULT_CATEGORY_NAMES.map((name) => ({
+  id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+  name,
+}));
 
 // Seed content only — the live list lives in the store (`owners`) and is fully
 // editable from the Configuration Studio.

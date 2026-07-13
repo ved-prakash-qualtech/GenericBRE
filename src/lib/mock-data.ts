@@ -12,7 +12,7 @@ import {
   RuleStatus,
   RuleTemplate,
 } from "./types";
-import { DEFAULT_CATEGORIES, DEFAULT_OWNERS } from "./fields";
+import { DEFAULT_RULE_CATEGORIES, DEFAULT_OWNERS } from "./fields";
 import { buildHashChain } from "./audit-chain";
 import rolesData from "@/data/roles.json";
 
@@ -464,7 +464,7 @@ function generateFillerRules(count: number): BusinessRule[] {
         id: `RL-${ruleCounter}`,
         name: `${stem} #${ruleCounter}`,
         domain,
-        category: pick(DEFAULT_CATEGORIES),
+        category: pick(DEFAULT_RULE_CATEGORIES).name,
         priority: (Math.ceil(rng() * 5) as Priority),
         status,
         description: `Supporting configuration rule covering ${field.replace(/_/g, " ")} variance handling for ${domain.toLowerCase()} operations.`,

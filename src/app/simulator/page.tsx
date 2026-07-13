@@ -7,6 +7,7 @@ import { FlaskConical, PlayCircle, RotateCcw } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { Domain, RuleEnvironment, SimulationResult } from "@/lib/types";
 import { runSimulation } from "@/lib/engine";
+import { getField } from "@/lib/fields";
 import { lookupInterestRate, lookupHaircut, lookupPremium } from "@/lib/matrix-lookup";
 import { SCENARIO_PRESETS, PresetKey } from "@/lib/scenario-presets";
 import { iconForIndustry } from "@/lib/industries";
@@ -26,6 +27,7 @@ function SimulatorContent() {
   const matrices = useAppStore((s) => s.matrices);
   const industries = useAppStore((s) => s.industries);
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
+  const executionSettings = useAppStore((s) => s.executionSettings);
   const addSimulation = useAppStore((s) => s.addSimulation);
   const logAudit = useAppStore((s) => s.logAudit);
   const currentUser = useAppStore((s) => s.currentUser);
@@ -57,7 +59,24 @@ function SimulatorContent() {
 
   const runScenario = () => {
     setRunning(true);
-    const input: Record<string, string | number | boolean> = { ...values };
+    const input: Record<string, string | number | boolean | (string | number | boolean)[]> = { ...values };
+
+    // List fields are edited as a comma-separated string (see DynamicForm) —
+    // parse into a typed array here, right before evaluation.
+    for (const key of Object.keys(input)) {
+      const field = getField(fieldCatalog, key);
+      if (field?.type === "list" && typeof input[key] === "string") {
+        input[key] = String(input[key])
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map((s) => {
+            if (field.itemType === "number" || field.itemType === "currency") return parseFloat(s) || 0;
+            if (field.itemType === "boolean") return s.toLowerCase() === "true" || s === "yes";
+            return s;
+          });
+      }
+    }
 
     if (domain === "Lending") {
       const income = Number(values.monthly_income) || 1;
@@ -66,7 +85,15 @@ function SimulatorContent() {
     }
 
     setTimeout(() => {
-      const sim = runSimulation(domain, rules, input, fieldCatalog, sandboxRuleId ? [sandboxRuleId] : [], environment);
+      const sim = runSimulation(
+        domain,
+        rules,
+        input,
+        fieldCatalog,
+        sandboxRuleId ? [sandboxRuleId] : [],
+        environment,
+        executionSettings[domain] ?? executionSettings.default ?? { conflictResolution: "execute-all" }
+      );
 
       if (sim.outcome !== "Rejected") {
         if (domain === "Lending") {

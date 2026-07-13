@@ -13,9 +13,32 @@ export interface Industry {
   description?: string;
 }
 
+// A business entity (Applicant, Loan Account, Collateral, Policy, ...) that
+// fields belong to — part of the Configuration Studio's metadata layer, not
+// a fixed union. Optional `industry` scopes an entity to one vertical; leave
+// unset for entities shared across every industry.
+export interface Entity {
+  id: string;
+  name: string;
+  description?: string;
+  industry?: string;
+}
+
 // 5-state lifecycle per BRD §9.5: Draft (authoring) -> Testing (simulator
 // validation) -> Active (live) -> Inactive (paused) -> Archived (retired).
 export type RuleStatus = "Draft" | "Testing" | "Active" | "Inactive" | "Archived";
+
+// How the engine resolves multiple rules qualifying for the same case.
+// "execute-all" (default, matches pre-existing behavior) evaluates every
+// eligible rule regardless of order; "first-match" stops at the first rule
+// whose IF (or ELSE) actually fires; "highest-priority"/"lowest-priority"
+// just flip the evaluation/trace order (priority 1 = highest on the Priority
+// scale) without truncating evaluation.
+export type ConflictResolution = "highest-priority" | "lowest-priority" | "first-match" | "execute-all";
+
+export interface ExecutionSettings {
+  conflictResolution: ConflictResolution;
+}
 
 export type Priority = 1 | 2 | 3 | 4 | 5;
 
@@ -47,12 +70,32 @@ export interface Condition {
   value2?: string; // used for "between"
 }
 
+// The declarative equivalent of a "for each" loop: tests every item of a
+// list-type field against a per-item operator/value, then reduces the
+// per-item results with a quantifier — no iteration construct needed, and
+// the rule stays a pure, side-effect-free evaluation (safe to trace, diff,
+// and check for conflicts the same way a plain Condition is).
+export type Quantifier = "ANY" | "ALL" | "NONE" | "COUNT";
+
+export interface QuantifierCondition {
+  id: string;
+  type: "quantifier";
+  field: string; // must reference a BusinessField with type: "list"
+  quantifier: Quantifier;
+  operator: Operator; // applied to each item in the list
+  value: string;
+  value2?: string; // used when operator is "between"
+  /** Only used when quantifier is "COUNT": compares the number of matching items against countValue. */
+  countComparator?: ">" | ">=" | "=" | "<" | "<=";
+  countValue?: string;
+}
+
 export interface ConditionGroup {
   id: string;
   type: "group";
   logic: "AND" | "OR";
   collapsed?: boolean;
-  children: (Condition | ConditionGroup)[];
+  children: (Condition | ConditionGroup | QuantifierCondition)[];
 }
 
 export interface RuleAction {
@@ -88,7 +131,9 @@ export interface BusinessRule {
   description?: string;
   owner: string;
   rootGroup: ConditionGroup;
-  actions: RuleAction[];
+  actions: RuleAction[]; // THEN
+  /** ELSE — fires instead of `actions` when rootGroup does NOT match. Optional; a rule with no elseActions simply does nothing on a non-match, same as before this existed. */
+  elseActions?: RuleAction[];
   createdAt: string;
   updatedAt: string;
   version: number;
@@ -121,6 +166,7 @@ export interface RuleVersion {
   description?: string;
   rootGroup: ConditionGroup;
   actions: RuleAction[];
+  elseActions?: RuleAction[];
 }
 
 // A named, reusable collection of rules — purely organizational, orthogonal to
@@ -129,6 +175,16 @@ export interface RuleGroup {
   id: string;
   name: string;
   description?: string;
+}
+
+// A configurable rule category — BusinessRule.category stores this entry's
+// `name` (a plain string), not `id`, so existing filters/columns/CSV export
+// that already treat category as a display string keep working unchanged.
+export interface RuleCategory {
+  id: string;
+  name: string;
+  description?: string;
+  industry?: string;
 }
 
 // A reusable starting shape for a common rule pattern (e.g. "Threshold
@@ -140,6 +196,7 @@ export interface RuleTemplate {
   description: string;
   rootGroup: ConditionGroup;
   actions: RuleAction[];
+  elseActions?: RuleAction[];
 }
 
 export interface MatrixColumn {
@@ -166,7 +223,14 @@ export interface DecisionMatrix {
   updatedAt: string;
 }
 
-export type FieldDataType = "number" | "string" | "boolean" | "enum" | "currency";
+export type FieldDataType = "number" | "string" | "boolean" | "enum" | "currency" | "list";
+
+// The primitive type stored inside a "list" field's items — deliberately a
+// flat array of scalars, not a list of objects. A quantified condition
+// ("ANY item > X") is the declarative stand-in for iterating a collection;
+// nested object schemas would need a much bigger authoring UI for a use case
+// this project's rules haven't needed yet.
+export type FieldItemType = "number" | "string" | "boolean" | "enum" | "currency";
 
 export interface BusinessField {
   key: string;
@@ -180,6 +244,46 @@ export interface BusinessField {
    *  available to the Rule Builder's condition picker but excluded from the
    *  Simulator's dynamic input form since the user never enters them directly. */
   computed?: boolean;
+  /** Required when type is "list" — the scalar type of each item. */
+  itemType?: FieldItemType;
+  /** When type is "list" and itemType is "enum" — the allowed value per item. */
+  itemOptions?: string[];
+  /** Metadata-repository fields — part of the Configuration Studio's Field
+   *  Catalog upgrade, all optional so pre-existing seed data keeps working. */
+  businessName?: string;
+  /** Entity.id reference (see Entity in this file). */
+  entity?: string;
+  sourceSystem?: string;
+  status?: "Active" | "Draft" | "Deprecated";
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+// Foundational JSON Mapping — a table-based attribute-to-field mapping set,
+// built from a pasted/uploaded sample payload. Drag-and-drop visual mapping
+// and OpenAPI/Swagger spec import are a later phase; this covers the core
+// "map an external JSON attribute to a BRE field" need.
+export interface JsonMappingEntry {
+  id: string;
+  externalAttribute: string;
+  jsonPath: string;
+  mappedField?: string; // BusinessField.key
+  dataType: FieldDataType;
+  required: boolean;
+  transformationRule?: string;
+  defaultValue?: string;
+  validationRule?: string;
+  status: "Mapped" | "Unmapped";
+}
+
+export interface JsonMapping {
+  id: string;
+  name: string;
+  industry: string;
+  direction: "request" | "response";
+  entries: JsonMappingEntry[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TraceStep {
@@ -198,6 +302,8 @@ export interface TraceStep {
   durationMs: number;
   /** True when this step ran a non-Active (Testing) rule under an explicit sandbox test — never true in a normal production simulation. */
   sandbox?: boolean;
+  /** Which action list actually fired — "then" on a match, "else" when the conditions failed but the rule had an ELSE branch. Absent for Skipped/Not Applicable steps. */
+  branch?: "then" | "else";
 }
 
 export type DecisionOutcome = "Approved" | "Rejected" | "Review Required";
@@ -212,7 +318,7 @@ export interface SimulationResult {
   triggeredRules: string[];
   decidingRuleId: string | null;
   trace: TraceStep[];
-  input: Record<string, string | number | boolean>;
+  input: Record<string, string | number | boolean | (string | number | boolean)[]>;
   timestamp: string;
   totalDurationMs: number;
   /** True when one or more Testing-stage rules were included via an explicit sandbox test — this result is a pre-approval preview, not a production decision. */
@@ -256,7 +362,8 @@ export type Capability =
   | "rule.delete"
   | "rule.simulate"
   | "rule.publish"
-  | "system.manage";
+  | "system.manage"
+  | "config.manage";
 
 // A configurable role — enforced client-side only (no backend). Seeded from
 // BRD §5.4's persona matrix, but fully editable/renameable via the
@@ -271,6 +378,27 @@ export interface Role {
   capabilities: Capability[];
   /** Optional organization-standard appearance for this role tier, offered via the "Use {role} Default" action in Appearance Studio. */
   defaultAppearance?: Partial<AppearanceSettings>;
+}
+
+// Per-role dashboard defaults (BRD §5.3 Persona-to-Module Mapping) — where a
+// role lands after login/switch, and which dashboard widgets it starts with.
+// Admin-configured via Configuration Studio → Dashboard Management; a user's
+// own in-session drag/show-hide tweaks (the store's `widgets` array) start
+// from this but are edited independently — see `resetWidgets`.
+export interface DashboardWidgetConfig {
+  id: string;
+  visible: boolean;
+  order: number;
+}
+
+export interface DashboardConfig {
+  roleId: string;
+  landingRoute: string;
+  widgets: DashboardWidgetConfig[];
+  /** KPI card ids (see KPI_REGISTRY) shown at the top of the dashboard. Falls back to a default set when absent/empty. */
+  kpis?: string[];
+  /** Quick Action ids (see ACTION_REGISTRY) shown in the Quick Actions widget. Falls back to a default set when absent/empty. */
+  quickActions?: string[];
 }
 
 // Appearance / personalization schema — every tenant/user can fully restyle
