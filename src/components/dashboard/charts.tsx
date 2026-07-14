@@ -14,7 +14,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, useScopedRules } from "@/lib/store";
 import { PanelHeader } from "./recent-panels";
 import { RuleStatus } from "@/lib/types";
 import { colorForIndustry } from "@/lib/industries";
@@ -37,7 +37,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: { name:
 }
 
 export function DomainDistributionChart() {
-  const rules = useAppStore((s) => s.rules);
+  const rules = useScopedRules();
   const industries = useAppStore((s) => s.industries);
   const router = useRouter();
 
@@ -46,6 +46,17 @@ export function DomainDistributionChart() {
     for (const r of rules) counts[r.domain] = (counts[r.domain] ?? 0) + 1;
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [rules]);
+
+  if (data.length === 0) {
+    return (
+      <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
+        <PanelHeader title="Domain Distribution" />
+        <div className="flex flex-1 items-center justify-center p-4 text-center text-xs text-muted-foreground">
+          No rules in the current selection.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
@@ -62,6 +73,7 @@ export function DomainDistributionChart() {
                 outerRadius={62}
                 paddingAngle={3}
                 cursor="pointer"
+                isAnimationActive={false}
                 onClick={(d) => router.push(`/repository?domain=${d.name}`)}
               >
                 {data.map((d) => (
@@ -93,7 +105,7 @@ export function DomainDistributionChart() {
 }
 
 export function RuleStatusChart() {
-  const rules = useAppStore((s) => s.rules);
+  const rules = useScopedRules();
   const router = useRouter();
 
   const data = useMemo(() => {
@@ -102,25 +114,42 @@ export function RuleStatusChart() {
     for (const r of rules) counts[r.status] = (counts[r.status] ?? 0) + 1;
     return order.map((name) => ({ name, value: counts[name] ?? 0 }));
   }, [rules]);
+  const hasData = rules.length > 0;
 
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
       <PanelHeader title="Rule Status Breakdown" />
-      <div className="flex-1 p-3">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-            <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} stroke="var(--muted-foreground)" />
-            <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="var(--muted-foreground)" width={28} />
-            <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
-            <Bar dataKey="value" radius={[6, 6, 0, 0]} cursor="pointer" onClick={(d) => router.push(`/repository?status=${d.name}`)}>
-              {data.map((d) => (
-                <Cell key={d.name} fill={STATUS_COLORS[d.name as RuleStatus]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {hasData ? (
+        // Recharts' ResponsiveContainer measures its parent's actual pixel
+        // height to size the SVG — needs a genuinely definite ancestor
+        // height (the dashboard grid wrapper now gives every card a fixed
+        // 240px card, so flex-1 + min-h-0 resolves correctly here).
+        <div className="min-h-0 flex-1 p-3">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+              <XAxis dataKey="name" tickLine={false} axisLine={false} fontSize={11} stroke="var(--muted-foreground)" />
+              <YAxis tickLine={false} axisLine={false} fontSize={11} stroke="var(--muted-foreground)" width={28} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
+              <Bar
+                dataKey="value"
+                radius={[6, 6, 0, 0]}
+                cursor="pointer"
+                isAnimationActive={false}
+                onClick={(d) => router.push(`/repository?status=${d.name}`)}
+              >
+                {data.map((d) => (
+                  <Cell key={d.name} fill={STATUS_COLORS[d.name as RuleStatus]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="flex flex-1 items-center justify-center p-4 text-center text-xs text-muted-foreground">
+          No rules in the current selection.
+        </div>
+      )}
     </div>
   );
 }

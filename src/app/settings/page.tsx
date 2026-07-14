@@ -16,7 +16,8 @@ import {
   Building2,
   Users,
   ShieldCheck,
-  GitBranch,
+  Waypoints,
+  Sliders,
   LayoutTemplate,
   Compass,
   CheckSquare,
@@ -34,7 +35,10 @@ import { EntityCatalogManager } from "@/components/studio/entity-catalog-manager
 import { JsonMappingManager } from "@/components/studio/json-mapping-manager";
 import { RuleCategoryManager } from "@/components/studio/rule-category-manager";
 import { RuleGroupsManager } from "@/components/studio/rule-groups-manager";
+import { RuleTemplatesManager } from "@/components/studio/rule-templates-manager";
 import { PriorityConfigManager } from "@/components/studio/priority-config-manager";
+import { ExecutionManager } from "@/components/studio/execution-manager";
+import { DecisionResponseConfigManager } from "@/components/studio/decision-response-config-manager";
 import { DashboardManagementManager } from "@/components/studio/dashboard-management-manager";
 import { ListManager } from "@/components/studio/list-manager";
 import { RolesManager } from "@/components/studio/roles-manager";
@@ -45,7 +49,10 @@ type SectionId =
   | "json-mapping"
   | "categories"
   | "rule-groups"
+  | "rule-templates"
   | "priority"
+  | "execution-manager"
+  | "decision-response"
   | "dashboard-management"
   | "industries"
   | "owners"
@@ -76,7 +83,10 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "categories", label: "Rule Categories", icon: Tag },
       { id: "rule-groups", label: "Rule Groups", icon: Layers },
+      { id: "rule-templates", label: "Rule Templates", icon: LayoutTemplate },
       { id: "priority", label: "Priority Configuration", icon: ListOrdered },
+      { id: "execution-manager", label: "Execution Manager", icon: Waypoints },
+      { id: "decision-response", label: "Decision Response Configuration", icon: Sliders },
     ],
   },
   {
@@ -88,7 +98,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Access",
     items: [
-      { id: "industries", label: "Industries", icon: Building2 },
+      { id: "industries", label: "Domains", icon: Building2 },
       { id: "owners", label: "Owners", icon: Users },
       { id: "roles", label: "Roles", icon: ShieldCheck },
     ],
@@ -96,12 +106,11 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 const ROADMAP = [
-  { icon: GitBranch, label: "Execution Sequence", desc: "Visual workflow: parallel groups, conditional branching, dependencies" },
-  { icon: LayoutTemplate, label: "Rule Templates Manager", desc: "Dedicated screen — templates are usable today via Rule Builder" },
   { icon: Compass, label: "Metadata Explorer — Dependency Graph", desc: "Visual impact analysis; the overview list already exists" },
   { icon: CheckSquare, label: "Validation Rules", desc: "Cross-field validation independent of business rules" },
   { icon: BookOpen, label: "Lookup Manager", desc: "Shared reference/lookup tables beyond enum field options" },
   { icon: Plug, label: "API Mapping (OpenAPI Import)", desc: "Auto-generate a JSON Mapping set from a Swagger/OpenAPI spec" },
+  { icon: Waypoints, label: "Execution Manager — Visual Canvas", desc: "Per-step custom conditions and a full node-graph editor, beyond today's stepper" },
 ];
 
 const SECTION_DESCRIPTIONS: Record<SectionId, string> = {
@@ -110,9 +119,12 @@ const SECTION_DESCRIPTIONS: Record<SectionId, string> = {
   "json-mapping": "Map incoming/outgoing API JSON attributes to internal BRE fields — the foundation for integrating a real source system.",
   categories: "Rule categories available in the Rule Builder and Repository filters.",
   "rule-groups": "Named, reusable rule collections — purely organizational, independent of Category.",
+  "rule-templates": "Reusable starting shapes for Rule Builder's condition and action editors — pre-fill a rule, then edit freely.",
   priority: "How the engine resolves multiple qualifying rules for the same case.",
+  "execution-manager": "Routes an incoming request to an ordered sequence of Rule Sets based on Industry, Product and other configurable dimensions.",
+  "decision-response": "How much detail a decision result exposes — Decision Only, Decision + Explanation, Decision + Trace, or Full Audit — per Industry or per Execution Manager workflow.",
   "dashboard-management": "Per-role landing page and default dashboard widgets — BRD §5.3's Persona-to-Module Mapping, made configurable.",
-  industries: "Every industry/vertical the platform supports.",
+  industries: "Every business domain/vertical the platform supports.",
   owners: "Owning teams/departments assignable to a rule.",
   roles: "Who can do what — capabilities are assigned per role, enforced both in the UI and at the data layer.",
 };
@@ -211,7 +223,10 @@ export default function SettingsPage() {
             {section === "json-mapping" && <JsonMappingManager />}
             {section === "categories" && <RuleCategoryManager />}
             {section === "rule-groups" && <RuleGroupsManager />}
+            {section === "rule-templates" && <RuleTemplatesManager />}
             {section === "priority" && <PriorityConfigManager />}
+            {section === "execution-manager" && <ExecutionManager />}
+            {section === "decision-response" && <DecisionResponseConfigManager />}
             {section === "dashboard-management" && <DashboardManagementManager />}
             {section === "industries" && <IndustriesManager />}
             {section === "owners" && (

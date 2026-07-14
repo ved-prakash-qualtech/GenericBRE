@@ -216,7 +216,8 @@ function RuleBuilderContent() {
       <TemplatePicker
         open={templatePickerOpen}
         onOpenChange={setTemplatePickerOpen}
-        templates={ruleTemplates}
+        templates={ruleTemplates.filter((t) => !t.domain || t.domain === rule.domain)}
+        industries={industries}
         onUse={applyTemplate}
       />
 

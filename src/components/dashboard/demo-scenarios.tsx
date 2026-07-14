@@ -19,7 +19,9 @@ const ACCENTS = [
 
 export function DemoScenariosPanel() {
   const router = useRouter();
-  const industries = useAppStore((s) => s.industries);
+  const allIndustries = useAppStore((s) => s.industries);
+  const domainFilter = useAppStore((s) => s.globalFilters.domains);
+  const industries = domainFilter.length ? allIndustries.filter((i) => domainFilter.includes(i.id)) : allIndustries;
 
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">

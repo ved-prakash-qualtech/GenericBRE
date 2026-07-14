@@ -66,7 +66,7 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
         </div>
 
         <div className="space-y-1.5">
-          <Label>Industry *</Label>
+          <Label>Domain *</Label>
           <Select value={data.domain} onValueChange={(v) => onChange({ domain: v as Domain })}>
             <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
             <SelectContent>

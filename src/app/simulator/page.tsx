@@ -5,19 +5,17 @@ import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { FlaskConical, PlayCircle, RotateCcw } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { Domain, RuleEnvironment, SimulationResult } from "@/lib/types";
+import { Domain, RuleEnvironment, DecisionResult, ResponseMode } from "@/lib/types";
 import { runSimulation } from "@/lib/engine";
+import { fromSimulation, resolveDecisionResponseConfig, buildApiResponsePayload } from "@/lib/decision-response";
 import { getField } from "@/lib/fields";
 import { lookupInterestRate, lookupHaircut, lookupPremium } from "@/lib/matrix-lookup";
 import { SCENARIO_PRESETS, PresetKey } from "@/lib/scenario-presets";
 import { iconForIndustry } from "@/lib/industries";
 import { DynamicForm, SimValues } from "@/components/simulator/dynamic-form";
-import { DecisionBanner } from "@/components/simulator/decision-banner";
-import { DecisionCallout } from "@/components/simulator/decision-callout";
-import { ExecutionTimeline } from "@/components/simulator/execution-timeline";
+import { DecisionResultView } from "@/components/simulator/decision-result-view";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { StatusBadge } from "@/components/status-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +26,7 @@ function SimulatorContent() {
   const industries = useAppStore((s) => s.industries);
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   const executionSettings = useAppStore((s) => s.executionSettings);
+  const decisionResponseSettings = useAppStore((s) => s.decisionResponseSettings);
   const addSimulation = useAppStore((s) => s.addSimulation);
   const logAudit = useAppStore((s) => s.logAudit);
   const currentUser = useAppStore((s) => s.currentUser);
@@ -38,7 +37,10 @@ function SimulatorContent() {
   const initialEnvironment = (searchParams.get("environment") as RuleEnvironment) || "Prod";
   const [domain, setDomain] = useState<Domain>(initialDomain);
   const [values, setValues] = useState<SimValues>(() => SCENARIO_PRESETS[initialDomain]?.[initialPreset] ?? {});
-  const [result, setResult] = useState<SimulationResult | null>(null);
+  const [decisionResult, setDecisionResult] = useState<DecisionResult | null>(null);
+  const [responseMode, setResponseMode] = useState<ResponseMode>(
+    () => resolveDecisionResponseConfig(decisionResponseSettings, { industry: initialDomain }).defaultMode
+  );
   const [running, setRunning] = useState(false);
   const [sandboxRuleId, setSandboxRuleId] = useState<string | null>(initialSandboxRule);
   const [environment, setEnvironment] = useState<RuleEnvironment>(initialEnvironment);
@@ -48,13 +50,14 @@ function SimulatorContent() {
   const switchDomain = (d: Domain) => {
     setDomain(d);
     setValues(SCENARIO_PRESETS[d]?.happy ?? {});
-    setResult(null);
+    setDecisionResult(null);
     setSandboxRuleId(null);
+    setResponseMode(resolveDecisionResponseConfig(decisionResponseSettings, { industry: d }).defaultMode);
   };
 
   const applyPreset = (preset: PresetKey) => {
     setValues(SCENARIO_PRESETS[domain]?.[preset] ?? {});
-    setResult(null);
+    setDecisionResult(null);
   };
 
   const runScenario = () => {
@@ -111,7 +114,10 @@ function SimulatorContent() {
         }
       }
 
-      setResult(sim);
+      const dr = fromSimulation(sim, rules, environment);
+      const responseConfig = resolveDecisionResponseConfig(decisionResponseSettings, { industry: domain });
+      setDecisionResult(dr);
+      setResponseMode(responseConfig.defaultMode);
       // Sandbox previews (a rule still in Testing) aren't production activity —
       // keep them out of the "Simulations Run" history/KPI, log them distinctly.
       if (!sim.sandbox) {
@@ -125,6 +131,17 @@ function SimulatorContent() {
         details: sim.sandbox
           ? `${domain} scenario against pending rule ${sandboxRuleId}, outcome ${sim.outcome} (sandbox — not live).`
           : `${domain} scenario, outcome ${sim.outcome}.`,
+        decisionContext: responseConfig.enableAuditLogging
+          ? {
+              correlationId: dr.correlationId,
+              environment,
+              triggeredRules: dr.triggeredRules,
+              ruleVersions: dr.ruleVersions,
+              executionTimeMs: dr.totalDurationMs,
+              requestPayload: dr.input,
+              responsePayload: buildApiResponsePayload(dr, "full-audit", responseConfig),
+            }
+          : undefined,
       });
       toast[sim.outcome === "Approved" ? "success" : sim.outcome === "Rejected" ? "error" : "warning"](
         `Simulation complete: ${sim.outcome}`,
@@ -134,7 +151,7 @@ function SimulatorContent() {
     }, 350);
   };
 
-  const triggeredRuleObjs = result ? rules.filter((r) => result.triggeredRules.includes(r.id)) : [];
+  const activeConfig = resolveDecisionResponseConfig(decisionResponseSettings, { industry: domain });
 
   return (
     <div className="flex h-full flex-col">
@@ -176,7 +193,7 @@ function SimulatorContent() {
                       key={env}
                       onClick={() => {
                         setEnvironment(env);
-                        setResult(null);
+                        setDecisionResult(null);
                       }}
                       className={cn(
                         "flex-1 py-1.5 font-medium transition-colors",
@@ -238,7 +255,7 @@ function SimulatorContent() {
 
         <ScrollArea className="min-h-0 flex-1">
           <div className="space-y-4 p-5 sm:p-6">
-            {!result ? (
+            {!decisionResult ? (
               <div className="flex h-72 flex-col items-center justify-center gap-2 rounded-xl border border-dashed text-center">
                 <PlayCircle className="size-8 text-muted-foreground/40" />
                 <p className="text-sm text-muted-foreground">Configure a scenario and click Run Simulation</p>
@@ -246,7 +263,7 @@ function SimulatorContent() {
               </div>
             ) : (
               <>
-                {result.sandbox && (
+                {decisionResult.sandbox && (
                   <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
                     <FlaskConical className="size-4 shrink-0" />
                     <p>
@@ -256,25 +273,13 @@ function SimulatorContent() {
                     </p>
                   </div>
                 )}
-                <DecisionBanner result={result} />
-                <DecisionCallout result={result} />
-
-                {triggeredRuleObjs.length > 0 && (
-                  <div className="rounded-xl border bg-card p-4">
-                    <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Triggered Rules</p>
-                    <div className="flex flex-wrap gap-2">
-                      {triggeredRuleObjs.map((r) => (
-                        <div key={r.id} className="flex items-center gap-2 rounded-lg border bg-background px-2.5 py-1.5 text-xs">
-                          <span className="font-mono text-muted-foreground">{r.id}</span>
-                          <span className="font-medium">{r.name}</span>
-                          <StatusBadge status={r.status} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <ExecutionTimeline trace={result.trace} />
+                <DecisionResultView
+                  result={decisionResult}
+                  config={activeConfig}
+                  mode={responseMode}
+                  onModeChange={setResponseMode}
+                  rules={rules}
+                />
               </>
             )}
           </div>

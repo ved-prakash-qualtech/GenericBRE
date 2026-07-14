@@ -1,9 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowUpRight } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, useScopedRules } from "@/lib/store";
 import { StatusBadge } from "@/components/status-badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -22,14 +23,14 @@ export function PanelHeader({ title, action, onAction }: { title: string; action
 }
 
 export function RecentRulesPanel() {
-  const rules = useAppStore((s) => s.rules);
+  const rules = useScopedRules();
   const router = useRouter();
   const recent = [...rules].sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt)).slice(0, 6);
 
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
       <PanelHeader title="Recently Modified Rules" action="View all" onAction={() => router.push("/repository")} />
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="divide-y">
           {recent.map((r) => (
             <button
@@ -76,14 +77,23 @@ export function initials(name: string): string {
 
 export function RecentActivityPanel() {
   const auditLog = useAppStore((s) => s.auditLog);
+  const allRules = useAppStore((s) => s.rules);
+  const domainFilter = useAppStore((s) => s.globalFilters.domains);
+  const scopedRules = useScopedRules();
+  const scopedRuleIds = useMemo(() => new Set(scopedRules.map((r) => r.id)), [scopedRules]);
   const router = useRouter();
+
+  const logs = useMemo(() => {
+    const isRuleEvent = (entityId: string) => allRules.some((r) => r.id === entityId);
+    return auditLog.filter((a) => !domainFilter.length || !isRuleEvent(a.entityId) || scopedRuleIds.has(a.entityId)).slice(0, 10);
+  }, [auditLog, allRules, domainFilter, scopedRuleIds]);
 
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
       <PanelHeader title="Recent Activity" action="View audit log" onAction={() => router.push("/audit-log")} />
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="divide-y">
-          {auditLog.slice(0, 10).map((a) => (
+          {logs.map((a) => (
             <button
               key={a.id}
               onClick={() => router.push("/audit-log")}
@@ -112,7 +122,7 @@ export function RecentActivityPanel() {
 }
 
 export function RecentDeploymentsPanel() {
-  const rules = useAppStore((s) => s.rules);
+  const rules = useScopedRules();
   const recent = [...rules]
     .filter((r) => r.status === "Active")
     .sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt))

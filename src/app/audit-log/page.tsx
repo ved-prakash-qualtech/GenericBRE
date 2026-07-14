@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Download, Search, ScrollText, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
+import { Download, Search, ScrollText, ShieldCheck, ShieldAlert, ShieldQuestion, ChevronRight } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { verifyAuditChain, AuditIntegrityResult } from "@/lib/audit-chain";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,15 @@ export default function AuditLogPage() {
   const [search, setSearch] = useState("");
   const [actions, setActions] = useState<string[]>([]);
   const [integrity, setIntegrity] = useState<AuditIntegrityResult | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const runVerify = () => setIntegrity(verifyAuditChain(auditLog));
 
@@ -51,7 +60,15 @@ export default function AuditLogPage() {
             onClick={() =>
               downloadCsv(
                 "audit_log",
-                filtered.map((a) => ({ Timestamp: a.timestamp, User: a.user, Action: a.action, Entity: a.entity, EntityID: a.entityId, Details: a.details }))
+                filtered.map((a) => ({
+                  Timestamp: a.timestamp,
+                  User: a.user,
+                  Action: a.action,
+                  Entity: a.entity,
+                  EntityID: a.entityId,
+                  Details: a.details,
+                  CorrelationID: a.decisionContext?.correlationId ?? "",
+                }))
               )
             }
           >
@@ -104,6 +121,7 @@ export default function AuditLogPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs text-muted-foreground">
                 <tr>
+                  <th className="w-7 px-2 py-2" />
                   <th className="px-3 py-2 text-left font-medium">Timestamp</th>
                   <th className="px-3 py-2 text-left font-medium">User</th>
                   <th className="px-3 py-2 text-left font-medium">Action</th>
@@ -112,25 +130,77 @@ export default function AuditLogPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filtered.map((a) => (
-                  <tr
-                    key={a.id}
-                    className={cn("hover:bg-accent/30", integrity && !integrity.intact && a.id === integrity.brokenAtId && "bg-destructive/10")}
-                  >
-                    <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">{format(new Date(a.timestamp), "dd MMM yyyy, HH:mm")}</td>
-                    <td className="px-3 py-2 text-xs font-medium">{a.user}</td>
-                    <td className="px-3 py-2 text-xs">
-                      <span className="rounded-full border px-2 py-0.5">{a.action}</span>
-                    </td>
-                    <td className="px-3 py-2 text-xs font-mono text-muted-foreground">{a.entityId}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{a.details}</td>
-                  </tr>
-                ))}
+                {filtered.map((a) => {
+                  const isOpen = expanded.has(a.id);
+                  return (
+                    <Fragment key={a.id}>
+                      <tr
+                        className={cn(
+                          "hover:bg-accent/30",
+                          a.decisionContext && "cursor-pointer",
+                          integrity && !integrity.intact && a.id === integrity.brokenAtId && "bg-destructive/10"
+                        )}
+                        onClick={() => a.decisionContext && toggleExpanded(a.id)}
+                      >
+                        <td className="px-2 py-2">
+                          {a.decisionContext && (
+                            <ChevronRight className={cn("size-3.5 text-muted-foreground transition-transform", isOpen && "rotate-90")} />
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">{format(new Date(a.timestamp), "dd MMM yyyy, HH:mm")}</td>
+                        <td className="px-3 py-2 text-xs font-medium">{a.user}</td>
+                        <td className="px-3 py-2 text-xs">
+                          <span className="rounded-full border px-2 py-0.5">{a.action}</span>
+                        </td>
+                        <td className="px-3 py-2 text-xs font-mono text-muted-foreground">{a.entityId}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{a.details}</td>
+                      </tr>
+                      {isOpen && a.decisionContext && (
+                        <tr key={`${a.id}-detail`} className="bg-muted/20">
+                          <td colSpan={6} className="px-5 py-3">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
+                              <DetailField label="Correlation ID" value={a.decisionContext.correlationId} mono />
+                              <DetailField label="Environment" value={a.decisionContext.environment} />
+                              <DetailField label="Execution Time" value={`${a.decisionContext.executionTimeMs.toFixed(1)}ms`} />
+                              <DetailField
+                                label="Triggered Rules"
+                                value={a.decisionContext.triggeredRules.length ? a.decisionContext.triggeredRules.join(", ") : "—"}
+                              />
+                            </div>
+                            <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                              <div>
+                                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Request Payload</p>
+                                <pre className="max-h-48 overflow-auto rounded-lg bg-background p-2.5 text-[11px] leading-relaxed">
+                                  {JSON.stringify(a.decisionContext.requestPayload, null, 2)}
+                                </pre>
+                              </div>
+                              <div>
+                                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Response Payload</p>
+                                <pre className="max-h-48 overflow-auto rounded-lg bg-background p-2.5 text-[11px] leading-relaxed">
+                                  {JSON.stringify(a.decisionContext.responsePayload, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       </ScrollArea>
+    </div>
+  );
+}
+
+function DetailField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={cn("font-medium", mono && "font-mono")}>{value}</p>
     </div>
   );
 }

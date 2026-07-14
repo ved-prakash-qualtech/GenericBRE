@@ -43,13 +43,24 @@ export const KPI_LABELS: Record<string, string> = {
 };
 
 export function KpiCards() {
-  const rules = useAppStore((s) => s.rules);
-  const simulations = useAppStore((s) => s.simulations);
-  const approvalRequests = useAppStore((s) => s.approvalRequests);
+  const allRules = useAppStore((s) => s.rules);
+  const allSimulations = useAppStore((s) => s.simulations);
+  const allApprovalRequests = useAppStore((s) => s.approvalRequests);
   const auditLog = useAppStore((s) => s.auditLog);
   const dashboardConfigs = useAppStore((s) => s.dashboardConfigs);
   const roleId = useAppStore((s) => s.currentUser.role);
+  const domainFilter = useAppStore((s) => s.globalFilters.domains);
   const router = useRouter();
+
+  // Every widget scopes to the header's Industry filter when one is active —
+  // this is the one place in the app that filter previously did nothing.
+  const rules = domainFilter.length ? allRules.filter((r) => domainFilter.includes(r.domain)) : allRules;
+  const ruleIds = new Set(rules.map((r) => r.id));
+  const simulations = domainFilter.length ? allSimulations.filter((s) => domainFilter.includes(s.domain)) : allSimulations;
+  const approvalRequests = domainFilter.length ? allApprovalRequests.filter((a) => ruleIds.has(a.ruleId)) : allApprovalRequests;
+  const deploymentEvents = auditLog.filter(
+    (a) => a.action === "Published Rule" && (!domainFilter.length || ruleIds.has(a.entityId))
+  );
 
   const disabled = rules.filter((r) => r.status === "Inactive" || r.status === "Archived").length;
 
@@ -102,14 +113,16 @@ export function KpiCards() {
     },
     deployments: {
       label: KPI_LABELS.deployments,
-      value: auditLog.filter((a) => a.action === "Published Rule").length,
+      value: deploymentEvents.length,
       icon: Rocket,
       accent: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
       href: "/repository?environment=Prod",
     },
     "rule-executions": {
+      // The +256 is a fixed demo-history baseline with no per-industry
+      // breakdown, so it only applies to the unfiltered, all-industries view.
       label: KPI_LABELS["rule-executions"],
-      value: simulations.length + 256,
+      value: domainFilter.length ? simulations.length : simulations.length + 256,
       icon: FlaskConical,
       accent: "text-violet-600 bg-violet-500/10 dark:text-violet-400",
       href: "/simulator",

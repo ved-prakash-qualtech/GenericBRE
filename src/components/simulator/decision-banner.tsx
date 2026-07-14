@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
-import { SimulationResult } from "@/lib/types";
+import { DecisionResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const CONFIG = {
@@ -23,7 +23,7 @@ const CONFIG = {
   },
 } as const;
 
-export function DecisionBanner({ result }: { result: SimulationResult }) {
+export function DecisionBanner({ result }: { result: DecisionResult }) {
   const cfg = CONFIG[result.outcome];
   const Icon = cfg.icon;
 

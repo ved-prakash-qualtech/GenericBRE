@@ -171,10 +171,55 @@ export interface RuleVersion {
 
 // A named, reusable collection of rules — purely organizational, orthogonal to
 // Category. Configurable from the Configuration Studio, never hardcoded.
+// Also doubles as "Rule Set" in Execution Manager below — a RuleGroup IS a
+// Rule Set; no separate duplicate entity.
 export interface RuleGroup {
   id: string;
   name: string;
   description?: string;
+}
+
+// ============================================================
+// Execution Manager — routes an incoming request (Industry + whatever other
+// dimensions are configured) to an ordered sequence of Rule Sets (RuleGroup
+// above), rather than every simulatable rule in an industry running
+// unconditionally. Everything here is admin-configured; adding a new
+// product/channel/mapping is data, not code.
+// ============================================================
+
+// The configurable set of request dimensions a mapping can key off, beyond
+// Industry (which already has its own catalog — see industries.ts). Fully
+// custom parameters are just more entries here, `builtIn: false`.
+export interface RequestParameterDef {
+  id: string;
+  label: string;
+  /** Expected JSON key on the incoming request payload, e.g. "product". */
+  sourceKey: string;
+  builtIn: boolean;
+}
+
+export type ExecutionMode = "sequential" | "parallel" | "stop-on-first-match" | "execute-all" | "conditional";
+
+export interface RuleSetStep {
+  id: string;
+  ruleSetId: string; // a RuleGroup.id
+  order: number;
+  mode: ExecutionMode;
+}
+
+// The Global → Industry → Product → Sub Product → Workflow → Decision
+// hierarchy isn't a separate rigid schema — it's expressed directly as the
+// ordered `steps` list (e.g. Global Rules → Banking Rules → Home Loan Rules
+// → ... → Pricing Rules). Any named Rule Set can be inserted at any
+// position, so this stays metadata-driven rather than a fixed depth.
+export interface RuleExecutionMapping {
+  id: string;
+  name: string;
+  /** RequestParameterDef.id -> required value. A key absent here is a wildcard for that dimension. */
+  conditions: Record<string, string>;
+  steps: RuleSetStep[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 // A configurable rule category — BusinessRule.category stores this entry's
@@ -194,6 +239,9 @@ export interface RuleTemplate {
   id: string;
   name: string;
   description: string;
+  /** Optional — scopes the field picker while authoring and which industry's
+   *  "Start from a Template" list shows this template. Unset = shown for every industry. */
+  domain?: Domain;
   rootGroup: ConditionGroup;
   actions: RuleAction[];
   elseActions?: RuleAction[];
@@ -325,6 +373,72 @@ export interface SimulationResult {
   sandbox?: boolean;
 }
 
+// ============================================================
+// Decision Result module — a consumer-configurable response layer sitting on
+// top of both engines above (plain Simulator runs and Execution Manager's
+// multi-rule-set runs). DecisionResult is a normalized superset that either
+// engine's output adapts into (see src/lib/decision-response.ts), so one
+// shared view/config can present both, at whichever detail level
+// (ResponseMode) the consumer is configured for.
+// ============================================================
+
+export type ResponseMode = "decision-only" | "decision-explanation" | "decision-trace" | "full-audit";
+
+// One flow "lane" in a decision run — for a plain Simulator run this is a
+// single synthetic step wrapping the whole flat trace; for an Execution
+// Manager run it's one entry per RuleSetStepResult.
+export interface DecisionFlowStep {
+  id: string;
+  label: string;
+  mode?: ExecutionMode;
+  skipped?: boolean;
+  skipReason?: string;
+  trace: TraceStep[];
+}
+
+export interface DecisionResult {
+  id: string;
+  correlationId: string;
+  source: "simulation" | "execution-manager";
+  domain: Domain;
+  mappingId?: string;
+  mappingName?: string;
+  outcome: DecisionOutcome;
+  reasonCode: string;
+  summary: string;
+  calculatedValues: Record<string, string | number>;
+  triggeredRules: string[];
+  decidingRuleId: string | null;
+  /** ruleId -> BusinessRule.version, resolved at result-build time. */
+  ruleVersions: Record<string, number>;
+  flow: DecisionFlowStep[];
+  /** flow[].trace concatenated in order, for callers that just want one flat list (e.g. DecisionCallout's deciding-step lookup). */
+  flatTrace: TraceStep[];
+  input: Record<string, string | number | boolean | (string | number | boolean)[]>;
+  environment: RuleEnvironment;
+  timestamp: string;
+  totalDurationMs: number;
+  sandbox?: boolean;
+}
+
+// Configurable per scope ("default" | Industry.id | RuleExecutionMapping.id
+// — see decisionResponseSettings in store.ts) so a BA, a QA engineer, an
+// external API, and Compliance can each get the detail level appropriate to
+// them without any code change.
+export interface DecisionResponseConfig {
+  defaultMode: ResponseMode;
+  showDecisionReason: boolean;
+  showTriggeredRules: boolean;
+  showFailedRules: boolean;
+  showExecutionTime: boolean;
+  showRuleVersion: boolean;
+  showRuleSequence: boolean;
+  showApiRequest: boolean;
+  showApiResponse: boolean;
+  enableDebugTrace: boolean;
+  enableAuditLogging: boolean;
+}
+
 export type NotificationType = "Error" | "Warning" | "Success" | "Info";
 
 export interface AppNotification {
@@ -349,6 +463,19 @@ export interface AuditEntry {
   prevHash: string;
   /** This entry's own hash, computed from prevHash + its own fields — see audit-chain.ts. Forms a tamper-evident (not tamper-proof) chain. */
   hash: string;
+  /** Structured decision-run context — present only when this entry logs a Simulator/Execution Manager
+   *  run under a DecisionResponseConfig with enableAuditLogging on. Deliberately NOT part of
+   *  hashAuditEntry's payload (see audit-chain.ts) so the existing tamper-evidence chain and every
+   *  pre-existing entry keep verifying unchanged regardless of this field's presence. */
+  decisionContext?: {
+    correlationId: string;
+    environment: RuleEnvironment;
+    triggeredRules: string[];
+    ruleVersions: Record<string, number>;
+    executionTimeMs: number;
+    requestPayload: Record<string, unknown>;
+    responsePayload: Record<string, unknown>;
+  };
 }
 
 // The fixed, universal capability vocabulary (mirrors BRD §5.4's RBAC matrix
@@ -399,6 +526,27 @@ export interface DashboardConfig {
   kpis?: string[];
   /** Quick Action ids (see ACTION_REGISTRY) shown in the Quick Actions widget. Falls back to a default set when absent/empty. */
   quickActions?: string[];
+}
+
+// Generic per-user, per-device dashboard customization — layered on top of
+// DashboardConfig above (which is the admin-set default per role). A page
+// declares its own catalog of WidgetDef entries; useDashboardLayout resolves
+// that catalog against whatever's persisted for its dashboardKey, so the
+// same DashboardControls UI drops onto any dashboard-style page unmodified.
+export type WidgetSize = "SM" | "MD" | "LG";
+
+export interface WidgetDef {
+  id: string;
+  label: string;
+  defaultSize: WidgetSize;
+  defaultOrder: number;
+}
+
+export interface DashboardWidgetLayoutState {
+  id: string;
+  order: number;
+  size: WidgetSize;
+  hidden: boolean;
 }
 
 // Appearance / personalization schema — every tenant/user can fully restyle

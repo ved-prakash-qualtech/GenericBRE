@@ -1,7 +1,8 @@
 "use client";
 
 import { LayoutTemplate, FileText } from "lucide-react";
-import { RuleTemplate } from "@/lib/types";
+import { Industry, RuleTemplate } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,11 +17,13 @@ export function TemplatePicker({
   open,
   onOpenChange,
   templates,
+  industries,
   onUse,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   templates: RuleTemplate[];
+  industries: Industry[];
   onUse: (template: RuleTemplate) => void;
 }) {
   return (
@@ -45,7 +48,14 @@ export function TemplatePicker({
                 <FileText className="size-4" />
               </span>
               <div>
-                <p className="text-sm font-semibold">{t.name}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-semibold">{t.name}</p>
+                  {t.domain && (
+                    <Badge variant="secondary" className="text-[9px]">
+                      {industries.find((i) => i.id === t.domain)?.name ?? t.domain}
+                    </Badge>
+                  )}
+                </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">{t.description}</p>
               </div>
             </button>

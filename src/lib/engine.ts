@@ -6,11 +6,14 @@ import {
   ConditionGroup,
   DecisionOutcome,
   Domain,
+  ExecutionMode,
   ExecutionSettings,
   Operator,
   QuantifierCondition,
   RuleAction,
   RuleEnvironment,
+  RuleExecutionMapping,
+  RuleGroup,
   SimulationResult,
   TraceStep,
 } from "./types";
@@ -220,7 +223,7 @@ export function evaluateRule(
   };
 }
 
-function outcomeRank(outcome: DecisionOutcome): number {
+export function outcomeRank(outcome: DecisionOutcome): number {
   if (outcome === "Rejected") return 2;
   if (outcome === "Review Required") return 1;
   return 0;
@@ -343,7 +346,7 @@ export function runSimulation(
   };
 }
 
-function applyAction(
+export function applyAction(
   action: RuleAction,
   calculatedValues: Record<string, string | number>
 ) {
@@ -359,4 +362,134 @@ function applyAction(
       calculatedValues[action.outputField] = value;
     }
   }
+}
+
+export interface RuleSetStepResult {
+  stepId: string;
+  ruleSetId: string;
+  ruleSetName: string;
+  mode: ExecutionMode;
+  skipped: boolean;
+  skipReason?: string;
+  trace: TraceStep[];
+}
+
+export interface RuleSetExecutionResult {
+  mappingId: string;
+  mappingName: string;
+  outcome: DecisionOutcome;
+  reasonCode: string;
+  summary: string;
+  calculatedValues: Record<string, string | number>;
+  triggeredRules: string[];
+  decidingRuleId: string | null;
+  steps: RuleSetStepResult[];
+  totalDurationMs: number;
+}
+
+// Execution Manager's engine — routes a case through an ordered sequence of
+// Rule Sets (RuleGroup) rather than every simulatable rule in an industry.
+// Each step's `mode` has real, distinct cross-step semantics:
+//   sequential          — normal flow; a Reject halts every later step
+//                          (unless that step is marked parallel/execute-all).
+//   execute-all         — always runs, ignoring an earlier Reject halt, but
+//                          still stops if an earlier stop-on-first-match
+//                          step already found a match.
+//   stop-on-first-match — the moment any rule in this step fires, execution
+//                          halts entirely for every later step.
+//   parallel            — runs unconditionally, independent of any halt
+//                          signal from earlier steps (reject or first-match).
+//   conditional         — skipped outright if the running outcome is
+//                          already Rejected.
+export function runRuleSetExecution(
+  mapping: RuleExecutionMapping,
+  rules: BusinessRule[],
+  ruleGroups: RuleGroup[],
+  input: InputMap,
+  catalog: BusinessField[] = [],
+  environment: RuleEnvironment = "Prod"
+): RuleSetExecutionResult {
+  const start = performance.now();
+  const orderedSteps = [...mapping.steps].sort((a, b) => a.order - b.order);
+
+  let outcome: DecisionOutcome = "Approved";
+  let reasonCode = "ELIGIBLE_CUSTOMER";
+  let summary = "All applicable rule sets passed. Application meets policy criteria.";
+  const calculatedValues: Record<string, string | number> = {};
+  const triggeredRules: string[] = [];
+  let decidingRuleId: string | null = null;
+  let sequentialHalted = false;
+  let firstMatchHalted = false;
+
+  const steps: RuleSetStepResult[] = orderedSteps.map((step) => {
+    const ruleSet = ruleGroups.find((g) => g.id === step.ruleSetId);
+    const ruleSetName = ruleSet?.name ?? step.ruleSetId;
+
+    if (step.mode === "conditional" && outcome === "Rejected") {
+      return { stepId: step.id, ruleSetId: step.ruleSetId, ruleSetName, mode: step.mode, skipped: true, skipReason: "Prior outcome was Rejected", trace: [] };
+    }
+    if (firstMatchHalted && step.mode !== "parallel") {
+      return { stepId: step.id, ruleSetId: step.ruleSetId, ruleSetName, mode: step.mode, skipped: true, skipReason: "Stopped — an earlier step already matched", trace: [] };
+    }
+    if (sequentialHalted && step.mode !== "parallel" && step.mode !== "execute-all") {
+      return { stepId: step.id, ruleSetId: step.ruleSetId, ruleSetName, mode: step.mode, skipped: true, skipReason: "Stopped — an earlier step was rejected", trace: [] };
+    }
+
+    const stepRules = rules
+      .filter((r) => r.groupId === step.ruleSetId && r.simulatable)
+      .sort((a, b) => a.priority - b.priority);
+
+    const trace: TraceStep[] = [];
+    let stepHalted = false;
+    for (const rule of stepRules) {
+      if (stepHalted) {
+        trace.push({ ruleId: rule.id, ruleName: rule.name, priority: rule.priority, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 });
+        continue;
+      }
+      const eligible = rule.status === "Active" && isPromotedTo(rule.environment, environment);
+      if (!eligible) {
+        trace.push({ ruleId: rule.id, ruleName: rule.name, priority: rule.priority, status: "Not Applicable", conditionSummaries: [], actionsApplied: [], durationMs: 0 });
+        continue;
+      }
+
+      const result = evaluateRule(rule, input, catalog);
+      trace.push(result);
+
+      if (result.actionsApplied.length > 0) {
+        triggeredRules.push(rule.id);
+        for (const action of result.actionsApplied) {
+          applyAction(action, calculatedValues);
+          if (action.type === "Reject") {
+            outcome = "Rejected";
+            reasonCode = action.reasonCode ?? "POLICY_BREACH";
+            summary = action.message ?? `${rule.name} triggered a rejection.`;
+            decidingRuleId = rule.id;
+            stepHalted = true;
+          } else if (action.type === "Approve" && outcomeRank(outcome) === 0) {
+            outcome = "Approved";
+            reasonCode = action.reasonCode ?? "ELIGIBLE_CUSTOMER";
+            summary = action.message ?? `${rule.name} confirmed approval eligibility.`;
+            decidingRuleId = rule.id;
+          } else if (action.type === "Show Message" && action.message?.toLowerCase().includes("review")) {
+            if (outcomeRank(outcome) <= 1) {
+              outcome = "Review Required";
+              reasonCode = action.reasonCode ?? "MANUAL_REVIEW";
+              summary = action.message ?? `${rule.name} flagged this case for manual review.`;
+              decidingRuleId = rule.id;
+            }
+          }
+        }
+        if (step.mode === "stop-on-first-match") {
+          stepHalted = true;
+          firstMatchHalted = true;
+        }
+      }
+    }
+
+    if (outcome === "Rejected") sequentialHalted = true;
+    return { stepId: step.id, ruleSetId: step.ruleSetId, ruleSetName, mode: step.mode, skipped: false, trace };
+  });
+
+  const totalDurationMs = Math.max(1, performance.now() - start);
+  return { mappingId: mapping.id, mappingName: mapping.name, outcome, reasonCode, summary, calculatedValues, triggeredRules, decidingRuleId, steps, totalDurationMs };
 }

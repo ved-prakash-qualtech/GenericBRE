@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { Search, AlertTriangle, ShieldQuestion } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, useScopedRules } from "@/lib/store";
 import { detectRuleConflicts } from "@/lib/conflict-detection";
 import { StatusBadge } from "@/components/status-badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,7 +20,7 @@ function EmptyRow({ children }: { children: React.ReactNode }) {
 // this platform has no per-user rule assignment, so this is scoped org-wide
 // rather than faked as "my" rules.
 export function DraftRulesPanel() {
-  const rules = useAppStore((s) => s.rules);
+  const rules = useScopedRules();
   const router = useRouter();
   const drafts = useMemo(
     () => rules.filter((r) => r.status === "Draft").sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt)),
@@ -30,7 +30,7 @@ export function DraftRulesPanel() {
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
       <PanelHeader title="Draft Rules (org-wide)" action="View all" onAction={() => router.push("/repository?status=Draft")} />
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="divide-y">
           {drafts.slice(0, 8).map((r) => (
             <button
@@ -53,14 +53,14 @@ export function DraftRulesPanel() {
 }
 
 export function RulesAwaitingReviewPanel() {
-  const rules = useAppStore((s) => s.rules);
+  const rules = useScopedRules();
   const router = useRouter();
   const testing = useMemo(() => rules.filter((r) => r.status === "Testing"), [rules]);
 
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
       <PanelHeader title="Rules Awaiting Review" action="View all" onAction={() => router.push("/repository?status=Testing")} />
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="divide-y">
           {testing.slice(0, 8).map((r) => (
             <button
@@ -83,21 +83,22 @@ export function RulesAwaitingReviewPanel() {
 }
 
 export function ApprovalQueuePanel() {
-  const rules = useAppStore((s) => s.rules);
-  const approvalRequests = useAppStore((s) => s.approvalRequests);
+  const rules = useScopedRules();
+  const ruleIds = useMemo(() => new Set(rules.map((r) => r.id)), [rules]);
+  const allApprovalRequests = useAppStore((s) => s.approvalRequests);
   const router = useRouter();
   const pending = useMemo(
     () =>
-      approvalRequests
-        .filter((a) => a.stage === "Pending Review")
+      allApprovalRequests
+        .filter((a) => a.stage === "Pending Review" && ruleIds.has(a.ruleId))
         .sort((a, b) => +new Date(b.requestedAt) - +new Date(a.requestedAt)),
-    [approvalRequests]
+    [allApprovalRequests, ruleIds]
   );
 
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
       <PanelHeader title="Approval Queue" action="View all" onAction={() => router.push("/repository?status=Testing")} />
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="divide-y">
           {pending.slice(0, 8).map((a) => {
             const rule = rules.find((r) => r.id === a.ruleId);
@@ -124,14 +125,14 @@ export function ApprovalQueuePanel() {
 }
 
 export function RuleConflictsPanel() {
-  const rules = useAppStore((s) => s.rules);
+  const rules = useScopedRules();
   const router = useRouter();
   const conflicts = useMemo(() => detectRuleConflicts(rules), [rules]);
 
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
       <PanelHeader title="Rule Conflicts" />
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="divide-y">
           {conflicts.slice(0, 8).map((c, i) => (
             <button
@@ -157,13 +158,23 @@ const OPERATIONAL_ACTIONS = new Set(["Ran Simulation", "Published Rule", "Disabl
 
 export function ExecutionLogsPanel() {
   const auditLog = useAppStore((s) => s.auditLog);
+  const allRules = useAppStore((s) => s.rules);
+  const domainFilter = useAppStore((s) => s.globalFilters.domains);
+  const scopedRules = useScopedRules();
   const router = useRouter();
-  const logs = useMemo(() => auditLog.filter((a) => OPERATIONAL_ACTIONS.has(a.action)).slice(0, 10), [auditLog]);
+  const scopedRuleIds = useMemo(() => new Set(scopedRules.map((r) => r.id)), [scopedRules]);
+  const logs = useMemo(() => {
+    const isRuleEvent = (entityId: string) => allRules.some((r) => r.id === entityId);
+    return auditLog
+      .filter((a) => OPERATIONAL_ACTIONS.has(a.action))
+      .filter((a) => !domainFilter.length || !isRuleEvent(a.entityId) || scopedRuleIds.has(a.entityId))
+      .slice(0, 10);
+  }, [auditLog, allRules, domainFilter, scopedRuleIds]);
 
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
       <PanelHeader title="Execution Logs" action="View audit log" onAction={() => router.push("/audit-log")} />
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="divide-y">
           {logs.map((a) => (
             <button
@@ -195,7 +206,7 @@ export function ExecutionLogsPanel() {
 }
 
 export function EnvironmentStatusPanel() {
-  const rules = useAppStore((s) => s.rules);
+  const rules = useScopedRules();
   const router = useRouter();
   const grid = useMemo(() => {
     const envs = ["Dev", "UAT", "Prod"] as const;

@@ -106,7 +106,7 @@ export function EntityCatalogManager() {
               <p className="truncate text-sm font-semibold">{ent.name}</p>
               <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{ent.description || "No description"}</p>
               <div className="mt-1.5 flex items-center gap-1.5">
-                {ent.industry && <Badge variant="secondary" className="text-[10px]">{ent.industry}</Badge>}
+                {ent.industry && <Badge variant="secondary" className="text-[10px]">{industries.find((i) => i.id === ent.industry)?.name ?? ent.industry}</Badge>}
                 <span className="text-[10px] font-medium text-muted-foreground/70">
                   {fieldCount(ent.id)} field{fieldCount(ent.id) === 1 ? "" : "s"}
                 </span>
@@ -144,15 +144,15 @@ export function EntityCatalogManager() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Industry</Label>
+              <Label>Domain</Label>
               <Select
-                items={{ "": "Shared across all industries", ...Object.fromEntries(industries.map((i) => [i.id, i.name])) }}
+                items={{ "": "Shared across all domains", ...Object.fromEntries(industries.map((i) => [i.id, i.name])) }}
                 value={draft.industry ?? ""}
                 onValueChange={(v) => setDraft((d) => ({ ...d, industry: v ? (v as string) : undefined }))}
               >
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Shared across all industries</SelectItem>
+                  <SelectItem value="">Shared across all domains</SelectItem>
                   {industries.map((i) => (
                     <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
                   ))}

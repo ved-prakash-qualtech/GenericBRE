@@ -22,13 +22,17 @@ import {
   ColorMode,
   CurrentUser,
   DashboardConfig,
+  DashboardWidgetLayoutState,
   DecisionMatrix,
+  DecisionResponseConfig,
   Domain,
   Entity,
   ExecutionSettings,
   Industry,
   JsonMapping,
+  RequestParameterDef,
   RuleCategory,
+  RuleExecutionMapping,
   MatrixRow,
   Role,
   RuleEnvironment,
@@ -42,6 +46,8 @@ import { DEFAULT_INDUSTRIES } from "./industries";
 import { DEFAULT_ENTITIES } from "./entities";
 import { DEFAULT_FIELD_CATALOG, DEFAULT_RULE_CATEGORIES, DEFAULT_OWNERS } from "./fields";
 import { DEFAULT_DASHBOARD_CONFIGS } from "./dashboards";
+import { DEFAULT_REQUEST_PARAMETER_DEFS } from "./execution-manager";
+import { DEFAULT_DECISION_RESPONSE_CONFIG } from "./decision-response";
 import { hashAuditEntry, buildHashChain } from "./audit-chain";
 
 export type {
@@ -55,12 +61,6 @@ export type {
   BackgroundDisplayMode,
   AppearanceSettings,
 } from "./types";
-
-export interface DashboardWidgetState {
-  id: string;
-  visible: boolean;
-  order: number;
-}
 
 export const DEFAULT_APPEARANCE: AppearanceSettings = {
   preset: "client",
@@ -109,17 +109,6 @@ function snapshotFromRule(
   };
 }
 
-const DEFAULT_WIDGETS: DashboardWidgetState[] = [
-  { id: "kpis", visible: true, order: 0 },
-  { id: "quick-actions", visible: true, order: 1 },
-  { id: "recent-rules", visible: true, order: 2 },
-  { id: "recent-activity", visible: true, order: 3 },
-  { id: "domain-distribution", visible: true, order: 4 },
-  { id: "rule-status", visible: true, order: 5 },
-  { id: "recent-deployments", visible: true, order: 6 },
-  { id: "demo-scenarios", visible: true, order: 7 },
-];
-
 const DEFAULT_USER: CurrentUser = { name: "Ananya Verma", role: "business-analyst", initials: "AV" };
 
 export interface GlobalFilters {
@@ -136,7 +125,12 @@ interface AppState {
   auditLog: AuditEntry[];
   simulations: SimulationResult[];
   appearance: AppearanceSettings;
-  widgets: DashboardWidgetState[];
+  // generic, per-user/per-device dashboard customization — see
+  // src/lib/dashboard-layout.ts's useDashboardLayout, keyed by dashboardKey
+  // so any dashboard-style page can plug in its own widget catalog.
+  dashboardLayouts: Record<string, DashboardWidgetLayoutState[]>;
+  setDashboardLayout: (key: string, layout: DashboardWidgetLayoutState[]) => void;
+  resetDashboardLayout: (key: string) => void;
   dashboardConfigs: Record<string, DashboardConfig>;
   setDashboardConfig: (roleId: string, config: DashboardConfig) => void;
   currentUser: CurrentUser;
@@ -187,6 +181,22 @@ interface AppState {
   updateJsonMapping: (id: string, patch: Partial<JsonMapping>) => void;
   deleteJsonMapping: (id: string) => void;
 
+  // Execution Manager — request-parameter catalog + rule-set execution mappings.
+  requestParameterDefs: RequestParameterDef[];
+  addRequestParameterDef: (def: RequestParameterDef) => void;
+  updateRequestParameterDef: (id: string, patch: Partial<RequestParameterDef>) => void;
+  deleteRequestParameterDef: (id: string) => void;
+  ruleExecutionMappings: RuleExecutionMapping[];
+  addRuleExecutionMapping: (mapping: RuleExecutionMapping) => void;
+  updateRuleExecutionMapping: (id: string, patch: Partial<RuleExecutionMapping>) => void;
+  deleteRuleExecutionMapping: (id: string) => void;
+
+  // Decision Result module — per-scope ("default" | Industry.id |
+  // RuleExecutionMapping.id) configuration of how much detail a decision
+  // result exposes. Read by decisionResponse.resolveDecisionResponseConfig.
+  decisionResponseSettings: Record<string, DecisionResponseConfig>;
+  setDecisionResponseConfig: (scope: string, config: DecisionResponseConfig) => void;
+
   // roles & capabilities — client-side RBAC preview (no backend enforcement)
   roles: Role[];
   addRole: (role: Role) => void;
@@ -202,6 +212,7 @@ interface AppState {
   // rule templates (reusable starting shapes for the Rule Builder)
   ruleTemplates: RuleTemplate[];
   addRuleTemplate: (template: RuleTemplate) => void;
+  updateRuleTemplate: (id: string, patch: Partial<RuleTemplate>) => void;
   deleteRuleTemplate: (id: string) => void;
 
   // approval workflow (BRD §5.5 governance: Draft -> Testing -> Review -> Publish)
@@ -256,10 +267,6 @@ interface AppState {
   setAppearance: (patch: Partial<AppearanceSettings>) => void;
   resetAppearance: () => void;
 
-  // dashboard widgets
-  setWidgets: (widgets: DashboardWidgetState[]) => void;
-  resetWidgets: () => void;
-
   // user
   setUserRole: (roleId: string) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
@@ -277,7 +284,7 @@ export const useAppStore = create<AppState>()(
       auditLog: AUDIT_LOG,
       simulations: [],
       appearance: DEFAULT_APPEARANCE,
-      widgets: DEFAULT_WIDGETS,
+      dashboardLayouts: {},
       currentUser: DEFAULT_USER,
       sidebarCollapsed: false,
       globalFilters: DEFAULT_GLOBAL_FILTERS,
@@ -305,6 +312,9 @@ export const useAppStore = create<AppState>()(
       owners: DEFAULT_OWNERS,
       executionSettings: {},
       jsonMappings: [],
+      requestParameterDefs: DEFAULT_REQUEST_PARAMETER_DEFS,
+      ruleExecutionMappings: [],
+      decisionResponseSettings: { default: DEFAULT_DECISION_RESPONSE_CONFIG },
 
       addIndustry: (industry) => {
         const { currentUser, roles } = get();
@@ -410,6 +420,54 @@ export const useAppStore = create<AppState>()(
         get().logAudit({ user: get().currentUser.name, action: "Deleted JSON Mapping", entity: "JsonMapping", entityId: id, details: `Mapping "${id}" removed.` });
       },
 
+      addRequestParameterDef: (def) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ requestParameterDefs: [...s.requestParameterDefs, def] }));
+        get().logAudit({ user: currentUser.name, action: "Created Request Parameter", entity: "RequestParameterDef", entityId: def.id, details: `Added request parameter "${def.label}".` });
+      },
+      updateRequestParameterDef: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ requestParameterDefs: s.requestParameterDefs.map((d) => (d.id === id ? { ...d, ...patch } : d)) }));
+        get().logAudit({ user: currentUser.name, action: "Updated Request Parameter", entity: "RequestParameterDef", entityId: id, details: `Request parameter "${id}" updated.` });
+      },
+      deleteRequestParameterDef: (id) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ requestParameterDefs: s.requestParameterDefs.filter((d) => d.id !== id) }));
+        get().logAudit({ user: currentUser.name, action: "Deleted Request Parameter", entity: "RequestParameterDef", entityId: id, details: `Request parameter "${id}" removed.` });
+      },
+      addRuleExecutionMapping: (mapping) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ ruleExecutionMappings: [mapping, ...s.ruleExecutionMappings] }));
+        get().logAudit({ user: currentUser.name, action: "Created Rule Execution Mapping", entity: "RuleExecutionMapping", entityId: mapping.id, details: `Added mapping "${mapping.name}".` });
+      },
+      updateRuleExecutionMapping: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({
+          ruleExecutionMappings: s.ruleExecutionMappings.map((m) =>
+            m.id === id ? { ...m, ...patch, updatedAt: new Date().toISOString() } : m
+          ),
+        }));
+        get().logAudit({ user: currentUser.name, action: "Updated Rule Execution Mapping", entity: "RuleExecutionMapping", entityId: id, details: `Mapping "${id}" updated.` });
+      },
+      deleteRuleExecutionMapping: (id) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ ruleExecutionMappings: s.ruleExecutionMappings.filter((m) => m.id !== id) }));
+        get().logAudit({ user: currentUser.name, action: "Deleted Rule Execution Mapping", entity: "RuleExecutionMapping", entityId: id, details: `Mapping "${id}" removed.` });
+      },
+
+      setDecisionResponseConfig: (scope, config) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ decisionResponseSettings: { ...s.decisionResponseSettings, [scope]: config } }));
+        get().logAudit({ user: currentUser.name, action: "Updated Decision Response Config", entity: "DecisionResponseConfig", entityId: scope, details: `Decision response settings for "${scope}" updated.` });
+      },
+
       addOwner: (name) => {
         const { currentUser, roles } = get();
         if (!hasCapability(roles, currentUser.role, "config.manage")) return;
@@ -465,12 +523,22 @@ export const useAppStore = create<AppState>()(
 
       ruleTemplates: DEFAULT_RULE_TEMPLATES,
       addRuleTemplate: (template) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ ruleTemplates: [...s.ruleTemplates, template] }));
-        get().logAudit({ user: get().currentUser.name, action: "Created Rule Template", entity: "RuleTemplate", entityId: template.id, details: `Added rule template "${template.name}".` });
+        get().logAudit({ user: currentUser.name, action: "Created Rule Template", entity: "RuleTemplate", entityId: template.id, details: `Added rule template "${template.name}".` });
+      },
+      updateRuleTemplate: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ ruleTemplates: s.ruleTemplates.map((t) => (t.id === id ? { ...t, ...patch } : t)) }));
+        get().logAudit({ user: currentUser.name, action: "Updated Rule Template", entity: "RuleTemplate", entityId: id, details: `Rule template "${id}" updated.` });
       },
       deleteRuleTemplate: (id) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ ruleTemplates: s.ruleTemplates.filter((t) => t.id !== id) }));
-        get().logAudit({ user: get().currentUser.name, action: "Deleted Rule Template", entity: "RuleTemplate", entityId: id, details: `Rule template "${id}" removed.` });
+        get().logAudit({ user: currentUser.name, action: "Deleted Rule Template", entity: "RuleTemplate", entityId: id, details: `Rule template "${id}" removed.` });
       },
 
       approvalRequests: [],
@@ -796,11 +864,13 @@ export const useAppStore = create<AppState>()(
       setAppearance: (patch) => set((s) => ({ appearance: { ...s.appearance, ...patch } })),
       resetAppearance: () => set({ appearance: DEFAULT_APPEARANCE }),
 
-      setWidgets: (widgets) => set({ widgets }),
-      resetWidgets: () =>
-        set((s) => ({
-          widgets: s.dashboardConfigs[s.currentUser.role]?.widgets.map((w) => ({ ...w })) ?? DEFAULT_WIDGETS,
-        })),
+      setDashboardLayout: (key, layout) => set((s) => ({ dashboardLayouts: { ...s.dashboardLayouts, [key]: layout } })),
+      resetDashboardLayout: (key) =>
+        set((s) => {
+          const next = { ...s.dashboardLayouts };
+          delete next[key];
+          return { dashboardLayouts: next };
+        }),
 
       dashboardConfigs: DEFAULT_DASHBOARD_CONFIGS,
       setDashboardConfig: (roleId, config) => {
@@ -833,11 +903,6 @@ export const useAppStore = create<AppState>()(
                 .slice(0, 2)
                 .toUpperCase(),
             },
-            // Switching roles loads that persona's admin-configured dashboard
-            // default (BRD §5.3) — in-session personal tweaks made under the
-            // previous role aren't carried over; each role starts from its
-            // own configured layout.
-            widgets: s.dashboardConfigs[roleId]?.widgets.map((w) => ({ ...w })) ?? DEFAULT_WIDGETS,
           };
         }),
 
@@ -845,9 +910,24 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 10,
+      version: 13,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v12 -> v13 added `decisionResponseSettings` (Decision Result
+        // module). Brand-new key — the default shallow merge fills it in
+        // from initial state automatically.
+        //
+        // v11 -> v12 added `requestParameterDefs`/`ruleExecutionMappings`
+        // (Execution Manager). Both are brand-new keys — the default
+        // shallow merge fills them in from initial state automatically.
+        //
+        // v10 -> v11 replaced the single global `widgets` array with
+        // `dashboardLayouts` (a per-dashboardKey map — see
+        // src/lib/dashboard-layout.ts). No transform needed: the default
+        // shallow merge fills in the new key from initial state, and a
+        // leftover `widgets` value in old persisted state is simply never
+        // read again.
+        //
         // v9 -> v10 added `dashboardConfigs` (role-based dashboards, BRD
         // §5.3). It's a brand-new key with no prior shape to transform —
         // the default shallow merge fills it in from DEFAULT_DASHBOARD_CONFIGS
@@ -1005,4 +1085,12 @@ export function useHasCapability(capability: Capability): boolean {
   const roleId = useAppStore((s) => s.currentUser.role);
   const roles = useAppStore((s) => s.roles);
   return hasCapability(roles, roleId, capability);
+}
+
+// Rules scoped to the header's Industry filter when one is active — shared
+// by every dashboard widget so that filter isn't just decorative.
+export function useScopedRules(): BusinessRule[] {
+  const rules = useAppStore((s) => s.rules);
+  const domainFilter = useAppStore((s) => s.globalFilters.domains);
+  return domainFilter.length ? rules.filter((r) => domainFilter.includes(r.domain)) : rules;
 }

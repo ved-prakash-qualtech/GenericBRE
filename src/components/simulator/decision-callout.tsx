@@ -1,6 +1,6 @@
 "use client";
 
-import { SimulationResult } from "@/lib/types";
+import { DecisionResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Target, GitCommitHorizontal, Zap } from "lucide-react";
 
@@ -17,8 +17,8 @@ const OPERATOR_TEXT: Record<string, string> = {
   between: "falls within",
 };
 
-export function DecisionCallout({ result }: { result: SimulationResult }) {
-  const decidingStep = result.trace.find((t) => t.ruleId === result.decidingRuleId);
+export function DecisionCallout({ result }: { result: DecisionResult }) {
+  const decidingStep = result.flatTrace.find((t) => t.ruleId === result.decidingRuleId);
   if (!decidingStep) return null;
 
   // The deciding rule's status is always "Passed" (its conditions matched, which is

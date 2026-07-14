@@ -244,7 +244,7 @@ export function FieldCatalogManager() {
           />
         </div>
         <MultiSelect
-          label="Industry"
+          label="Domain"
           options={industries.map((i) => ({ value: i.id, label: i.name }))}
           selected={industryFilters}
           onChange={setIndustryFilters}
@@ -291,7 +291,7 @@ export function FieldCatalogManager() {
             <TableRow className="hover:bg-transparent">
               <TableHead>Label</TableHead>
               <TableHead>Key</TableHead>
-              <TableHead>Industry</TableHead>
+              <TableHead>Domain</TableHead>
               <TableHead>Entity</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
@@ -397,11 +397,11 @@ export function FieldCatalogManager() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Industry *</Label>
+                <Label>Domain *</Label>
                 <Select value={draft.domain} onValueChange={(v) => setDraft((d) => ({ ...d, domain: v ?? "Common" }))}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Common">Common (all industries)</SelectItem>
+                    <SelectItem value="Common">Common (all domains)</SelectItem>
                     {industries.map((i) => (
                       <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
                     ))}

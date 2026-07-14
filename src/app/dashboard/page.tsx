@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, LayoutGrid, Sparkles } from "lucide-react";
+import { Download, Sparkles } from "lucide-react";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { RecentRulesPanel, RecentActivityPanel, RecentDeploymentsPanel } from "@/components/dashboard/recent-panels";
@@ -16,47 +16,79 @@ import {
   EnvironmentStatusPanel,
   DecisionLookupPanel,
 } from "@/components/dashboard/persona-widgets";
-import { ManageWidgetsSheet } from "@/components/dashboard/manage-widgets-sheet";
+import { WIDGET_LABELS } from "@/components/dashboard/manage-widgets-sheet";
+import { DashboardControls } from "@/components/dashboard/dashboard-controls";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
+import { useDashboardLayout, WIDGET_SIZE_SPAN } from "@/lib/dashboard-layout";
+import { WidgetDef, WidgetSize } from "@/lib/types";
 import { downloadCsv } from "@/lib/csv";
 
-// Each widget declares its own span within a 6-column grid (so the previous
-// 3-col/2-col/1+2-col rows all become spans of one shared, reorderable flow).
-// This is the store's `widgets` state actually driving the layout — visible +
-// order come from Manage Widgets, not a hardcoded JSX arrangement.
-//
-// Every widget is capped at a uniform 240px (see the wrapper below) — content
-// that runs longer scrolls internally rather than growing the card, so a
-// dense role dashboard (5-6 widgets) never forces the page taller than needed.
-const WIDGET_REGISTRY: Record<string, { span: string; heading?: string; render: () => React.ReactNode }> = {
-  kpis: { span: "col-span-full", render: () => <KpiCards /> },
-  "quick-actions": {
-    span: "col-span-full md:col-span-1 xl:col-span-2",
-    heading: "Quick Actions",
-    render: () => <QuickActions /> },
-  "recent-rules": { span: "col-span-full md:col-span-1 xl:col-span-2", render: () => <RecentRulesPanel /> },
-  "recent-activity": { span: "col-span-full md:col-span-2 xl:col-span-2", render: () => <RecentActivityPanel /> },
-  "domain-distribution": { span: "col-span-full md:col-span-1 xl:col-span-3", render: () => <DomainDistributionChart /> },
-  "rule-status": { span: "col-span-full md:col-span-1 xl:col-span-3", render: () => <RuleStatusChart /> },
-  "recent-deployments": { span: "col-span-full md:col-span-1 xl:col-span-2", render: () => <RecentDeploymentsPanel /> },
-  "demo-scenarios": { span: "col-span-full md:col-span-1 xl:col-span-4", render: () => <DemoScenariosPanel /> },
-  "draft-rules": { span: "col-span-full md:col-span-1 xl:col-span-2", render: () => <DraftRulesPanel /> },
-  "rules-awaiting-review": { span: "col-span-full md:col-span-1 xl:col-span-2", render: () => <RulesAwaitingReviewPanel /> },
-  "approval-queue": { span: "col-span-full md:col-span-1 xl:col-span-2", render: () => <ApprovalQueuePanel /> },
-  "rule-conflicts": { span: "col-span-full md:col-span-1 xl:col-span-2", render: () => <RuleConflictsPanel /> },
-  "execution-logs": { span: "col-span-full md:col-span-1 xl:col-span-2", render: () => <ExecutionLogsPanel /> },
-  "environment-status": { span: "col-span-full md:col-span-1 xl:col-span-2", render: () => <EnvironmentStatusPanel /> },
-  "decision-lookup": { span: "col-span-full md:col-span-1 xl:col-span-2", render: () => <DecisionLookupPanel /> },
+// The render function for every widget except `kpis` (which stays pinned,
+// full-width, outside the reorderable/resizable set — see DASHBOARD_WIDGET_DEFS
+// below). Every one of these is built on Base UI's <ScrollArea> or otherwise
+// needs a genuinely fixed card height, not max-height — ScrollArea's internal
+// Viewport is styled `height: 100%`, and a CSS percentage height only
+// resolves against an ancestor with an explicit `height`; one derived from
+// max-height/flex-grow doesn't count, per spec.
+const WIDGET_RENDERERS: Record<string, () => React.ReactNode> = {
+  "quick-actions": () => <QuickActions />,
+  "recent-rules": () => <RecentRulesPanel />,
+  "recent-activity": () => <RecentActivityPanel />,
+  "domain-distribution": () => <DomainDistributionChart />,
+  "rule-status": () => <RuleStatusChart />,
+  "recent-deployments": () => <RecentDeploymentsPanel />,
+  "demo-scenarios": () => <DemoScenariosPanel />,
+  "draft-rules": () => <DraftRulesPanel />,
+  "rules-awaiting-review": () => <RulesAwaitingReviewPanel />,
+  "approval-queue": () => <ApprovalQueuePanel />,
+  "rule-conflicts": () => <RuleConflictsPanel />,
+  "execution-logs": () => <ExecutionLogsPanel />,
+  "environment-status": () => <EnvironmentStatusPanel />,
+  "decision-lookup": () => <DecisionLookupPanel />,
 };
+
+const WIDGET_DEFAULT_SIZE: Record<string, WidgetSize> = { "demo-scenarios": "LG" };
 
 export default function DashboardPage() {
   const rules = useAppStore((s) => s.rules);
-  const widgets = useAppStore((s) => s.widgets);
   const showInsights = useAppStore((s) => s.appearance.showInsights);
-  const [manageOpen, setManageOpen] = useState(false);
+  const roleId = useAppStore((s) => s.currentUser.role);
+  const dashboardConfigs = useAppStore((s) => s.dashboardConfigs);
+  const [editMode, setEditMode] = useState(false);
 
-  const orderedVisible = [...widgets].filter((w) => w.visible).sort((a, b) => a.order - b.order);
+  // The widget catalog for this page is scoped to the current role's
+  // admin-configured defaults (Configuration Studio → Dashboard Management,
+  // BRD §5.3) — a Business Analyst can reorder/hide/resize the widgets
+  // curated for them, not reveal a different persona's widgets entirely.
+  const roleWidgets = dashboardConfigs[roleId]?.widgets ?? [];
+  const widgetDefs: WidgetDef[] = roleWidgets
+    .filter((w) => w.visible && w.id !== "kpis")
+    .map((w) => ({
+      id: w.id,
+      label: WIDGET_LABELS[w.id] ?? w.id,
+      defaultSize: WIDGET_DEFAULT_SIZE[w.id] ?? "SM",
+      defaultOrder: w.order,
+    }));
+  const dashboardKey = `bre-overview:${roleId}`;
+  const { visibleWidgets, reorder } = useDashboardLayout(dashboardKey, widgetDefs);
+
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const handleGridDrop = (targetId: string) => {
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      return;
+    }
+    const ids = visibleWidgets.map((w) => w.id);
+    const from = ids.indexOf(draggedId);
+    const to = ids.indexOf(targetId);
+    if (from === -1 || to === -1) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, draggedId);
+    reorder(ids);
+    setDraggedId(null);
+  };
+
   const pendingReview = rules.filter((r) => r.status === "Testing").length;
   const criticalDrafts = rules.filter((r) => r.status === "Draft" && r.priority === 1).length;
 
@@ -84,12 +116,15 @@ export default function DashboardPage() {
           <p className="text-xs text-muted-foreground">Central workspace for the Business Rules Engine</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setManageOpen(true)}>
-            <LayoutGrid className="size-3.5" /> Manage Widgets
-          </Button>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={exportSummary}>
             <Download className="size-3.5" /> Export
           </Button>
+          <DashboardControls
+            dashboardKey={dashboardKey}
+            widgetDefs={widgetDefs}
+            editMode={editMode}
+            onEditModeChange={setEditMode}
+          />
         </div>
       </div>
 
@@ -110,29 +145,37 @@ export default function DashboardPage() {
               </p>
             </div>
           )}
+          <div className="mb-2.5">
+            <KpiCards />
+          </div>
           <div className="grid grid-cols-1 items-start gap-2.5 md:grid-cols-2 xl:grid-cols-6">
-            {orderedVisible.map((w) => {
-              const widget = WIDGET_REGISTRY[w.id];
-              if (!widget) return null;
+            {visibleWidgets.map((w) => {
+              const render = WIDGET_RENDERERS[w.id];
+              if (!render) return null;
               return (
-                <div key={w.id} className={`flex max-h-60 flex-col gap-1.5 overflow-y-auto ${widget.span}`}>
-                  {widget.heading && (
-                    <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{widget.heading}</h2>
-                  )}
-                  <div className="min-h-0 flex-1">{widget.render()}</div>
+                <div
+                  key={w.id}
+                  draggable={editMode}
+                  onDragStart={() => editMode && setDraggedId(w.id)}
+                  onDragOver={(e) => editMode && e.preventDefault()}
+                  onDrop={() => editMode && handleGridDrop(w.id)}
+                  onDragEnd={() => setDraggedId(null)}
+                  className={`flex h-60 flex-col gap-1.5 ${WIDGET_SIZE_SPAN[w.size]} ${
+                    editMode ? "cursor-grab rounded-xl outline-dashed outline-2 outline-primary/30 active:cursor-grabbing" : ""
+                  }`}
+                >
+                  <div className="min-h-0 flex-1">{render()}</div>
                 </div>
               );
             })}
-            {orderedVisible.length === 0 && (
+            {visibleWidgets.length === 0 && (
               <div className="col-span-full rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-                All widgets are hidden. Open Manage Widgets to bring some back.
+                All widgets are hidden. Open Dashboard Controls → Manage Widgets to bring some back.
               </div>
             )}
           </div>
         </div>
       </div>
-
-      <ManageWidgetsSheet open={manageOpen} onOpenChange={setManageOpen} />
     </div>
   );
 }

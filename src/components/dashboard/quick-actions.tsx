@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Library, Grid3x3, FlaskConical, Settings, UserCheck, type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/lib/store";
+import { PanelHeader } from "./recent-panels";
 
 interface Action {
   label: string;
@@ -42,27 +43,30 @@ export function QuickActions() {
   const actions = ids.map((id) => ACTION_REGISTRY[id]).filter((a): a is Action => !!a);
 
   return (
-    <div className="grid grid-cols-2 gap-2 overflow-y-auto">
-      {actions.map((a, i) => (
-        <motion.button
-          key={a.label}
-          onClick={() => router.push(a.href)}
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: i * 0.04 }}
-          whileHover={{ scale: 1.015 }}
-          whileTap={{ scale: 0.98 }}
-          className="flex flex-col items-start gap-1.5 rounded-xl border bg-card p-3 text-left transition-shadow hover:shadow-md"
-        >
-          <span className={`flex size-7 items-center justify-center rounded-lg ${a.accent}`}>
-            <a.icon className="size-3.5" />
-          </span>
-          <div>
-            <p className="text-[13px] font-semibold leading-tight">{a.label}</p>
-            <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{a.desc}</p>
-          </div>
-        </motion.button>
-      ))}
+    <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
+      <PanelHeader title="Quick Actions" />
+      <div className="grid flex-1 grid-cols-2 gap-2 overflow-y-auto p-2.5">
+        {actions.map((a, i) => (
+          <motion.button
+            key={a.label}
+            onClick={() => router.push(a.href)}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.04 }}
+            whileHover={{ scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex flex-col items-start gap-1.5 rounded-xl border bg-card p-3 text-left transition-shadow hover:shadow-md"
+          >
+            <span className={`flex size-7 items-center justify-center rounded-lg ${a.accent}`}>
+              <a.icon className="size-3.5" />
+            </span>
+            <div>
+              <p className="text-[13px] font-semibold leading-tight">{a.label}</p>
+              <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{a.desc}</p>
+            </div>
+          </motion.button>
+        ))}
+      </div>
     </div>
   );
 }

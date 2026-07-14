@@ -57,7 +57,7 @@ export function IndustriesManager() {
 
   const save = () => {
     if (!draft.name.trim()) {
-      toast.error("Industry name is required.");
+      toast.error("Domain name is required.");
       return;
     }
     if (editing) {
@@ -66,7 +66,7 @@ export function IndustriesManager() {
     } else {
       const id = draft.name.trim().replace(/\s+/g, "-");
       if (industries.some((i) => i.id === id)) {
-        toast.error(`An industry with id "${id}" already exists.`);
+        toast.error(`A domain with id "${id}" already exists.`);
         return;
       }
       addIndustry({ ...draft, id });
@@ -86,10 +86,10 @@ export function IndustriesManager() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          Every industry/vertical the platform supports — add one here and it appears immediately in every module, no code changes.
+          Every business domain/vertical the platform supports — add one here and it appears immediately in every module, no code changes.
         </p>
         <Button size="sm" className="shrink-0 gap-1.5" onClick={startCreate}>
-          <Plus className="size-3.5" /> Add Industry
+          <Plus className="size-3.5" /> Add Domain
         </Button>
       </div>
 
@@ -120,7 +120,7 @@ export function IndustriesManager() {
         })}
         {industries.length === 0 && (
           <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
-            No industries configured yet. Add one to get started.
+            No domains configured yet. Add one to get started.
           </p>
         )}
       </div>
@@ -128,7 +128,7 @@ export function IndustriesManager() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Industry" : "Add Industry"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Domain" : "Add Domain"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
@@ -162,7 +162,7 @@ export function IndustriesManager() {
           </div>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <Button onClick={save}>{editing ? "Save Changes" : "Add Industry"}</Button>
+            <Button onClick={save}>{editing ? "Save Changes" : "Add Domain"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -172,7 +172,7 @@ export function IndustriesManager() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove &quot;{pendingDelete?.name}&quot;?</AlertDialogTitle>
             <AlertDialogDescription>
-              Existing rules, matrices and simulations already tagged with this industry keep their reference, but it will
+              Existing rules, matrices and simulations already tagged with this domain keep their reference, but it will
               no longer appear as a selectable option anywhere in the app.
             </AlertDialogDescription>
           </AlertDialogHeader>
