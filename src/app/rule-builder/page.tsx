@@ -128,7 +128,8 @@ function RuleBuilderContent() {
     return existingRule ?? blankRule(nextRuleId(rules), industries[0]?.id ?? "", owners[0] ?? "");
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [templatePickerOpen, setTemplatePickerOpen] = useState(!existingRule);
+  // FUTURE: Change back to (!existingRule) to auto-open template picker on creation
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [showElseBranch, setShowElseBranch] = useState(() => !!existingRule?.elseActions?.length);
 
   useEffect(() => {
@@ -386,11 +387,13 @@ function RuleBuilderContent() {
             <Copy className="size-3.5" /> Duplicate
           </Button>
         )}
+        {/* FUTURE: Re-enable templates button when enhanced templates are ready
         {!existingRule && (
           <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setTemplatePickerOpen(true)}>
             <LayoutTemplate className="size-3.5" /> Use Template
           </Button>
         )}
+        */}
         <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSaveDraft} title="Save Draft (Ctrl+S)">
           <Save className="size-3.5" /> Save Draft
         </Button>
