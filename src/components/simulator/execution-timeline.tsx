@@ -36,7 +36,7 @@ function TimelineStep({ step, index }: { step: TraceStep; index: number }) {
   const [open, setOpen] = useState(index === 0);
   const cfg = STATUS_CONFIG[step.status];
   const Icon = cfg.icon;
-  const hasDetails = step.conditionSummaries.length > 0;
+  const hasDetails = step.conditionSummaries.length > 0 || (step.producedValues && Object.keys(step.producedValues).length > 0);
 
   return (
     <div className="relative flex gap-3 pb-4 last:pb-0">
@@ -83,6 +83,15 @@ function TimelineStep({ step, index }: { step: TraceStep; index: number }) {
             {step.actionsApplied.length > 0 && (
               <div className="text-[11px] text-muted-foreground">
                 Action{step.actionsApplied.length > 1 ? "s" : ""} applied: {step.actionsApplied.map((a) => a.type).join(", ")}
+              </div>
+            )}
+            {step.producedValues && Object.keys(step.producedValues).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 text-[11px]">
+                {Object.entries(step.producedValues).map(([key, value]) => (
+                  <span key={key} className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-primary">
+                    {key} = {String(value)}
+                  </span>
+                ))}
               </div>
             )}
           </div>

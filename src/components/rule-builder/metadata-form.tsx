@@ -1,6 +1,6 @@
 "use client";
 
-import { BusinessRule, Domain, Priority } from "@/lib/types";
+import { BusinessRule, Domain } from "@/lib/types";
 import { useAppStore } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,17 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/utils";
 
-const PRIORITIES: Priority[] = [1, 2, 3, 4, 5];
-const PRIORITY_ITEMS: Record<number, string> = {
-  1: "P1 · Critical",
-  2: "P2 · High",
-  3: "P3 · Medium",
-  4: "P4 · Low",
-  5: "P5 · Lowest",
-};
-
 interface MetadataFormProps {
-  data: Pick<BusinessRule, "id" | "name" | "domain" | "category" | "subCategory" | "groupId" | "priority" | "status" | "description" | "owner">;
+  data: Pick<BusinessRule, "id" | "name" | "domain" | "category" | "status" | "description">;
   onChange: (patch: Partial<BusinessRule>) => void;
   errors?: Record<string, string>;
 }
@@ -27,8 +18,6 @@ interface MetadataFormProps {
 export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps) {
   const industries = useAppStore((s) => s.industries);
   const ruleCategories = useAppStore((s) => s.ruleCategories);
-  const owners = useAppStore((s) => s.owners);
-  const ruleGroups = useAppStore((s) => s.ruleGroups);
 
   return (
     <div className="rounded-xl border bg-card p-4">
@@ -47,22 +36,6 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
         <div className="space-y-1.5">
           <Label>Rule ID</Label>
           <Input value={data.id} disabled className="font-mono text-muted-foreground" />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Priority *</Label>
-          <Select
-            items={PRIORITY_ITEMS}
-            value={String(data.priority)}
-            onValueChange={(v) => onChange({ priority: Number(v) as Priority })}
-          >
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {PRIORITIES.map((p) => (
-                <SelectItem key={p} value={String(p)}>{PRIORITY_ITEMS[p]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         <div className="space-y-1.5">
@@ -90,48 +63,11 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
         </div>
 
         <div className="space-y-1.5">
-          <Label>Sub Category</Label>
-          <Input
-            value={data.subCategory ?? ""}
-            onChange={(e) => onChange({ subCategory: e.target.value })}
-            placeholder="Optional"
-          />
-        </div>
-
-        <div className="space-y-1.5">
           <Label>Status</Label>
           <div className="flex h-9 items-center">
             <StatusBadge status={data.status} />
           </div>
           <p className="text-[10px] text-muted-foreground/70">Changed via the workflow actions (Save Draft / Submit for Review / Publish), not directly.</p>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Rule Group</Label>
-          <Select
-            value={data.groupId ?? "__none__"}
-            onValueChange={(v) => onChange({ groupId: v === "__none__" ? undefined : v ?? undefined })}
-          >
-            <SelectTrigger className="w-full"><SelectValue placeholder="None" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">None</SelectItem>
-              {ruleGroups.map((g) => (
-                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Owner</Label>
-          <Select value={data.owner} onValueChange={(v) => onChange({ owner: v ?? "" })}>
-            <SelectTrigger className="w-full"><SelectValue placeholder="Select owner" /></SelectTrigger>
-            <SelectContent>
-              {owners.map((o) => (
-                <SelectItem key={o} value={o}>{o}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">

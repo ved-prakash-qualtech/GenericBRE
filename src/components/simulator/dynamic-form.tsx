@@ -6,9 +6,8 @@ import { useAppStore } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
-export type SimValues = Record<string, string | number | boolean | (string | number | boolean)[]>;
+export type SimValues = Record<string, string | number | boolean>;
 
 export function DynamicForm({
   domain,
@@ -32,7 +31,7 @@ export function DynamicForm({
         const value = values[key];
 
         return (
-          <div key={key} className={cn("space-y-1", field.type === "list" && "col-span-2")}>
+          <div key={key} className="space-y-1">
             <Label className="text-[11px] text-muted-foreground">{field.label}{field.unit ? ` (${field.unit})` : ""}</Label>
             {field.type === "boolean" ? (
               <Select
@@ -59,13 +58,6 @@ export function DynamicForm({
                   ))}
                 </SelectContent>
               </Select>
-            ) : field.type === "list" ? (
-              <Input
-                value={value === undefined ? "" : String(value)}
-                onChange={(e) => onChange(key, e.target.value)}
-                placeholder={`Comma-separated, e.g. ${field.itemType === "number" ? "10, 20, 30" : "item1, item2, item3"}`}
-                className="h-9"
-              />
             ) : (
               <Input
                 type={field.type === "number" || field.type === "currency" ? "number" : "text"}

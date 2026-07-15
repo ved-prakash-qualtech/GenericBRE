@@ -70,32 +70,12 @@ export interface Condition {
   value2?: string; // used for "between"
 }
 
-// The declarative equivalent of a "for each" loop: tests every item of a
-// list-type field against a per-item operator/value, then reduces the
-// per-item results with a quantifier — no iteration construct needed, and
-// the rule stays a pure, side-effect-free evaluation (safe to trace, diff,
-// and check for conflicts the same way a plain Condition is).
-export type Quantifier = "ANY" | "ALL" | "NONE" | "COUNT";
-
-export interface QuantifierCondition {
-  id: string;
-  type: "quantifier";
-  field: string; // must reference a BusinessField with type: "list"
-  quantifier: Quantifier;
-  operator: Operator; // applied to each item in the list
-  value: string;
-  value2?: string; // used when operator is "between"
-  /** Only used when quantifier is "COUNT": compares the number of matching items against countValue. */
-  countComparator?: ">" | ">=" | "=" | "<" | "<=";
-  countValue?: string;
-}
-
 export interface ConditionGroup {
   id: string;
   type: "group";
   logic: "AND" | "OR";
   collapsed?: boolean;
-  children: (Condition | ConditionGroup | QuantifierCondition)[];
+  children: (Condition | ConditionGroup)[];
 }
 
 export interface RuleAction {
@@ -103,18 +83,16 @@ export interface RuleAction {
   type: ActionType;
   outputField?: string;
   outputValue?: string;
+  /** Data type metadata for a generated variable (Calculate/Assign Value only) — informs the Output Field picker/Rule Preview, not used for coercion at execution time. */
+  outputType?: FieldDataType;
   reasonCode?: string;
   message?: string;
 }
 
-// Client-side approximation of environment promotion — there's no real
-// separate Dev/UAT/Prod deployment here (no backend), just a metadata tag the
-// evaluation engine actually honors: a rule tagged "Dev" only fires in a Dev-
-// tier simulation, "UAT" fires in UAT and Prod, "Prod" fires everywhere. It
-// changes evaluation behavior, so it's a real (if simplified) gate, not just
-// a decorative label — but it's still one browser's local state, not three
-// independently deployed environments.
-export type RuleEnvironment = "Dev" | "UAT" | "Prod";
+// FUTURE: Environment promotion (Dev → UAT → Prod) is intentionally removed
+// for the demo. When reintroducing, restore the type below and re-add the
+// `environment` field to BusinessRule, engine eligibility checks, and UI.
+// export type RuleEnvironment = "Dev" | "UAT" | "Prod";
 
 export interface BusinessRule {
   id: string; // e.g. RL-101
@@ -123,11 +101,21 @@ export interface BusinessRule {
   category: string;
   subCategory?: string;
   /** Optional membership in a configurable Rule Group/Collection — independent
-   *  of Category, purely organizational (e.g. "Digital Lending — Core Eligibility"). */
+   *  of Category, purely organizational (e.g. "Digital Lending — Core Eligibility").
+   *  Rule Builder's own save validation requires this going forward; kept optional
+   *  here at the type level so the 121 pre-existing seed/filler rules (authored
+   *  before this requirement) don't need a disruptive mass-migration. */
   groupId?: string;
+  /** Execution order within `groupId`, unique per group (e.g. 1, 2, 3…) — a
+   *  distinct concept from `priority` (a P1–P5 classification that already
+   *  drives Simulator evaluation order across an entire industry). `sequence`
+   *  is Rule Builder/Rule-Group-scoped: it's what lets one rule's output feed
+   *  the next rule's input within the same group (see src/lib/rule-chaining.ts).
+   *  Enforced unique/required by Rule Builder's validation, not a DB constraint. */
+  sequence?: number;
   priority: Priority;
   status: RuleStatus;
-  environment: RuleEnvironment;
+  // environment: RuleEnvironment; // FUTURE: restore when environment promotion is reintroduced
   description?: string;
   owner: string;
   rootGroup: ConditionGroup;
@@ -161,6 +149,7 @@ export interface RuleVersion {
   category: string;
   subCategory?: string;
   groupId?: string;
+  sequence?: number;
   priority: Priority;
   owner: string;
   description?: string;
@@ -180,47 +169,50 @@ export interface RuleGroup {
 }
 
 // ============================================================
-// Execution Manager — routes an incoming request (Industry + whatever other
-// dimensions are configured) to an ordered sequence of Rule Sets (RuleGroup
-// above), rather than every simulatable rule in an industry running
-// unconditionally. Everything here is admin-configured; adding a new
-// product/channel/mapping is data, not code.
+// Product Master + Product-Rule Mapping — replaces Execution Manager's
+// group/mapping-based routing below (kept, unrouted, for one release as a
+// rollback path — see engine.ts/execution-manager.ts comments). A Product is
+// just a configurable named scheme (Home Loan, Auto Loan, ...); a client can
+// offer many. Rules stay standalone entities — a Product never embeds rule
+// logic, it only points at which already-existing rules apply to it via
+// ProductRuleMapping (many-to-many).
 // ============================================================
 
-// The configurable set of request dimensions a mapping can key off, beyond
-// Industry (which already has its own catalog — see industries.ts). Fully
-// custom parameters are just more entries here, `builtIn: false`.
-export interface RequestParameterDef {
+export interface Product {
   id: string;
-  label: string;
-  /** Expected JSON key on the incoming request payload, e.g. "product". */
-  sourceKey: string;
-  builtIn: boolean;
+  name: string;
+  /** Stable machine key used to identify the product from an incoming request, e.g. "HOME_LOAN". */
+  code: string;
+  domain: Domain;
+  description?: string;
+  status: "Active" | "Inactive";
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
+
+// One row per (product, rule) pairing — many-to-many. `active` lets a mapping
+// be soft-unmapped without losing the history of what was once wired up.
+export interface ProductRuleMapping {
+  id: string;
+  productId: string;
+  ruleId: string;
+  active: boolean;
+  /** Execution position among this product's mapped rules — the Rule
+   *  Sequencer for product-based execution/chaining. Missing on legacy rows
+   *  (falls back to rule priority; see product-rule-engine.ts). */
+  order?: number;
+  createdAt: string;
+  createdBy?: string;
+}
+
+// ============================================================
+// Execution Manager types removed — system deprecated/deleted.
+// ============================================================
 
 export type ExecutionMode = "sequential" | "parallel" | "stop-on-first-match" | "execute-all" | "conditional";
 
-export interface RuleSetStep {
-  id: string;
-  ruleSetId: string; // a RuleGroup.id
-  order: number;
-  mode: ExecutionMode;
-}
-
-// The Global → Industry → Product → Sub Product → Workflow → Decision
-// hierarchy isn't a separate rigid schema — it's expressed directly as the
-// ordered `steps` list (e.g. Global Rules → Banking Rules → Home Loan Rules
-// → ... → Pricing Rules). Any named Rule Set can be inserted at any
-// position, so this stays metadata-driven rather than a fixed depth.
-export interface RuleExecutionMapping {
-  id: string;
-  name: string;
-  /** RequestParameterDef.id -> required value. A key absent here is a wildcard for that dimension. */
-  conditions: Record<string, string>;
-  steps: RuleSetStep[];
-  createdAt: string;
-  updatedAt: string;
-}
 
 // A configurable rule category — BusinessRule.category stores this entry's
 // `name` (a plain string), not `id`, so existing filters/columns/CSV export
@@ -271,14 +263,12 @@ export interface DecisionMatrix {
   updatedAt: string;
 }
 
-export type FieldDataType = "number" | "string" | "boolean" | "enum" | "currency" | "list";
-
-// The primitive type stored inside a "list" field's items — deliberately a
-// flat array of scalars, not a list of objects. A quantified condition
-// ("ANY item > X") is the declarative stand-in for iterating a collection;
-// nested object schemas would need a much bigger authoring UI for a use case
-// this project's rules haven't needed yet.
-export type FieldItemType = "number" | "string" | "boolean" | "enum" | "currency";
+// "list" stays part of this shared union for JSON Mapping's own attribute
+// type inference/selection (src/lib/json-mapping.ts) — BusinessField itself
+// no longer offers it (Field Catalog's own type dropdown excludes it), since
+// nothing consumes a list-typed BusinessField anymore now that Quantifier
+// conditions have been removed.
+export type FieldDataType = "number" | "string" | "boolean" | "enum" | "currency" | "date" | "list";
 
 export interface BusinessField {
   key: string;
@@ -292,10 +282,6 @@ export interface BusinessField {
    *  available to the Rule Builder's condition picker but excluded from the
    *  Simulator's dynamic input form since the user never enters them directly. */
   computed?: boolean;
-  /** Required when type is "list" — the scalar type of each item. */
-  itemType?: FieldItemType;
-  /** When type is "list" and itemType is "enum" — the allowed value per item. */
-  itemOptions?: string[];
   /** Metadata-repository fields — part of the Configuration Studio's Field
    *  Catalog upgrade, all optional so pre-existing seed data keeps working. */
   businessName?: string;
@@ -352,6 +338,8 @@ export interface TraceStep {
   sandbox?: boolean;
   /** Which action list actually fired — "then" on a match, "else" when the conditions failed but the rule had an ELSE branch. Absent for Skipped/Not Applicable steps. */
   branch?: "then" | "else";
+  /** Assign Value/Calculate outputs this step produced (see engine.ts's applyAction) — surfaced in the Simulator's timeline/Rule Chaining Variables display. */
+  producedValues?: Record<string, string | number>;
 }
 
 export type DecisionOutcome = "Approved" | "Rejected" | "Review Required";
@@ -415,7 +403,7 @@ export interface DecisionResult {
   /** flow[].trace concatenated in order, for callers that just want one flat list (e.g. DecisionCallout's deciding-step lookup). */
   flatTrace: TraceStep[];
   input: Record<string, string | number | boolean | (string | number | boolean)[]>;
-  environment: RuleEnvironment;
+  // environment: RuleEnvironment; // FUTURE: restore when environment promotion is reintroduced
   timestamp: string;
   totalDurationMs: number;
   sandbox?: boolean;
@@ -469,7 +457,7 @@ export interface AuditEntry {
    *  pre-existing entry keep verifying unchanged regardless of this field's presence. */
   decisionContext?: {
     correlationId: string;
-    environment: RuleEnvironment;
+    // environment: RuleEnvironment; // FUTURE: restore when environment promotion is reintroduced
     triggeredRules: string[];
     ruleVersions: Record<string, number>;
     executionTimeMs: number;

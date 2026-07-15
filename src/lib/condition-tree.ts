@@ -1,4 +1,4 @@
-import { BusinessRule, Condition, ConditionGroup, QuantifierCondition } from "./types";
+import { BusinessRule, Condition, ConditionGroup } from "./types";
 
 let seq = 0;
 export function newId(prefix: string) {
@@ -8,19 +8,6 @@ export function newId(prefix: string) {
 
 export function emptyCondition(field = ""): Condition {
   return { id: newId("cond"), type: "condition", field, operator: "=", value: "" };
-}
-
-export function emptyQuantifierCondition(field = ""): QuantifierCondition {
-  return {
-    id: newId("quant"),
-    type: "quantifier",
-    field,
-    quantifier: "ANY",
-    operator: "=",
-    value: "",
-    countComparator: ">=",
-    countValue: "",
-  };
 }
 
 export function emptyGroup(logic: "AND" | "OR" = "AND"): ConditionGroup {
@@ -33,19 +20,17 @@ export function cloneGroupWithFreshIds(group: ConditionGroup): ConditionGroup {
   return {
     ...group,
     id: newId("grp"),
-    children: group.children.map((c) =>
-      c.type === "group" ? cloneGroupWithFreshIds(c) : { ...c, id: newId(c.type === "quantifier" ? "quant" : "cond") }
-    ),
+    children: group.children.map((c) => (c.type === "group" ? cloneGroupWithFreshIds(c) : { ...c, id: newId("cond") })),
   };
 }
 
-type Node = Condition | ConditionGroup | QuantifierCondition;
+type Node = Condition | ConditionGroup;
 
 export function mapTree(node: ConditionGroup, fn: (n: Node) => Node): ConditionGroup {
   const mapped = fn(node) as ConditionGroup;
   return {
     ...mapped,
-    children: mapped.children.map((c) => (c.type === "group" ? mapTree(c, fn) : (fn(c) as Condition | QuantifierCondition))),
+    children: mapped.children.map((c) => (c.type === "group" ? mapTree(c, fn) : (fn(c) as Condition))),
   };
 }
 
@@ -115,16 +100,6 @@ export function validateTree(node: ConditionGroup, errors: string[] = [], path =
       if (c.value === "" || c.value === undefined) errors.push(`${path}: condition ${i + 1} is missing a value.`);
       if (c.operator === "between" && (!c.value2 || c.value2 === "")) {
         errors.push(`${path}: condition ${i + 1} needs both a from and to value for "Between".`);
-      }
-    } else if (c.type === "quantifier") {
-      if (!c.field) errors.push(`${path}: quantifier condition ${i + 1} is missing a list field.`);
-      if (!c.operator) errors.push(`${path}: quantifier condition ${i + 1} is missing a per-item operator.`);
-      if (c.value === "" || c.value === undefined) errors.push(`${path}: quantifier condition ${i + 1} is missing a per-item value.`);
-      if (c.operator === "between" && (!c.value2 || c.value2 === "")) {
-        errors.push(`${path}: quantifier condition ${i + 1} needs both a from and to value for "Between".`);
-      }
-      if (c.quantifier === "COUNT" && (c.countValue === "" || c.countValue === undefined)) {
-        errors.push(`${path}: quantifier condition ${i + 1} needs a count threshold.`);
       }
     } else {
       validateTree(c, errors, `${path} → group`);

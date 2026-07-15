@@ -41,6 +41,13 @@ const ALL_CAPABILITIES: Capability[] = [
   "system.manage",
 ];
 
+// Display text only — the underlying Capability id ("rule.publish") and every
+// hasCapability(...) check elsewhere stay unchanged.
+const CAPABILITY_LABELS: Partial<Record<Capability, string>> = {
+  "rule.publish": "rule.approve",
+};
+const capabilityLabel = (cap: Capability) => CAPABILITY_LABELS[cap] ?? cap;
+
 const BLANK: Role = { id: "", name: "", personaName: "", icon: "Briefcase", capabilities: ["rule.view"] };
 
 export function RolesManager() {
@@ -110,7 +117,7 @@ export function RolesManager() {
           Every role and its demo persona shown on the &quot;Switch Role&quot; picker — add one here and it appears immediately, no code changes.
         </p>
         <Button size="sm" className="shrink-0 gap-1.5" onClick={startCreate}>
-          <Plus className="size-3.5" /> Add Role
+          <Plus className="size-3.5" /> Add User
         </Button>
       </div>
 
@@ -127,7 +134,7 @@ export function RolesManager() {
                 <p className="truncate text-[11px] text-muted-foreground">{role.name}</p>
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {role.capabilities.map((c) => (
-                    <Badge key={c} variant="outline" className="text-[9px]">{c}</Badge>
+                    <Badge key={c} variant="outline" className="text-[9px]">{capabilityLabel(c)}</Badge>
                   ))}
                 </div>
               </div>
@@ -152,7 +159,7 @@ export function RolesManager() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Role" : "Add Role"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit User" : "Add User"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -190,7 +197,7 @@ export function RolesManager() {
                 {ALL_CAPABILITIES.map((cap) => (
                   <label key={cap} className="flex items-center gap-2 text-xs">
                     <Checkbox checked={draft.capabilities.includes(cap)} onCheckedChange={() => toggleCapability(cap)} />
-                    {cap}
+                    {capabilityLabel(cap)}
                   </label>
                 ))}
               </div>
@@ -198,7 +205,7 @@ export function RolesManager() {
           </div>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <Button onClick={save}>{editing ? "Save Changes" : "Add Role"}</Button>
+            <Button onClick={save}>{editing ? "Save Changes" : "Add User"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

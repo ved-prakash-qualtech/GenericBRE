@@ -6,35 +6,43 @@ import {
   ConditionGroup,
   DecisionOutcome,
   Domain,
-  ExecutionMode,
   ExecutionSettings,
   Operator,
-  QuantifierCondition,
   RuleAction,
-  RuleEnvironment,
-  RuleExecutionMapping,
-  RuleGroup,
   SimulationResult,
   TraceStep,
 } from "./types";
 
-const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = { conflictResolution: "execute-all" };
+export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = { conflictResolution: "execute-all" };
 
-type ScalarValue = string | number | boolean;
-type InputMap = Record<string, ScalarValue | ScalarValue[]>;
+export type ScalarValue = string | number | boolean;
+export type InputMap = Record<string, ScalarValue | ScalarValue[]>;
 
 // Promotion order — a rule "reaches" Prod by first passing through Dev and
 // UAT, so anything already at Prod is also valid to see in a Dev or UAT
 // simulation; a Dev-only rule is invisible once you simulate at a higher tier.
-const ENV_RANK: Record<RuleEnvironment, number> = { Dev: 0, UAT: 1, Prod: 2 };
-
-function isPromotedTo(ruleEnv: RuleEnvironment, simulationTier: RuleEnvironment): boolean {
-  return ENV_RANK[ruleEnv] >= ENV_RANK[simulationTier];
-}
+// FUTURE: ENV_RANK and isPromotedTo are removed for the demo.
+// Restore when environment promotion (Dev → UAT → Prod) is reintroduced.
+// const ENV_RANK: Record<RuleEnvironment, number> = { Dev: 0, UAT: 1, Prod: 2 };
+// function isPromotedTo(ruleEnv: RuleEnvironment, simulationTier: RuleEnvironment): boolean {
+//   return ENV_RANK[ruleEnv] >= ENV_RANK[simulationTier];
+// }
 
 function coerceNumber(v: unknown): number {
   const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.\-]/g, ""));
   return Number.isFinite(n) ? n : NaN;
+}
+
+// Ordering-comparison coercion — an ISO-date-shaped string (e.g. from a
+// FieldDataType "date" field) is compared as a timestamp instead of falling
+// through to coerceNumber, which would truncate "2026-03-01" to just 2026
+// and compare wrong for two dates in the same year.
+function coerceComparable(v: unknown): number {
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+    const t = Date.parse(v);
+    if (!Number.isNaN(t)) return t;
+  }
+  return coerceNumber(v);
 }
 
 function evaluateOperator(
@@ -50,13 +58,13 @@ function evaluateOperator(
     case "!=":
       return String(actual).toLowerCase() !== String(expected).toLowerCase();
     case ">":
-      return coerceNumber(actual) > coerceNumber(expected);
+      return coerceComparable(actual) > coerceComparable(expected);
     case "<":
-      return coerceNumber(actual) < coerceNumber(expected);
+      return coerceComparable(actual) < coerceComparable(expected);
     case ">=":
-      return coerceNumber(actual) >= coerceNumber(expected);
+      return coerceComparable(actual) >= coerceComparable(expected);
     case "<=":
-      return coerceNumber(actual) <= coerceNumber(expected);
+      return coerceComparable(actual) <= coerceComparable(expected);
     case "contains":
       return String(actual).toLowerCase().includes(String(expected).toLowerCase());
     case "starts_with":
@@ -67,8 +75,8 @@ function evaluateOperator(
         .map((s) => s.trim().toLowerCase())
         .includes(String(actual).toLowerCase());
     case "between": {
-      const n = coerceNumber(actual);
-      return n >= coerceNumber(expected) && n <= coerceNumber(expected2 ?? expected);
+      const n = coerceComparable(actual);
+      return n >= coerceComparable(expected) && n <= coerceComparable(expected2 ?? expected);
     }
     default:
       return false;
@@ -93,9 +101,6 @@ export function evaluateGroup(
   const results = group.children.map((child) => {
     if (child.type === "condition") {
       return evaluateConditionLeaf(child, input, details, catalog);
-    }
-    if (child.type === "quantifier") {
-      return evaluateQuantifierCondition(child, input, details, catalog);
     }
     return evaluateGroup(child, input, details, catalog);
   });
@@ -124,56 +129,6 @@ function evaluateConditionLeaf(
     operator: cond.operator,
     expected: expectedLabel,
     actual: actual === undefined ? "—" : String(actual),
-    passed,
-  });
-  return passed;
-}
-
-// The declarative "for each" — tests every item of a list-type field against
-// a per-item operator/value, then reduces the per-item results with a
-// quantifier (ANY/ALL/NONE/COUNT). An empty list is treated as ALL failing
-// (not vacuously true) since that reads more predictably to a business user
-// authoring a policy than the mathematical convention would.
-function evaluateQuantifierCondition(
-  q: QuantifierCondition,
-  input: InputMap,
-  details: ConditionEvalDetail[],
-  catalog: BusinessField[]
-): boolean {
-  const raw = input[q.field];
-  const items: ScalarValue[] = Array.isArray(raw) ? raw : [];
-  const field = getField(catalog, q.field);
-  const matchCount = items.filter((item) => evaluateOperator(q.operator, item, q.value, q.value2)).length;
-
-  let passed: boolean;
-  switch (q.quantifier) {
-    case "ANY":
-      passed = matchCount > 0;
-      break;
-    case "ALL":
-      passed = items.length > 0 && matchCount === items.length;
-      break;
-    case "NONE":
-      passed = matchCount === 0;
-      break;
-    case "COUNT": {
-      const comparator = q.countComparator ?? ">=";
-      passed = evaluateOperator(comparator, matchCount, q.countValue ?? "0");
-      break;
-    }
-  }
-
-  const perItemTest = `${q.operator} ${q.value}${q.operator === "between" ? ` – ${q.value2}` : ""}`;
-  const expectedLabel =
-    q.quantifier === "COUNT"
-      ? `COUNT(item ${perItemTest}) ${q.countComparator ?? ">="} ${q.countValue}`
-      : `${q.quantifier} item ${perItemTest}`;
-
-  details.push({
-    field: field?.label ?? q.field,
-    operator: q.operator,
-    expected: expectedLabel,
-    actual: `${matchCount} of ${items.length} item${items.length === 1 ? "" : "s"} matched`,
     passed,
   });
   return passed;
@@ -229,21 +184,35 @@ export function outcomeRank(outcome: DecisionOutcome): number {
   return 0;
 }
 
-export function runSimulation(
-  domain: Domain,
+export interface RulesForCaseResult {
+  outcome: DecisionOutcome;
+  reasonCode: string;
+  summary: string;
+  calculatedValues: Record<string, string | number>;
+  triggeredRules: string[];
+  decidingRuleId: string | null;
+  trace: TraceStep[];
+}
+
+// Shared evaluation core — walks an already-filtered-and-ordered rule list
+// applying conflict-resolution + sandbox semantics. Used by runSimulation
+// (industry-wide) below and by product-rule-engine.ts's executeRulesByProduct
+// (product-mapped subset), so both flows share one source of truth for how a
+// case is decided rather than two divergent implementations.
+//
+// `chainInputs` (default false — runSimulation's call site never passes it,
+// so its behavior is byte-for-byte unchanged) makes each rule's Assign
+// Value/Calculate outputs visible to every later rule in this same call —
+// product-rule-engine.ts's executeRulesByProduct is the only caller that
+// opts in, since chaining is scoped to a product's sequenced rule list.
+export function runRulesForCase(
   rules: BusinessRule[],
   input: InputMap,
   catalog: BusinessField[] = [],
   sandboxRuleIds: string[] = [],
-  environment: RuleEnvironment = "Prod",
-  executionSettings: ExecutionSettings = DEFAULT_EXECUTION_SETTINGS
-): SimulationResult {
-  const start = performance.now();
-  const sortDirection = executionSettings.conflictResolution === "lowest-priority" ? -1 : 1;
-  const domainRules = rules
-    .filter((r) => r.domain === domain && r.simulatable)
-    .sort((a, b) => sortDirection * (a.priority - b.priority));
-
+  executionSettings: ExecutionSettings = DEFAULT_EXECUTION_SETTINGS,
+  chainInputs = false
+): RulesForCaseResult {
   const trace: TraceStep[] = [];
   let outcome: DecisionOutcome = "Approved";
   let reasonCode = "ELIGIBLE_CUSTOMER";
@@ -252,8 +221,9 @@ export function runSimulation(
   const triggeredRules: string[] = [];
   let decidingRuleId: string | null = null;
   let halted = false;
+  let workingInput = input;
 
-  for (const rule of domainRules) {
+  for (const rule of rules) {
     if (halted) {
       trace.push({
         ruleId: rule.id,
@@ -272,7 +242,8 @@ export function runSimulation(
     // where it's been promoted to. Otherwise a rule only fires once it's
     // Active AND has reached this simulation's environment tier.
     const sandboxed = sandboxRuleIds.includes(rule.id);
-    const eligible = sandboxed || (rule.status === "Active" && isPromotedTo(rule.environment, environment));
+    // FUTURE: restore environment gate: sandboxed || (rule.status === "Active" && isPromotedTo(rule.environment, environment))
+    const eligible = sandboxed || rule.status === "Active";
     if (!eligible) {
       trace.push({
         ruleId: rule.id,
@@ -286,7 +257,7 @@ export function runSimulation(
       continue;
     }
 
-    const step = evaluateRule(rule, input, catalog, { forceEvaluate: sandboxed });
+    const step = evaluateRule(rule, workingInput, catalog, { forceEvaluate: sandboxed });
     trace.push(step);
 
     // A rule "fires" if either its THEN or ELSE branch actually ran —
@@ -294,8 +265,10 @@ export function runSimulation(
     // evaluateRule), so this uniformly covers both without branching on status.
     if (step.actionsApplied.length > 0) {
       triggeredRules.push(rule.id);
+      const producedValues: Record<string, string | number> = {};
       for (const action of step.actionsApplied) {
         applyAction(action, calculatedValues);
+        applyAction(action, producedValues);
         if (action.type === "Reject") {
           // Reject always wins and halts further evaluation.
           outcome = "Rejected";
@@ -323,22 +296,38 @@ export function runSimulation(
       if (executionSettings.conflictResolution === "first-match") {
         halted = true;
       }
+      if (Object.keys(producedValues).length > 0) {
+        step.producedValues = producedValues;
+        if (chainInputs) workingInput = { ...workingInput, ...producedValues };
+      }
     }
   }
 
+  return { outcome, reasonCode, summary, calculatedValues, triggeredRules, decidingRuleId, trace };
+}
+
+export function runSimulation(
+  domain: Domain,
+  rules: BusinessRule[],
+  input: InputMap,
+  catalog: BusinessField[] = [],
+  sandboxRuleIds: string[] = [],
+  executionSettings: ExecutionSettings = DEFAULT_EXECUTION_SETTINGS
+): SimulationResult {
+  const start = performance.now();
+  const sortDirection = executionSettings.conflictResolution === "lowest-priority" ? -1 : 1;
+  const domainRules = rules
+    .filter((r) => r.domain === domain && r.simulatable)
+    .sort((a, b) => sortDirection * (a.priority - b.priority));
+
+  const core = runRulesForCase(domainRules, input, catalog, sandboxRuleIds, executionSettings);
   const totalDurationMs = Math.max(1, performance.now() - start);
-  const sandbox = trace.some((t) => t.sandbox);
+  const sandbox = core.trace.some((t) => t.sandbox);
 
   return {
     id: `SIM-${Date.now()}`,
     domain,
-    outcome,
-    reasonCode,
-    summary,
-    calculatedValues,
-    triggeredRules,
-    decidingRuleId,
-    trace,
+    ...core,
     input,
     timestamp: new Date().toISOString(),
     totalDurationMs,
@@ -364,132 +353,6 @@ export function applyAction(
   }
 }
 
-export interface RuleSetStepResult {
-  stepId: string;
-  ruleSetId: string;
-  ruleSetName: string;
-  mode: ExecutionMode;
-  skipped: boolean;
-  skipReason?: string;
-  trace: TraceStep[];
-}
-
-export interface RuleSetExecutionResult {
-  mappingId: string;
-  mappingName: string;
-  outcome: DecisionOutcome;
-  reasonCode: string;
-  summary: string;
-  calculatedValues: Record<string, string | number>;
-  triggeredRules: string[];
-  decidingRuleId: string | null;
-  steps: RuleSetStepResult[];
-  totalDurationMs: number;
-}
-
-// Execution Manager's engine — routes a case through an ordered sequence of
-// Rule Sets (RuleGroup) rather than every simulatable rule in an industry.
-// Each step's `mode` has real, distinct cross-step semantics:
-//   sequential          — normal flow; a Reject halts every later step
-//                          (unless that step is marked parallel/execute-all).
-//   execute-all         — always runs, ignoring an earlier Reject halt, but
-//                          still stops if an earlier stop-on-first-match
-//                          step already found a match.
-//   stop-on-first-match — the moment any rule in this step fires, execution
-//                          halts entirely for every later step.
-//   parallel            — runs unconditionally, independent of any halt
-//                          signal from earlier steps (reject or first-match).
-//   conditional         — skipped outright if the running outcome is
-//                          already Rejected.
-export function runRuleSetExecution(
-  mapping: RuleExecutionMapping,
-  rules: BusinessRule[],
-  ruleGroups: RuleGroup[],
-  input: InputMap,
-  catalog: BusinessField[] = [],
-  environment: RuleEnvironment = "Prod"
-): RuleSetExecutionResult {
-  const start = performance.now();
-  const orderedSteps = [...mapping.steps].sort((a, b) => a.order - b.order);
-
-  let outcome: DecisionOutcome = "Approved";
-  let reasonCode = "ELIGIBLE_CUSTOMER";
-  let summary = "All applicable rule sets passed. Application meets policy criteria.";
-  const calculatedValues: Record<string, string | number> = {};
-  const triggeredRules: string[] = [];
-  let decidingRuleId: string | null = null;
-  let sequentialHalted = false;
-  let firstMatchHalted = false;
-
-  const steps: RuleSetStepResult[] = orderedSteps.map((step) => {
-    const ruleSet = ruleGroups.find((g) => g.id === step.ruleSetId);
-    const ruleSetName = ruleSet?.name ?? step.ruleSetId;
-
-    if (step.mode === "conditional" && outcome === "Rejected") {
-      return { stepId: step.id, ruleSetId: step.ruleSetId, ruleSetName, mode: step.mode, skipped: true, skipReason: "Prior outcome was Rejected", trace: [] };
-    }
-    if (firstMatchHalted && step.mode !== "parallel") {
-      return { stepId: step.id, ruleSetId: step.ruleSetId, ruleSetName, mode: step.mode, skipped: true, skipReason: "Stopped — an earlier step already matched", trace: [] };
-    }
-    if (sequentialHalted && step.mode !== "parallel" && step.mode !== "execute-all") {
-      return { stepId: step.id, ruleSetId: step.ruleSetId, ruleSetName, mode: step.mode, skipped: true, skipReason: "Stopped — an earlier step was rejected", trace: [] };
-    }
-
-    const stepRules = rules
-      .filter((r) => r.groupId === step.ruleSetId && r.simulatable)
-      .sort((a, b) => a.priority - b.priority);
-
-    const trace: TraceStep[] = [];
-    let stepHalted = false;
-    for (const rule of stepRules) {
-      if (stepHalted) {
-        trace.push({ ruleId: rule.id, ruleName: rule.name, priority: rule.priority, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 });
-        continue;
-      }
-      const eligible = rule.status === "Active" && isPromotedTo(rule.environment, environment);
-      if (!eligible) {
-        trace.push({ ruleId: rule.id, ruleName: rule.name, priority: rule.priority, status: "Not Applicable", conditionSummaries: [], actionsApplied: [], durationMs: 0 });
-        continue;
-      }
-
-      const result = evaluateRule(rule, input, catalog);
-      trace.push(result);
-
-      if (result.actionsApplied.length > 0) {
-        triggeredRules.push(rule.id);
-        for (const action of result.actionsApplied) {
-          applyAction(action, calculatedValues);
-          if (action.type === "Reject") {
-            outcome = "Rejected";
-            reasonCode = action.reasonCode ?? "POLICY_BREACH";
-            summary = action.message ?? `${rule.name} triggered a rejection.`;
-            decidingRuleId = rule.id;
-            stepHalted = true;
-          } else if (action.type === "Approve" && outcomeRank(outcome) === 0) {
-            outcome = "Approved";
-            reasonCode = action.reasonCode ?? "ELIGIBLE_CUSTOMER";
-            summary = action.message ?? `${rule.name} confirmed approval eligibility.`;
-            decidingRuleId = rule.id;
-          } else if (action.type === "Show Message" && action.message?.toLowerCase().includes("review")) {
-            if (outcomeRank(outcome) <= 1) {
-              outcome = "Review Required";
-              reasonCode = action.reasonCode ?? "MANUAL_REVIEW";
-              summary = action.message ?? `${rule.name} flagged this case for manual review.`;
-              decidingRuleId = rule.id;
-            }
-          }
-        }
-        if (step.mode === "stop-on-first-match") {
-          stepHalted = true;
-          firstMatchHalted = true;
-        }
-      }
-    }
-
-    if (outcome === "Rejected") sequentialHalted = true;
-    return { stepId: step.id, ruleSetId: step.ruleSetId, ruleSetName, mode: step.mode, skipped: false, trace };
-  });
-
-  const totalDurationMs = Math.max(1, performance.now() - start);
-  return { mappingId: mapping.id, mappingName: mapping.name, outcome, reasonCode, summary, calculatedValues, triggeredRules, decidingRuleId, steps, totalDurationMs };
-}
+// runRuleSetExecution removed — Execution Manager deleted.
+// RuleSetStepResult, RuleSetExecutionResult interfaces also removed.
+// FUTURE: restore if multi-step Rule Set orchestration is reintroduced.

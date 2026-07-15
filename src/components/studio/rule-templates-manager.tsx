@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Save } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { RuleTemplate, Condition, ConditionGroup, QuantifierCondition, RuleAction } from "@/lib/types";
+import { RuleTemplate, Condition, ConditionGroup, RuleAction } from "@/lib/types";
 import { emptyGroup, updateNode, removeNode, addChildToGroup, countConditions } from "@/lib/condition-tree";
 import { ConditionGroupEditor } from "@/components/rule-builder/condition-group-editor";
 import { ActionListEditor } from "@/components/rule-builder/action-editor";
@@ -67,7 +67,7 @@ export function RuleTemplatesManager() {
     else if (selected) updateRuleTemplate(selected.id, patch);
   };
 
-  const updateTreeNode = (id: string, patch: Partial<Condition | ConditionGroup | QuantifierCondition>) => {
+  const updateTreeNode = (id: string, patch: Partial<Condition | ConditionGroup>) => {
     if (!active) return;
     updateActive({ rootGroup: updateNode(active.rootGroup, id, patch) });
   };
@@ -75,7 +75,7 @@ export function RuleTemplatesManager() {
     if (!active) return;
     updateActive({ rootGroup: removeNode(active.rootGroup, id) });
   };
-  const addTreeChild = (groupId: string, child: Condition | ConditionGroup | QuantifierCondition) => {
+  const addTreeChild = (groupId: string, child: Condition | ConditionGroup) => {
     if (!active) return;
     updateActive({ rootGroup: addChildToGroup(active.rootGroup, groupId, child) });
   };
@@ -209,7 +209,7 @@ export function RuleTemplatesManager() {
               <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 THEN — Action Builder
               </h2>
-              <ActionListEditor actions={active.actions} onChange={setActions} />
+              <ActionListEditor actions={active.actions} domain={editorDomain} rules={[]} onChange={setActions} />
             </div>
 
             <div>
@@ -223,7 +223,7 @@ export function RuleTemplatesManager() {
               </div>
               {showElseBranch ? (
                 <>
-                  <ActionListEditor actions={active.elseActions ?? []} onChange={setElseActions} />
+                  <ActionListEditor actions={active.elseActions ?? []} domain={editorDomain} rules={[]} onChange={setElseActions} />
                   <Button
                     variant="ghost"
                     size="sm"

@@ -3,8 +3,8 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, Copy, Eye, FileEdit, Archive, Ban, PlayCircle, FlaskConical, Undo2, CheckCheck, MoreHorizontal, TestTube2, ArrowUpCircle, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { BusinessRule, RuleEnvironment, RuleGroup } from "@/lib/types";
-import { StatusBadge, PriorityBadge, EnvironmentBadge } from "@/components/status-badge";
+import { BusinessRule, RuleGroup } from "@/lib/types";
+import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -39,7 +39,8 @@ export interface RepositoryActions {
   onDelete: (r: BusinessRule) => void;
 }
 
-const NEXT_ENV: Record<RuleEnvironment, RuleEnvironment | null> = { Dev: "UAT", UAT: "Prod", Prod: null };
+// FUTURE: NEXT_ENV removed for demo. Restore when environment promotion is reintroduced.
+// const NEXT_ENV: Record<RuleEnvironment, RuleEnvironment | null> = { Dev: "UAT", UAT: "Prod", Prod: null };
 
 export interface RepositoryColumnContext {
   canPublish: boolean;
@@ -112,29 +113,20 @@ export function buildColumns(actions: RepositoryActions, context: RepositoryColu
       size: 160,
     },
     {
-      accessorKey: "priority",
-      header: ({ column }) => <SortHeader label="Priority" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} />,
-      cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
-      size: 100,
-    },
-    {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => <StatusBadge status={row.original.status} />,
       size: 100,
     },
-    {
-      accessorKey: "environment",
-      header: "Environment",
-      cell: ({ row }) => <EnvironmentBadge environment={row.original.environment} />,
-      size: 110,
-    },
-    {
-      accessorKey: "owner",
-      header: "Owner",
-      cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.owner}</span>,
-      size: 170,
-    },
+    // FUTURE: Environment column removed for demo. Restore column definition:
+    // { accessorKey: "environment", header: "Environment", cell: ({ row }) => <EnvironmentBadge environment={row.original.environment} />, size: 110 },
+    // FUTURE: Owner column removed for demo. Restore column definition:
+    // {
+    //   accessorKey: "owner",
+    //   header: "Owner",
+    //   cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.owner}</span>,
+    //   size: 170,
+    // },
     {
       accessorKey: "updatedAt",
       header: ({ column }) => <SortHeader label="Updated" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} />,
@@ -190,11 +182,12 @@ export function buildColumns(actions: RepositoryActions, context: RepositoryColu
                   </DropdownMenuItem>
                 </>
               )}
+              {/* FUTURE: Promote action removed for demo. Restore when environment promotion is reintroduced.
               {r.status === "Active" && NEXT_ENV[r.environment] && (
                 <DropdownMenuItem onClick={() => actions.onPromote(r)} disabled={!context.canPublish}>
                   <ArrowUpCircle className="size-3.5" /> Promote to {NEXT_ENV[r.environment]}
                 </DropdownMenuItem>
-              )}
+              )} */}
               {r.status === "Active" && (
                 <DropdownMenuItem onClick={() => actions.onDisable(r)} disabled={!context.canPublish}>
                   <Ban className="size-3.5" /> Disable

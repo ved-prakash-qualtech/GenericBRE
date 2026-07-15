@@ -40,6 +40,22 @@ export function parseCsv(text: string): Record<string, string>[] {
   });
 }
 
+// Shared browser-download mechanics (Blob → object URL → detached anchor
+// click → revoke) — used by both downloadCsv and downloadJson so neither
+// duplicates the dance.
+function downloadFile(filename: string, content: string, mimeType: string, extension: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `${filename}_${stamp}.${extension}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
   if (rows.length === 0) return;
   const headers = Object.keys(rows[0]);
@@ -52,15 +68,9 @@ export function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
     headers.join(","),
     ...rows.map((row) => headers.map((h) => escape(row[h])).join(",")),
   ];
-  const csv = lines.join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const stamp = new Date().toISOString().slice(0, 10);
-  a.href = url;
-  a.download = `${filename}_${stamp}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadFile(filename, lines.join("\n"), "text/csv;charset=utf-8;", "csv");
+}
+
+export function downloadJson(filename: string, data: unknown) {
+  downloadFile(filename, JSON.stringify(data, null, 2), "application/json;charset=utf-8;", "json");
 }

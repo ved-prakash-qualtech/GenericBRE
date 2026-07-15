@@ -16,13 +16,14 @@ import {
   Building2,
   Users,
   ShieldCheck,
-  Waypoints,
   Sliders,
   LayoutTemplate,
   Compass,
   CheckSquare,
   BookOpen,
   Plug,
+  Package,
+  Link2,
   type LucideIcon,
 } from "lucide-react";
 import { useAppStore, useHasCapability } from "@/lib/store";
@@ -34,10 +35,11 @@ import { FieldCatalogManager } from "@/components/studio/field-catalog-manager";
 import { EntityCatalogManager } from "@/components/studio/entity-catalog-manager";
 import { JsonMappingManager } from "@/components/studio/json-mapping-manager";
 import { RuleCategoryManager } from "@/components/studio/rule-category-manager";
-import { RuleGroupsManager } from "@/components/studio/rule-groups-manager";
+// RuleGroupsManager import removed
 import { RuleTemplatesManager } from "@/components/studio/rule-templates-manager";
-import { PriorityConfigManager } from "@/components/studio/priority-config-manager";
-import { ExecutionManager } from "@/components/studio/execution-manager";
+// PriorityConfigManager import removed
+import { ProductManager } from "@/components/studio/product-manager";
+import { ProductRuleMappingManager } from "@/components/studio/product-rule-mapping-manager";
 import { DecisionResponseConfigManager } from "@/components/studio/decision-response-config-manager";
 import { DashboardManagementManager } from "@/components/studio/dashboard-management-manager";
 import { ListManager } from "@/components/studio/list-manager";
@@ -48,14 +50,12 @@ type SectionId =
   | "entities"
   | "json-mapping"
   | "categories"
-  | "rule-groups"
   | "rule-templates"
-  | "priority"
-  | "execution-manager"
+  | "products"
+  | "product-rule-mapping"
   | "decision-response"
   | "dashboard-management"
   | "industries"
-  | "owners"
   | "roles";
 
 interface NavItem {
@@ -81,11 +81,11 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Rule Governance",
     items: [
+      { id: "industries", label: "Domains", icon: Building2 },
+      { id: "products", label: "Product Master", icon: Package },
+      { id: "product-rule-mapping", label: "Product-Rule Mapping", icon: Link2 },
       { id: "categories", label: "Rule Categories", icon: Tag },
-      { id: "rule-groups", label: "Rule Groups", icon: Layers },
       { id: "rule-templates", label: "Rule Templates", icon: LayoutTemplate },
-      { id: "priority", label: "Priority Configuration", icon: ListOrdered },
-      { id: "execution-manager", label: "Execution Manager", icon: Waypoints },
       { id: "decision-response", label: "Decision Response Configuration", icon: Sliders },
     ],
   },
@@ -98,9 +98,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Access",
     items: [
-      { id: "industries", label: "Domains", icon: Building2 },
-      { id: "owners", label: "Owners", icon: Users },
-      { id: "roles", label: "Roles", icon: ShieldCheck },
+      { id: "roles", label: "User Management", icon: ShieldCheck },
     ],
   },
 ];
@@ -110,7 +108,6 @@ const ROADMAP = [
   { icon: CheckSquare, label: "Validation Rules", desc: "Cross-field validation independent of business rules" },
   { icon: BookOpen, label: "Lookup Manager", desc: "Shared reference/lookup tables beyond enum field options" },
   { icon: Plug, label: "API Mapping (OpenAPI Import)", desc: "Auto-generate a JSON Mapping set from a Swagger/OpenAPI spec" },
-  { icon: Waypoints, label: "Execution Manager — Visual Canvas", desc: "Per-step custom conditions and a full node-graph editor, beyond today's stepper" },
 ];
 
 const SECTION_DESCRIPTIONS: Record<SectionId, string> = {
@@ -118,14 +115,12 @@ const SECTION_DESCRIPTIONS: Record<SectionId, string> = {
   entities: "Business entities (Applicant, Loan Account, Collateral...) that Field Catalog entries attach to.",
   "json-mapping": "Map incoming/outgoing API JSON attributes to internal BRE fields — the foundation for integrating a real source system.",
   categories: "Rule categories available in the Rule Builder and Repository filters.",
-  "rule-groups": "Named, reusable rule collections — purely organizational, independent of Category.",
   "rule-templates": "Reusable starting shapes for Rule Builder's condition and action editors — pre-fill a rule, then edit freely.",
-  priority: "How the engine resolves multiple qualifying rules for the same case.",
-  "execution-manager": "Routes an incoming request to an ordered sequence of Rule Sets based on Industry, Product and other configurable dimensions.",
-  "decision-response": "How much detail a decision result exposes — Decision Only, Decision + Explanation, Decision + Trace, or Full Audit — per Industry or per Execution Manager workflow.",
+  products: "Configurable product/scheme master (Home Loan, Auto Loan, ...) — a client can offer many. Rules stay standalone; see Product-Rule Mapping for which rules apply to each.",
+  "product-rule-mapping": "Map each product to the rules that should execute for it — many-to-many. This is what /api/decision uses to identify and run only the rules mapped to the request's product.",
+  "decision-response": "How much detail a decision result exposes — Decision Only, Decision + Explanation, Decision + Trace, or Full Audit — per Industry or per Product.",
   "dashboard-management": "Per-role landing page and default dashboard widgets — BRD §5.3's Persona-to-Module Mapping, made configurable.",
   industries: "Every business domain/vertical the platform supports.",
-  owners: "Owning teams/departments assignable to a rule.",
   roles: "Who can do what — capabilities are assigned per role, enforced both in the UI and at the data layer.",
 };
 
@@ -133,9 +128,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const currentUser = useAppStore((s) => s.currentUser);
   const canManageConfig = useHasCapability("config.manage");
-  const owners = useAppStore((s) => s.owners);
-  const addOwner = useAppStore((s) => s.addOwner);
-  const deleteOwner = useAppStore((s) => s.deleteOwner);
+  // owners hooks removed for settings page navigation removal
   const [section, setSection] = useState<SectionId>("fields");
 
   // A capability check, not just a hidden nav item — someone can still land
@@ -222,16 +215,14 @@ export default function SettingsPage() {
             {section === "entities" && <EntityCatalogManager />}
             {section === "json-mapping" && <JsonMappingManager />}
             {section === "categories" && <RuleCategoryManager />}
-            {section === "rule-groups" && <RuleGroupsManager />}
+            {/* RuleGroupsManager render block removed */}
             {section === "rule-templates" && <RuleTemplatesManager />}
-            {section === "priority" && <PriorityConfigManager />}
-            {section === "execution-manager" && <ExecutionManager />}
+            {/* PriorityConfigManager render block removed */}
+            {section === "products" && <ProductManager />}
+            {section === "product-rule-mapping" && <ProductRuleMappingManager />}
             {section === "decision-response" && <DecisionResponseConfigManager />}
             {section === "dashboard-management" && <DashboardManagementManager />}
             {section === "industries" && <IndustriesManager />}
-            {section === "owners" && (
-              <ListManager label="Owner" description="" items={owners} onAdd={addOwner} onDelete={deleteOwner} />
-            )}
             {section === "roles" && <RolesManager />}
 
             {section === "fields" && (

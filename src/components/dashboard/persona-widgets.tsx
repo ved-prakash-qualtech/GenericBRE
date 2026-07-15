@@ -205,44 +205,23 @@ export function ExecutionLogsPanel() {
   );
 }
 
+// FUTURE: EnvironmentStatusPanel removed for demo.
+// Restore the full component when environment promotion (Dev → UAT → Prod) is reintroduced.
 export function EnvironmentStatusPanel() {
-  const rules = useScopedRules();
   const router = useRouter();
-  const grid = useMemo(() => {
-    const envs = ["Dev", "UAT", "Prod"] as const;
-    return envs.map((env) => ({
-      env,
-      total: rules.filter((r) => r.environment === env).length,
-      active: rules.filter((r) => r.environment === env && r.status === "Active").length,
-    }));
-  }, [rules]);
-
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
-      <PanelHeader title="Environment Status" />
-      <div className="flex-1 divide-y">
-        {grid.map((g) => {
-          const pct = g.total > 0 ? Math.round((g.active / g.total) * 100) : 0;
-          return (
-            <button
-              key={g.env}
-              onClick={() => router.push(`/repository?environment=${g.env}`)}
-              className="flex w-full items-center gap-2.5 px-3.5 py-1.5 text-left hover:bg-accent/50 transition-colors"
-            >
-              <span className="w-9 shrink-0 text-[11px] font-medium">{g.env}</span>
-              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                <span className="block h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
-              </span>
-              <span className="w-14 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground">
-                <span className="font-semibold text-foreground">{g.active}</span>/{g.total}
-              </span>
-            </button>
-          );
-        })}
+      <PanelHeader title="Rule Status Overview" action="View all" onAction={() => router.push("/repository")} />
+      <div className="flex flex-1 items-center justify-center p-4 text-center">
+        <p className="text-[11px] text-muted-foreground">
+          Environment promotion (Dev → UAT → Prod) is simplified for this release.
+          All active rules are available for evaluation.
+        </p>
       </div>
     </div>
   );
 }
+
 
 export function DecisionLookupPanel() {
   const [query, setQuery] = useState("");

@@ -8,7 +8,6 @@ import { useAppStore, useHasCapability } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -47,12 +46,13 @@ function RepositoryContent() {
   const submitForReview = useAppStore((s) => s.submitForReview);
   const approveRule = useAppStore((s) => s.approveRule);
   const rejectRule = useAppStore((s) => s.rejectRule);
-  const promoteRuleEnvironment = useAppStore((s) => s.promoteRuleEnvironment);
+  // promoteRuleEnvironment removed — FUTURE: restore when environment promotion is reintroduced
+  // const promoteRuleEnvironment = useAppStore((s) => s.promoteRuleEnvironment);
   const deleteRule = useAppStore((s) => s.deleteRule);
-  const updateRule = useAppStore((s) => s.updateRule);
   const industries = useAppStore((s) => s.industries);
   const ruleCategories = useAppStore((s) => s.ruleCategories);
-  const owners = useAppStore((s) => s.owners);
+  // owners selector removed — FUTURE: restore when Owner is reintroduced
+  // const owners = useAppStore((s) => s.owners);
   const ruleGroups = useAppStore((s) => s.ruleGroups);
   const canPublish = useHasCapability("rule.publish");
   const canCreate = useHasCapability("rule.create");
@@ -65,18 +65,15 @@ function RepositoryContent() {
   const [domains, setDomains] = useState<string[]>(searchParams.get("domain") ? [searchParams.get("domain")!] : []);
   const [statuses, setStatuses] = useState<string[]>(searchParams.get("status") ? [searchParams.get("status")!] : []);
   const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
-  const [ownerFilters, setOwnerFilters] = useState<string[]>([]);
-  const [groupFilters, setGroupFilters] = useState<string[]>([]);
-  const [environmentFilters, setEnvironmentFilters] = useState<string[]>(
-    searchParams.get("environment") ? [searchParams.get("environment")!] : []
-  );
+  // ownerFilters removed — FUTURE: restore when Owner is reintroduced
+  // groupFilters removed — Rule Group is no longer a filter dimension, see docs/plan history
+  // environmentFilters removed — FUTURE: restore when environment promotion is reintroduced
   const [viewRule, setViewRule] = useState<BusinessRule | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [approvalConfirm, setApprovalConfirm] = useState<{ rule: BusinessRule; conflicts: RuleConflict[] } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<BusinessRule | null>(null);
   const [selectedRows, setSelectedRows] = useState<BusinessRule[]>([]);
   const [resetSelectionSignal, setResetSelectionSignal] = useState(0);
-  const [bulkGroupChoice, setBulkGroupChoice] = useState<string>("");
   const importRef = useRef<HTMLInputElement>(null);
 
   const conflicts = useMemo(() => detectRuleConflicts(rules), [rules]);
@@ -129,7 +126,7 @@ function RepositoryContent() {
           subCategory: "",
           priority: (Number.isFinite(priority) ? Math.min(5, Math.max(1, priority)) : 3) as BusinessRule["priority"],
           status: "Draft",
-          environment: "Dev",
+          // environment removed — FUTURE: restore when environment promotion is reintroduced
           description: row.description || row.Description || "",
           owner,
           rootGroup: emptyGroup("AND"),
@@ -180,12 +177,12 @@ function RepositoryContent() {
       if (domains.length && !domains.includes(r.domain)) return false;
       if (statuses.length && !statuses.includes(r.status)) return false;
       if (categoryFilters.length && !categoryFilters.includes(r.category)) return false;
-      if (ownerFilters.length && !ownerFilters.includes(r.owner)) return false;
-      if (groupFilters.length && !groupFilters.includes(r.groupId ?? "")) return false;
-      if (environmentFilters.length && !environmentFilters.includes(r.environment)) return false;
+      // owner filter removed — FUTURE: restore when Owner is reintroduced
+      // group filter removed — Rule Group is no longer a filter dimension
+      // environment filter removed — FUTURE: restore when environment promotion is reintroduced
       return true;
     });
-  }, [rules, search, domains, statuses, categoryFilters, ownerFilters, groupFilters, environmentFilters]);
+  }, [rules, search, domains, statuses, categoryFilters]);
 
   const columns = useMemo(
     () =>
@@ -252,13 +249,8 @@ function RepositoryContent() {
               toast.error("Action blocked", { description: result.reason });
             }
           },
-          onPromote: (r) => {
-            const result = promoteRuleEnvironment(r.id);
-            if (result.ok) {
-              toast.success(`${r.id} promoted`, { description: `${r.name} is now in a higher environment tier.` });
-            } else {
-              toast.error("Promotion blocked", { description: result.reason });
-            }
+          onPromote: (_r) => {
+            // Promote action disabled — FUTURE: restore when environment promotion is reintroduced
           },
           onTestInSimulator: (r) => {
             router.push(`/simulator?domain=${r.domain}&sandboxRule=${r.id}`);
@@ -267,7 +259,7 @@ function RepositoryContent() {
         },
         { canPublish, canCreate, canEdit, canDelete, ruleGroups }
       ),
-    [router, cloneRule, setRuleStatus, submitForReview, rejectRule, promoteRuleEnvironment, canPublish, canCreate, canEdit, canDelete, ruleGroups, rules, performApprove]
+    [router, cloneRule, setRuleStatus, submitForReview, rejectRule, canPublish, canCreate, canEdit, canDelete, ruleGroups, rules, performApprove]
   );
 
   const clearAll = () => {
@@ -275,19 +267,19 @@ function RepositoryContent() {
     setDomains([]);
     setStatuses([]);
     setCategoryFilters([]);
-    setOwnerFilters([]);
-    setGroupFilters([]);
-    setEnvironmentFilters([]);
+    // setOwnerFilters([]); // FUTURE: restore when Owner is reintroduced
+    // setGroupFilters removed — Rule Group is no longer a filter dimension
+    // setEnvironmentFilters([]); // FUTURE: restore when environment promotion is reintroduced
   };
 
   const hasFilters =
     search ||
     domains.length ||
     statuses.length ||
-    categoryFilters.length ||
-    ownerFilters.length ||
-    groupFilters.length ||
-    environmentFilters.length;
+    categoryFilters.length;
+    // ownerFilters.length || // FUTURE: restore when Owner is reintroduced
+    // groupFilters.length removed — Rule Group is no longer a filter dimension
+    // || environmentFilters.length; // FUTURE: restore when environment promotion is reintroduced
 
   return (
     <div className="flex h-full flex-col">
@@ -326,8 +318,8 @@ function RepositoryContent() {
                 Category: r.category,
                 Priority: r.priority,
                 Status: r.status,
-                Environment: r.environment,
-                Owner: r.owner,
+                // Environment removed — FUTURE: restore when environment promotion is reintroduced
+                // Owner column removed from CSV — FUTURE: restore when Owner is reintroduced
                 UpdatedAt: r.updatedAt,
               }))
             )
@@ -376,28 +368,9 @@ function RepositoryContent() {
           selected={categoryFilters}
           onChange={setCategoryFilters}
         />
-        <MultiSelect
-          label="Owner"
-          options={owners.map((o) => ({ value: o, label: o }))}
-          selected={ownerFilters}
-          onChange={setOwnerFilters}
-        />
-        <MultiSelect
-          label="Rule Group"
-          options={ruleGroups.map((g) => ({ value: g.id, label: g.name }))}
-          selected={groupFilters}
-          onChange={setGroupFilters}
-        />
-        <MultiSelect
-          label="Environment"
-          options={[
-            { value: "Dev", label: "Dev" },
-            { value: "UAT", label: "UAT" },
-            { value: "Prod", label: "Prod" },
-          ]}
-          selected={environmentFilters}
-          onChange={setEnvironmentFilters}
-        />
+        {/* Owner filter removed — FUTURE: restore when Owner is reintroduced */}
+        {/* Rule Group filter removed — Rule Group is no longer a filter dimension */}
+        {/* Environment filter removed — FUTURE: restore when environment promotion is reintroduced */}
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={clearAll} className="text-xs">
             Clear all
@@ -456,30 +429,7 @@ function RepositoryContent() {
               Delete
             </Button>
           )}
-          {canEdit && (
-            <div className="flex items-center gap-1.5">
-              <Select value={bulkGroupChoice} onValueChange={(v) => setBulkGroupChoice((v as string) ?? "")}>
-                <SelectTrigger size="sm" className="h-7 w-40 text-xs"><SelectValue placeholder="Assign Rule Group..." /></SelectTrigger>
-                <SelectContent>
-                  {ruleGroups.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                disabled={!bulkGroupChoice}
-                onClick={() => {
-                  runBulk("Rule group assigned", (r) => updateRule(r.id, (rule) => ({ ...rule, groupId: bulkGroupChoice })));
-                  setBulkGroupChoice("");
-                }}
-              >
-                Apply
-              </Button>
-            </div>
-          )}
+          {/* Bulk "Assign Rule Group" removed — Rule Group is no longer a filter/assignment concept in Repository */}
           <Button variant="ghost" size="icon-sm" className="ml-auto" onClick={clearSelection}>
             <X className="size-3.5" />
           </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Sparkles } from "lucide-react";
+import { Download, Sparkles, GripVertical } from "lucide-react";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { RecentRulesPanel, RecentActivityPanel, RecentDeploymentsPanel } from "@/components/dashboard/recent-panels";
@@ -155,15 +155,22 @@ export default function DashboardPage() {
               return (
                 <div
                   key={w.id}
-                  draggable={editMode}
-                  onDragStart={() => editMode && setDraggedId(w.id)}
                   onDragOver={(e) => editMode && e.preventDefault()}
                   onDrop={() => editMode && handleGridDrop(w.id)}
-                  onDragEnd={() => setDraggedId(null)}
-                  className={`flex h-60 flex-col gap-1.5 ${WIDGET_SIZE_SPAN[w.size]} ${
-                    editMode ? "cursor-grab rounded-xl outline-dashed outline-2 outline-primary/30 active:cursor-grabbing" : ""
+                  className={`flex h-60 select-none flex-col gap-1.5 ${WIDGET_SIZE_SPAN[w.size]} ${
+                    editMode ? "rounded-xl outline-dashed outline-2 outline-primary/30" : ""
                   }`}
                 >
+                  {editMode && (
+                    <div
+                      draggable
+                      onDragStart={() => setDraggedId(w.id)}
+                      onDragEnd={() => setDraggedId(null)}
+                      className="flex shrink-0 cursor-grab items-center justify-center gap-1.5 rounded-t-lg bg-primary/10 py-1 text-[10px] font-medium text-primary active:cursor-grabbing"
+                    >
+                      <GripVertical className="size-3.5" /> Drag to reorder
+                    </div>
+                  )}
                   <div className="min-h-0 flex-1">{render()}</div>
                 </div>
               );

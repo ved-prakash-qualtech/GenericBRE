@@ -5,11 +5,10 @@ import {
   DecisionResult,
   Domain,
   ResponseMode,
-  RuleEnvironment,
   SimulationResult,
   TraceStep,
 } from "./types";
-import { RuleSetExecutionResult } from "./engine";
+// RuleSetExecutionResult import removed — Execution Manager deleted
 
 type InputMap = Record<string, string | number | boolean | (string | number | boolean)[]>;
 
@@ -45,10 +44,9 @@ function collectRuleVersions(rules: BusinessRule[], traceSteps: TraceStep[]): Re
   return versions;
 }
 
-// Wraps a plain Simulator run as a DecisionResult with a single synthetic
-// flow step (the simulator only ever evaluates one flat rule list — there's
-// no notion of "Rule Sets" outside Execution Manager).
-export function fromSimulation(sim: SimulationResult, rules: BusinessRule[], environment: RuleEnvironment): DecisionResult {
+// Wraps a plain Simulator / Product-Rule run as a DecisionResult with a
+// single synthetic flow step (one flat rule list — no multi-step Rule Sets).
+export function fromSimulation(sim: SimulationResult, rules: BusinessRule[]): DecisionResult {
   const flow: DecisionFlowStep[] = [{ id: "all-rules", label: "All Rules", trace: sim.trace }];
   return {
     id: sim.id,
@@ -65,58 +63,20 @@ export function fromSimulation(sim: SimulationResult, rules: BusinessRule[], env
     flow,
     flatTrace: sim.trace,
     input: sim.input,
-    environment,
+    // environment removed — FUTURE: restore when environment promotion is reintroduced
     timestamp: sim.timestamp,
     totalDurationMs: sim.totalDurationMs,
     sandbox: sim.sandbox,
   };
 }
 
-// Maps an Execution Manager run's per-Rule-Set steps 1:1 onto DecisionFlowStep.
-export function fromRuleSetExecution(
-  exec: RuleSetExecutionResult,
-  rules: BusinessRule[],
-  domain: Domain,
-  environment: RuleEnvironment,
-  input: InputMap
-): DecisionResult {
-  const flow: DecisionFlowStep[] = exec.steps.map((s) => ({
-    id: s.stepId,
-    label: s.ruleSetName,
-    mode: s.mode,
-    skipped: s.skipped,
-    skipReason: s.skipReason,
-    trace: s.trace,
-  }));
-  const flatTrace = flow.flatMap((f) => f.trace);
-  return {
-    id: `EXEC-${Date.now()}`,
-    correlationId: generateCorrelationId(),
-    source: "execution-manager",
-    domain,
-    mappingId: exec.mappingId,
-    mappingName: exec.mappingName,
-    outcome: exec.outcome,
-    reasonCode: exec.reasonCode,
-    summary: exec.summary,
-    calculatedValues: exec.calculatedValues,
-    triggeredRules: exec.triggeredRules,
-    decidingRuleId: exec.decidingRuleId,
-    ruleVersions: collectRuleVersions(rules, flatTrace),
-    flow,
-    flatTrace,
-    input,
-    environment,
-    timestamp: new Date().toISOString(),
-    totalDurationMs: exec.totalDurationMs,
-  };
-}
+// fromRuleSetExecution removed — Execution Manager deleted.
+// FUTURE: restore if multi-step Rule Set orchestration is reintroduced.
 
-// Most-specific-match wins, same precedence idea as resolveMapping
-// (execution-manager.ts) and the existing executionSettings scope lookup:
-// a per-mapping ("Workflow") override beats a per-Industry default, which
-// beats the tenant-wide default, which falls back to the built-in default
-// if nothing has been configured yet.
+// Most-specific-match wins:
+// a per-Industry override beats the tenant-wide default, which falls back
+// to the built-in default if nothing has been configured yet.
+// (mappingId scope removed with Execution Manager)
 export function resolveDecisionResponseConfig(
   settings: Record<string, DecisionResponseConfig>,
   scope: { mappingId?: string; industry?: string }
@@ -175,7 +135,7 @@ export function buildApiResponsePayload(
   if (mode === "decision-trace") return payload;
 
   // full-audit
-  payload.environment = result.environment;
+  // environment removed — FUTURE: restore when environment promotion is reintroduced
   payload.timestamp = result.timestamp;
   return payload;
 }

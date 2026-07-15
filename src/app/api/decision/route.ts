@@ -1,54 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ALL_RULES, MATRICES, DEFAULT_RULE_GROUPS } from "@/lib/mock-data";
-import { DEFAULT_FIELD_CATALOG, getField } from "@/lib/fields";
-import { DEFAULT_INDUSTRIES } from "@/lib/industries";
-import { runSimulation, runRuleSetExecution } from "@/lib/engine";
+import { ALL_RULES, MATRICES, DEFAULT_PRODUCTS, DEFAULT_PRODUCT_RULE_MAPPINGS } from "@/lib/mock-data";
+import { DEFAULT_FIELD_CATALOG } from "@/lib/fields";
+import { executeRulesByProduct } from "@/lib/product-rule-engine";
 import {
   fromSimulation,
-  fromRuleSetExecution,
   buildApiResponsePayload,
   DEFAULT_DECISION_RESPONSE_CONFIG,
 } from "@/lib/decision-response";
-import { resolveMapping, DEFAULT_REQUEST_PARAMETER_DEFS } from "@/lib/execution-manager";
 import { lookupInterestRate, lookupHaircut, lookupPremium } from "@/lib/matrix-lookup";
-import { DecisionResponseConfig, ResponseMode, RuleEnvironment, RuleExecutionMapping } from "@/lib/types";
+import { DecisionResponseConfig, ResponseMode } from "@/lib/types";
 
 // A stateless demo endpoint for the Decision Result module. This prototype
 // has no backend/database (see CLAUDE.md — the intended production stack is
-// Java Spring Boot), so this evaluates against the same seed rules/rule
-// groups the UI ships with, not whatever a user has customized in their
-// browser's localStorage. It exists to make the response-mode contract
-// documented by src/lib/decision-response.ts's buildApiResponsePayload
-// callable outside the browser (Postman/curl), matching exactly what the
-// Decision + Trace "API Response" panel shows in the UI.
+// Java Spring Boot), so this evaluates against the same seed products/rules
+// the UI ships with, not whatever a user has customized in their browser's
+// localStorage.
 //
-// To route through Execution Manager instead of a plain per-industry
-// simulation, pass the mapping(s) to evaluate against in the `mappings`
-// field of the request body (there's no server-side store of a user's saved
-// mappings) — omit it to just run every simulatable rule for the industry.
+// PRIMARY PATH — pass `productId` (or `product` as the Product.code).
+// This identifies the product, fetches every rule mapped to it, and executes
+// only those. The request payload is a single common JSON shape reused across
+// every product — fields a given product's mapped rules don't reference are
+// simply never read (see evaluateConditionLeaf in engine.ts).
+//
+// The old Execution Manager / multi-mapping / industry path has been removed.
+// Use productId for all new integrations.
 
-type InputMap = Record<string, string | number | boolean | (string | number | boolean)[]>;
+type InputMap = Record<string, string | number | boolean>;
 
 const VALID_MODES: ResponseMode[] = ["decision-only", "decision-explanation", "decision-trace", "full-audit"];
-const VALID_ENVIRONMENTS: RuleEnvironment[] = ["Dev", "UAT", "Prod"];
+// VALID_ENVIRONMENTS removed — FUTURE: restore when environment promotion is reintroduced
+// const VALID_ENVIRONMENTS: RuleEnvironment[] = ["Dev", "UAT", "Prod"];
 
 function parseInput(raw: Record<string, unknown>): InputMap {
   const input: InputMap = {};
   for (const [key, value] of Object.entries(raw)) {
-    const field = getField(DEFAULT_FIELD_CATALOG, key);
-    if (field?.type === "list" && typeof value === "string") {
-      input[key] = value
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map((s) => {
-          if (field.itemType === "number" || field.itemType === "currency") return parseFloat(s) || 0;
-          if (field.itemType === "boolean") return s.toLowerCase() === "true" || s === "yes";
-          return s;
-        });
-    } else {
-      input[key] = value as string | number | boolean | (string | number | boolean)[];
-    }
+    input[key] = value as string | number | boolean;
   }
   return input;
 }
@@ -77,17 +63,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
   }
 
-  const industry = String(body.industry ?? "");
-  if (!DEFAULT_INDUSTRIES.some((i) => i.id === industry)) {
-    return NextResponse.json(
-      { error: `Unknown or missing "industry". Valid values: ${DEFAULT_INDUSTRIES.map((i) => i.id).join(", ")}.` },
-      { status: 400 }
-    );
-  }
-
-  const requestedEnv = typeof body.environment === "string" ? (body.environment as RuleEnvironment) : undefined;
-  const environment: RuleEnvironment = requestedEnv && VALID_ENVIRONMENTS.includes(requestedEnv) ? requestedEnv : "Prod";
-
   const requestedMode = typeof body.responseMode === "string" ? (body.responseMode as ResponseMode) : undefined;
   const responseMode: ResponseMode = requestedMode && VALID_MODES.includes(requestedMode) ? requestedMode : DEFAULT_DECISION_RESPONSE_CONFIG.defaultMode;
 
@@ -97,33 +72,38 @@ export async function POST(req: NextRequest) {
   };
 
   const input = parseInput((body.input && typeof body.input === "object" ? body.input : {}) as Record<string, unknown>);
-  if (industry === "Lending") {
+
+  // ---- Primary path: identify the product from the request ----
+  const productIdOrCode = typeof body.productId === "string" ? body.productId : typeof body.product === "string" ? body.product : "";
+  if (!productIdOrCode) {
+    return NextResponse.json(
+      { error: `"productId" is required. Valid values: ${DEFAULT_PRODUCTS.map((p) => p.code).join(", ")}.` },
+      { status: 400 }
+    );
+  }
+
+  const product = DEFAULT_PRODUCTS.find((p) => p.id === productIdOrCode || p.code === productIdOrCode);
+  if (!product) {
+    return NextResponse.json(
+      { error: `Unknown product "${productIdOrCode}". Valid values: ${DEFAULT_PRODUCTS.map((p) => p.code).join(", ")}.` },
+      { status: 404 }
+    );
+  }
+
+  if (product.domain === "Lending") {
     const income = Number(input.monthly_income) || 1;
     const liabilities = Number(input.monthly_liabilities) || 0;
     input.dti_ratio = Math.round((liabilities / income) * 100);
   }
 
-  const suppliedMappings: RuleExecutionMapping[] = Array.isArray(body.mappings) ? (body.mappings as RuleExecutionMapping[]) : [];
-  const mappingParams: Record<string, string> = { industry };
-  for (const def of DEFAULT_REQUEST_PARAMETER_DEFS) {
-    if (typeof body[def.id] === "string") mappingParams[def.id] = body[def.id] as string;
+  const execution = executeRulesByProduct(product, ALL_RULES, DEFAULT_PRODUCT_RULE_MAPPINGS, input, DEFAULT_FIELD_CATALOG);
+  if (!execution.ok || !execution.result) {
+    return NextResponse.json({ error: execution.reason ?? "Unable to execute rules for this product." }, { status: 400 });
   }
-  const matched = suppliedMappings.length > 0 ? resolveMapping(suppliedMappings, mappingParams) : null;
-
-  const decisionResult = matched
-    ? fromRuleSetExecution(
-        runRuleSetExecution(matched, ALL_RULES, DEFAULT_RULE_GROUPS, input, DEFAULT_FIELD_CATALOG, environment),
-        ALL_RULES,
-        industry,
-        environment,
-        input
-      )
-    : (() => {
-        const sim = runSimulation(industry, ALL_RULES, input, DEFAULT_FIELD_CATALOG, [], environment);
-        if (sim.outcome !== "Rejected") applyMatrixLookups(industry, input, sim.calculatedValues);
-        return fromSimulation(sim, ALL_RULES, environment);
-      })();
-
+  if (execution.result.outcome !== "Rejected") {
+    applyMatrixLookups(product.domain, input, execution.result.calculatedValues);
+  }
+  const decisionResult = fromSimulation(execution.result, ALL_RULES);
   return NextResponse.json(buildApiResponsePayload(decisionResult, responseMode, config), { status: 200 });
 }
 
@@ -131,15 +111,12 @@ export async function GET() {
   return NextResponse.json({
     endpoint: "POST /api/decision",
     body: {
-      industry: `required — one of: ${DEFAULT_INDUSTRIES.map((i) => i.id).join(", ")}`,
-      input: "object of Field Catalog values for the case, e.g. { credit_score: 740, applicant_age: 30, monthly_income: 80000 }",
+      productId: `required — Product.id or Product.code, one of: ${DEFAULT_PRODUCTS.map((p) => p.code).join(", ")}`,
+      input: "single common JSON object of Field Catalog values, e.g. { credit_score: 740, applicant_age: 30, monthly_income: 80000 }. Fields a product's mapped rules don't use may be omitted or null.",
       responseMode: VALID_MODES,
-      environment: VALID_ENVIRONMENTS,
-      "product / subProduct / customerType / channel / region": "optional Execution Manager mapping dimensions",
-      mappings: "optional array of RuleExecutionMapping objects to route through — omit to run the plain per-industry ruleset",
       config: "optional partial DecisionResponseConfig overrides (show/enable flags)",
     },
     note:
-      "Stateless demo endpoint — evaluated against this app's seed rules/rule groups, not any browser localStorage customizations. See docs/UI_FRAMEWORK.md and Configuration Studio → Decision Response Configuration for the full contract.",
+      "Stateless demo endpoint — evaluated against this app's seed products/rules, not any browser localStorage customizations. A product with zero mapped rules returns a 200 with reasonCode NO_RULES_MAPPED, not an error.",
   });
 }

@@ -116,7 +116,7 @@ export function KpiCards() {
       value: deploymentEvents.length,
       icon: Rocket,
       accent: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
-      href: "/repository?environment=Prod",
+      href: "/repository?status=Active", // FUTURE: restore "/repository?environment=Prod" when environment is reintroduced
     },
     "rule-executions": {
       // The +256 is a fixed demo-history baseline with no per-industry

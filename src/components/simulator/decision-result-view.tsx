@@ -10,7 +10,7 @@ import { ExecutionTimeline } from "./execution-timeline";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { MODE_LABELS, MODE_COLORS } from "@/components/studio/rule-set-mapping-manager";
+import { MODE_LABELS, MODE_COLORS } from "@/lib/execution-mode";
 import { cn } from "@/lib/utils";
 
 const MODES: { value: ResponseMode; label: string; description: string }[] = [
@@ -117,6 +117,21 @@ export function DecisionResultView({
             </div>
           )}
 
+          {Object.keys(result.calculatedValues).length > 0 && (
+            <div className="rounded-xl border bg-card p-4">
+              <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rule Chaining Variables</p>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(result.calculatedValues).map(([key, value]) => (
+                  <div key={key} className="flex items-center gap-1.5 rounded-lg border bg-background px-2.5 py-1.5 text-xs">
+                    <span className="font-mono text-muted-foreground">{key}</span>
+                    <span className="font-semibold">=</span>
+                    <span className="font-mono font-medium">{String(value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl border bg-card p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rule Evaluation Timeline</p>
             {result.flow.length <= 1 ? (
@@ -190,7 +205,7 @@ export function DecisionResultView({
           </p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-3">
             <InfoRow label="Correlation ID" value={result.correlationId} mono />
-            <InfoRow label="Environment" value={result.environment} />
+            {/* Environment removed — FUTURE: restore <InfoRow label="Environment" value={result.environment} /> */}
             <InfoRow label="Timestamp" value={new Date(result.timestamp).toLocaleString()} />
           </div>
           <p className="mt-2.5 text-[11px] text-muted-foreground">

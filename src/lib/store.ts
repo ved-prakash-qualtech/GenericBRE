@@ -5,6 +5,8 @@ import { persist } from "zustand/middleware";
 import {
   ALL_RULES,
   AUDIT_LOG,
+  DEFAULT_PRODUCTS,
+  DEFAULT_PRODUCT_RULE_MAPPINGS,
   DEFAULT_ROLES,
   DEFAULT_RULE_GROUPS,
   DEFAULT_RULE_TEMPLATES,
@@ -30,12 +32,12 @@ import {
   ExecutionSettings,
   Industry,
   JsonMapping,
-  RequestParameterDef,
+  Product,
+  ProductRuleMapping,
   RuleCategory,
-  RuleExecutionMapping,
   MatrixRow,
   Role,
-  RuleEnvironment,
+  // RuleEnvironment, // FUTURE: restore when environment promotion is reintroduced
   RuleGroup,
   RuleStatus,
   RuleTemplate,
@@ -46,7 +48,7 @@ import { DEFAULT_INDUSTRIES } from "./industries";
 import { DEFAULT_ENTITIES } from "./entities";
 import { DEFAULT_FIELD_CATALOG, DEFAULT_RULE_CATEGORIES, DEFAULT_OWNERS } from "./fields";
 import { DEFAULT_DASHBOARD_CONFIGS } from "./dashboards";
-import { DEFAULT_REQUEST_PARAMETER_DEFS } from "./execution-manager";
+// DEFAULT_REQUEST_PARAMETER_DEFS import removed — Execution Manager deleted
 import { DEFAULT_DECISION_RESPONSE_CONFIG } from "./decision-response";
 import { hashAuditEntry, buildHashChain } from "./audit-chain";
 
@@ -100,6 +102,7 @@ function snapshotFromRule(
     category: rule.category,
     subCategory: rule.subCategory,
     groupId: rule.groupId,
+    sequence: rule.sequence,
     priority: rule.priority,
     owner: rule.owner,
     description: rule.description,
@@ -181,15 +184,7 @@ interface AppState {
   updateJsonMapping: (id: string, patch: Partial<JsonMapping>) => void;
   deleteJsonMapping: (id: string) => void;
 
-  // Execution Manager — request-parameter catalog + rule-set execution mappings.
-  requestParameterDefs: RequestParameterDef[];
-  addRequestParameterDef: (def: RequestParameterDef) => void;
-  updateRequestParameterDef: (id: string, patch: Partial<RequestParameterDef>) => void;
-  deleteRequestParameterDef: (id: string) => void;
-  ruleExecutionMappings: RuleExecutionMapping[];
-  addRuleExecutionMapping: (mapping: RuleExecutionMapping) => void;
-  updateRuleExecutionMapping: (id: string, patch: Partial<RuleExecutionMapping>) => void;
-  deleteRuleExecutionMapping: (id: string) => void;
+  // Execution Manager removed (requestParameterDefs and ruleExecutionMappings removed)
 
   // Decision Result module — per-scope ("default" | Industry.id |
   // RuleExecutionMapping.id) configuration of how much detail a decision
@@ -209,6 +204,17 @@ interface AppState {
   updateRuleGroup: (id: string, patch: Partial<RuleGroup>) => void;
   deleteRuleGroup: (id: string) => void;
 
+  // Product Master + Product-Rule Mapping — replaces Execution Manager's
+  // group/mapping routing. A Product is a configurable named scheme; which
+  // rules apply to it is entirely data (ProductRuleMapping), not code.
+  products: Product[];
+  addProduct: (product: Product) => void;
+  updateProduct: (id: string, patch: Partial<Product>) => void;
+  productRuleMappings: ProductRuleMapping[];
+  // Full-replace semantics for a given product — simplest correct behavior
+  // for a checklist-style mapping UI (see product-rule-mapping-manager.tsx).
+  saveProductRuleMapping: (productId: string, ruleIds: string[]) => void;
+
   // rule templates (reusable starting shapes for the Rule Builder)
   ruleTemplates: RuleTemplate[];
   addRuleTemplate: (template: RuleTemplate) => void;
@@ -226,10 +232,8 @@ interface AppState {
   approveRule: (ruleId: string) => { ok: boolean; reason?: string };
   rejectRule: (ruleId: string, comment?: string) => { ok: boolean; reason?: string };
 
-  // environment promotion (client-side approximation — see RuleEnvironment).
-  // Advances Dev -> UAT -> Prod one step at a time; same rule.publish gate
-  // as approve/reject since promoting is itself a governance decision.
-  promoteRuleEnvironment: (ruleId: string) => { ok: boolean; reason?: string };
+  // FUTURE: promoteRuleEnvironment removed for demo. Restore when environment promotion is reintroduced.
+  // promoteRuleEnvironment: (ruleId: string) => { ok: boolean; reason?: string };
 
   // rules
   addRule: (rule: BusinessRule) => { ok: boolean; reason?: string };
@@ -312,8 +316,7 @@ export const useAppStore = create<AppState>()(
       owners: DEFAULT_OWNERS,
       executionSettings: {},
       jsonMappings: [],
-      requestParameterDefs: DEFAULT_REQUEST_PARAMETER_DEFS,
-      ruleExecutionMappings: [],
+      // Execution Manager state removed
       decisionResponseSettings: { default: DEFAULT_DECISION_RESPONSE_CONFIG },
 
       addIndustry: (industry) => {
@@ -420,46 +423,7 @@ export const useAppStore = create<AppState>()(
         get().logAudit({ user: get().currentUser.name, action: "Deleted JSON Mapping", entity: "JsonMapping", entityId: id, details: `Mapping "${id}" removed.` });
       },
 
-      addRequestParameterDef: (def) => {
-        const { currentUser, roles } = get();
-        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
-        set((s) => ({ requestParameterDefs: [...s.requestParameterDefs, def] }));
-        get().logAudit({ user: currentUser.name, action: "Created Request Parameter", entity: "RequestParameterDef", entityId: def.id, details: `Added request parameter "${def.label}".` });
-      },
-      updateRequestParameterDef: (id, patch) => {
-        const { currentUser, roles } = get();
-        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
-        set((s) => ({ requestParameterDefs: s.requestParameterDefs.map((d) => (d.id === id ? { ...d, ...patch } : d)) }));
-        get().logAudit({ user: currentUser.name, action: "Updated Request Parameter", entity: "RequestParameterDef", entityId: id, details: `Request parameter "${id}" updated.` });
-      },
-      deleteRequestParameterDef: (id) => {
-        const { currentUser, roles } = get();
-        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
-        set((s) => ({ requestParameterDefs: s.requestParameterDefs.filter((d) => d.id !== id) }));
-        get().logAudit({ user: currentUser.name, action: "Deleted Request Parameter", entity: "RequestParameterDef", entityId: id, details: `Request parameter "${id}" removed.` });
-      },
-      addRuleExecutionMapping: (mapping) => {
-        const { currentUser, roles } = get();
-        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
-        set((s) => ({ ruleExecutionMappings: [mapping, ...s.ruleExecutionMappings] }));
-        get().logAudit({ user: currentUser.name, action: "Created Rule Execution Mapping", entity: "RuleExecutionMapping", entityId: mapping.id, details: `Added mapping "${mapping.name}".` });
-      },
-      updateRuleExecutionMapping: (id, patch) => {
-        const { currentUser, roles } = get();
-        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
-        set((s) => ({
-          ruleExecutionMappings: s.ruleExecutionMappings.map((m) =>
-            m.id === id ? { ...m, ...patch, updatedAt: new Date().toISOString() } : m
-          ),
-        }));
-        get().logAudit({ user: currentUser.name, action: "Updated Rule Execution Mapping", entity: "RuleExecutionMapping", entityId: id, details: `Mapping "${id}" updated.` });
-      },
-      deleteRuleExecutionMapping: (id) => {
-        const { currentUser, roles } = get();
-        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
-        set((s) => ({ ruleExecutionMappings: s.ruleExecutionMappings.filter((m) => m.id !== id) }));
-        get().logAudit({ user: currentUser.name, action: "Deleted Rule Execution Mapping", entity: "RuleExecutionMapping", entityId: id, details: `Mapping "${id}" removed.` });
-      },
+      // Execution Manager actions (add/update/delete RequestParameterDef/RuleExecutionMapping) removed
 
       setDecisionResponseConfig: (scope, config) => {
         const { currentUser, roles } = get();
@@ -499,6 +463,44 @@ export const useAppStore = create<AppState>()(
         if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ roles: s.roles.filter((r) => r.id !== id) }));
         get().logAudit({ user: get().currentUser.name, action: "Deleted Role", entity: "Role", entityId: id, details: `Role "${id}" removed.` });
+      },
+
+      products: DEFAULT_PRODUCTS,
+      addProduct: (product) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ products: [...s.products, product] }));
+        get().logAudit({ user: currentUser.name, action: "Created Product", entity: "Product", entityId: product.id, details: `Added product "${product.name}" (${product.code}).` });
+      },
+      updateProduct: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({
+          products: s.products.map((p) => (p.id === id ? { ...p, ...patch, updatedAt: new Date().toISOString() } : p)),
+        }));
+        get().logAudit({ user: currentUser.name, action: "Updated Product", entity: "Product", entityId: id, details: `Product "${id}" updated.` });
+      },
+
+      productRuleMappings: DEFAULT_PRODUCT_RULE_MAPPINGS,
+      saveProductRuleMapping: (productId, ruleIds) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        const now = new Date().toISOString();
+        set((s) => ({
+          productRuleMappings: [
+            ...s.productRuleMappings.filter((m) => m.productId !== productId),
+            ...ruleIds.map((ruleId, i) => ({
+              id: `prm-${productId}-${ruleId}-${Date.now()}-${i}`,
+              productId,
+              ruleId,
+              active: true,
+              order: i,
+              createdAt: now,
+              createdBy: currentUser.name,
+            })),
+          ],
+        }));
+        get().logAudit({ user: currentUser.name, action: "Mapped Rules to Product", entity: "Product", entityId: productId, details: `${ruleIds.length} rule(s) mapped.` });
       },
 
       ruleGroups: DEFAULT_RULE_GROUPS,
@@ -608,30 +610,9 @@ export const useAppStore = create<AppState>()(
         return { ok: true };
       },
 
-      promoteRuleEnvironment: (ruleId) => {
-        const rule = get().rules.find((r) => r.id === ruleId);
-        if (!rule) return { ok: false, reason: "Rule not found." };
-        const { currentUser, roles } = get();
-
-        if (!hasCapability(roles, currentUser.role, "rule.publish")) {
-          return { ok: false, reason: `${currentUser.name} doesn't have permission to promote rules between environments.` };
-        }
-        const next: Record<RuleEnvironment, RuleEnvironment | null> = { Dev: "UAT", UAT: "Prod", Prod: null };
-        const nextEnv = next[rule.environment];
-        if (!nextEnv) return { ok: false, reason: `${rule.name} is already at Prod.` };
-
-        set((s) => ({
-          rules: s.rules.map((r) => (r.id === ruleId ? { ...r, environment: nextEnv, updatedAt: new Date().toISOString() } : r)),
-        }));
-        get().logAudit({
-          user: currentUser.name,
-          action: "Promoted Environment",
-          entity: "BusinessRule",
-          entityId: ruleId,
-          details: `${rule.name} promoted ${rule.environment} → ${nextEnv}.`,
-        });
-        return { ok: true };
-      },
+      // FUTURE: promoteRuleEnvironment removed for demo.
+      // Restore the full implementation when environment promotion is reintroduced.
+      promoteRuleEnvironment: (_ruleId: string) => ({ ok: false, reason: "Environment promotion is disabled in this release." }),
 
       ruleVersions: [],
 
@@ -675,6 +656,7 @@ export const useAppStore = create<AppState>()(
           category: snapshot.category,
           subCategory: snapshot.subCategory,
           groupId: snapshot.groupId,
+          sequence: snapshot.sequence,
           priority: snapshot.priority,
           owner: snapshot.owner,
           description: snapshot.description,
@@ -739,7 +721,7 @@ export const useAppStore = create<AppState>()(
           id: newId,
           name: `${source.name} (Copy)`,
           status: "Draft",
-          environment: "Dev",
+          // environment: "Dev", // FUTURE: restore when environment promotion is reintroduced
           version: 1,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -910,9 +892,33 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 13,
+      version: 16,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v15 -> v16 added `order` to ProductRuleMapping (product-based Rule
+        // Sequencer/chaining). Backfill any persisted mapping missing it
+        // using its existing position within that product's mappings, so
+        // execution order stays stable across the upgrade instead of
+        // silently falling back to priority-only sorting.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.productRuleMappings?.some((m) => m.order === undefined)) {
+            const counters: Record<string, number> = {};
+            s.productRuleMappings = s.productRuleMappings.map((m) => {
+              if (m.order !== undefined) return m;
+              const next = counters[m.productId] ?? 0;
+              counters[m.productId] = next + 1;
+              return { ...m, order: next };
+            });
+          }
+        }
+        //
+        // v14 -> v15 removed `requestParameterDefs` and `ruleExecutionMappings` (Execution Manager).
+        //
+        // v13 -> v14 added `products`/`productRuleMappings` (Product Master +
+        // Product-Rule Mapping). Both are brand-new keys — the default
+        // shallow merge fills them in from initial state automatically.
+        //
         // v12 -> v13 added `decisionResponseSettings` (Decision Result
         // module). Brand-new key — the default shallow merge fills it in
         // from initial state automatically.
@@ -984,15 +990,8 @@ export const useAppStore = create<AppState>()(
         }
 
         // v7 -> v8 added `environment` (Dev/UAT/Prod) to BusinessRule. Backfill
-        // any persisted rule missing it using the same default the seed data
-        // uses, so promotion state doesn't just silently become undefined.
-        if (state?.rules) {
-          state.rules = state.rules.map((r) =>
-            r.environment
-              ? r
-              : { ...r, environment: r.status === "Active" ? "Prod" : r.status === "Testing" ? "UAT" : "Dev" }
-          );
-        }
+        // removed — FUTURE: restore when environment promotion is reintroduced
+        // (BusinessRule.environment no longer exists on the type).
 
         // v6 -> v7 added a tamper-evident hash chain to AuditEntry. Any
         // persisted log saved before that has no prevHash/hash — rebuild the

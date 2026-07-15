@@ -21,14 +21,7 @@ function operatorText(op: string) {
   return map[op] ?? op;
 }
 
-const QUANTIFIER_TEXT: Record<string, string> = {
-  ANY: "any item",
-  ALL: "every item",
-  NONE: "no item",
-  COUNT: "the count of matching items",
-};
-
-function groupToText(group: ConditionGroup, catalog: BusinessField[]): string {
+export function groupToText(group: ConditionGroup, catalog: BusinessField[]): string {
   if (group.children.length === 0) return "always";
   return group.children
     .map((c) => {
@@ -37,20 +30,12 @@ function groupToText(group: ConditionGroup, catalog: BusinessField[]): string {
         const val = c.operator === "between" ? `${c.value} and ${c.value2}` : c.value || "…";
         return `${field} ${operatorText(c.operator)} ${val}`;
       }
-      if (c.type === "quantifier") {
-        const field = getField(catalog, c.field)?.label ?? c.field ?? "…";
-        const val = c.operator === "between" ? `${c.value} and ${c.value2}` : c.value || "…";
-        if (c.quantifier === "COUNT") {
-          return `${QUANTIFIER_TEXT.COUNT} in ${field} where item ${operatorText(c.operator)} ${val} is ${operatorText(c.countComparator ?? ">=")} ${c.countValue || "…"}`;
-        }
-        return `${QUANTIFIER_TEXT[c.quantifier]} in ${field} ${operatorText(c.operator)} ${val}`;
-      }
       return `(${groupToText(c, catalog)})`;
     })
     .join(` ${group.logic} `);
 }
 
-function actionsToText(actions: RuleAction[]): string {
+export function actionsToText(actions: RuleAction[]): string {
   return actions
     .map((a) => {
       if (a.type === "Approve" || a.type === "Reject") return `${a.type.toLowerCase()} the application${a.reasonCode ? ` (${a.reasonCode})` : ""}`;

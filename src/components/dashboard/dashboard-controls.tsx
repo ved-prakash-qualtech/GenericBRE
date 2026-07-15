@@ -122,18 +122,22 @@ export function DashboardControls({
               return (
                 <div
                   key={widget.id}
-                  draggable
-                  onDragStart={() => setDraggedId(widget.id)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => handleDrop(widget.id)}
-                  onDragEnd={() => setDraggedId(null)}
                   style={{ opacity: widget.hidden ? 0.5 : 1 }}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2.5 shadow-sm transition-opacity",
+                    "flex select-none items-center gap-2.5 rounded-lg border bg-card px-3 py-2.5 shadow-sm transition-opacity",
                     widget.hidden && "border-dashed"
                   )}
                 >
-                  <GripVertical className="size-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing" />
+                  <span
+                    draggable
+                    onDragStart={() => setDraggedId(widget.id)}
+                    onDragEnd={() => setDraggedId(null)}
+                    className="flex shrink-0 cursor-grab active:cursor-grabbing"
+                  >
+                    <GripVertical className="size-4 text-muted-foreground" />
+                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{def.label}</p>
                     <p className="text-[11px] text-muted-foreground">

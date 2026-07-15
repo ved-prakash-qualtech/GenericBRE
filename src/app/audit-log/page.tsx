@@ -160,7 +160,7 @@ export default function AuditLogPage() {
                           <td colSpan={6} className="px-5 py-3">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
                               <DetailField label="Correlation ID" value={a.decisionContext.correlationId} mono />
-                              <DetailField label="Environment" value={a.decisionContext.environment} />
+                              {/* Environment removed — FUTURE: restore <DetailField label="Environment" value={a.decisionContext.environment} /> */}
                               <DetailField label="Execution Time" value={`${a.decisionContext.executionTimeMs.toFixed(1)}ms`} />
                               <DetailField
                                 label="Triggered Rules"

@@ -1,30 +1,50 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Check, ChevronsUpDown, Trash2, Variable } from "lucide-react";
 import { Condition, Domain, Operator } from "@/lib/types";
 import { fieldsForDomain, getField, OPERATORS } from "@/lib/fields";
 import { useAppStore } from "@/lib/store";
+import { getGeneratedVariables } from "@/lib/rule-chaining";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 const BOOLEAN_ITEMS = { true: "Yes", false: "No" };
 
 export function ConditionEditor({
   condition,
   domain,
+  currentRuleId,
   onChange,
   onDelete,
 }: {
   condition: Condition;
   domain: Domain;
+  /** The rule being edited, so its own outputs are excluded from its own
+   *  "Generated Variables" list — rule chaining is global (see
+   *  src/lib/rule-chaining.ts), not scoped to a group. Absent for Rule Templates. */
+  currentRuleId?: string;
   onChange: (patch: Partial<Condition>) => void;
   onDelete: () => void;
 }) {
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
+  const rules = useAppStore((s) => s.rules);
+  const [fieldPickerOpen, setFieldPickerOpen] = useState(false);
   const fields = fieldsForDomain(fieldCatalog, domain);
+  const variables = getGeneratedVariables(rules, currentRuleId);
   const field = getField(fieldCatalog, condition.field);
+  const variable = variables.find((v) => v.key === condition.field);
   const availableOperators = OPERATORS.filter((o) => !field || o.types.includes(field.type));
+  const fieldLabel = field?.label ?? variable?.key ?? "";
+
+  const selectField = (key: string) => {
+    onChange({ field: key, value: "", value2: undefined });
+    setFieldPickerOpen(false);
+  };
 
   const renderValueInput = () => {
     if (field?.type === "boolean") {
@@ -51,10 +71,11 @@ export function ConditionEditor({
       );
     }
     if (condition.operator === "between") {
+      const betweenType = field?.type === "date" ? "date" : "number";
       return (
         <div className="flex items-center gap-1.5">
           <Input
-            type="number"
+            type={betweenType}
             value={condition.value}
             onChange={(e) => onChange({ value: e.target.value })}
             placeholder="From"
@@ -62,7 +83,7 @@ export function ConditionEditor({
           />
           <span className="text-xs text-muted-foreground">–</span>
           <Input
-            type="number"
+            type={betweenType}
             value={condition.value2 ?? ""}
             onChange={(e) => onChange({ value2: e.target.value })}
             placeholder="To"
@@ -73,7 +94,7 @@ export function ConditionEditor({
     }
     return (
       <Input
-        type={field?.type === "number" || field?.type === "currency" ? "number" : "text"}
+        type={field?.type === "number" || field?.type === "currency" ? "number" : field?.type === "date" ? "date" : "text"}
         value={condition.value}
         onChange={(e) => onChange({ value: e.target.value })}
         placeholder={condition.operator === "in" ? "value1, value2, ..." : "Value"}
@@ -84,20 +105,45 @@ export function ConditionEditor({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 rounded-lg border bg-background px-2 py-1.5">
-      <Select
-        items={Object.fromEntries(fields.map((f) => [f.key, f.label]))}
-        value={condition.field || undefined}
-        onValueChange={(v) => onChange({ field: v as string, value: "", value2: undefined })}
-      >
-        <SelectTrigger size="sm" className="h-8 w-44">
-          <SelectValue placeholder="Business field..." />
-        </SelectTrigger>
-        <SelectContent>
-          {fields.map((f) => (
-            <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Popover open={fieldPickerOpen} onOpenChange={setFieldPickerOpen}>
+        <PopoverTrigger
+          render={<Button variant="outline" size="sm" className="h-8 w-48 justify-between gap-1.5 font-normal" />}
+        >
+          <span className="flex min-w-0 items-center gap-1.5 truncate">
+            {variable && <Variable className="size-3.5 shrink-0 text-primary" />}
+            <span className="truncate">{fieldLabel || "Search fields..."}</span>
+          </span>
+          <ChevronsUpDown className="size-3.5 shrink-0 opacity-50" />
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-64 p-0">
+          <Command>
+            <CommandInput placeholder="Search fields..." />
+            <CommandList>
+              <CommandEmpty>No matching fields.</CommandEmpty>
+              <CommandGroup heading="Business Fields">
+                {fields.map((f) => (
+                  <CommandItem key={f.key} value={f.label} onSelect={() => selectField(f.key)} className="gap-2">
+                    <Check className={cn("size-3.5", condition.field === f.key ? "opacity-100" : "opacity-0")} />
+                    {f.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              {variables.length > 0 && (
+                <CommandGroup heading="Generated Variables">
+                  {variables.map((v) => (
+                    <CommandItem key={v.key} value={v.key} onSelect={() => selectField(v.key)} className="gap-2">
+                      <Check className={cn("size-3.5", condition.field === v.key ? "opacity-100" : "opacity-0")} />
+                      <Variable className="size-3.5 shrink-0 text-primary" />
+                      <span className="truncate">{v.key}</span>
+                      <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">from {v.sourceRuleName}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
 
       <Select
         items={Object.fromEntries(availableOperators.map((o) => [o.value, o.label]))}

@@ -7,6 +7,8 @@ import {
   DecisionMatrix,
   Domain,
   Priority,
+  Product,
+  ProductRuleMapping,
   Role,
   RuleGroup,
   RuleStatus,
@@ -59,6 +61,7 @@ function makeRule(partial: {
   createdDaysAgo: number;
   updatedDaysAgo: number;
   simulatable?: boolean;
+  groupId?: string;
 }): BusinessRule {
   return {
     id: partial.id,
@@ -66,13 +69,9 @@ function makeRule(partial: {
     domain: partial.domain,
     category: partial.category,
     subCategory: partial.subCategory,
+    groupId: partial.groupId,
     priority: partial.priority,
     status: partial.status,
-    // Sensible default so pre-existing seed data isn't all stuck in "Dev":
-    // an established Active rule is presumed already promoted to Prod, a
-    // Testing rule sits in UAT pending its promotion decision, anything
-    // else (Draft/Inactive/Archived) is Dev until someone promotes it.
-    environment: partial.status === "Active" ? "Prod" : partial.status === "Testing" ? "UAT" : "Dev",
     description: partial.description,
     owner: partial.owner,
     rootGroup: partial.rootGroup,
@@ -217,6 +216,27 @@ export const CORE_RULES: BusinessRule[] = [
     createdDaysAgo: 60,
     updatedDaysAgo: 45,
   }),
+  makeRule({
+    id: "RL-111",
+    name: "High-Risk Profile Escalation",
+    domain: "Lending",
+    category: "Underwriting",
+    priority: 2,
+    status: "Active",
+    description:
+      "Nested group demo (OR of two ANDs): escalates a case if either a marginal-credit self-employed applicant, or a large loan paired with a high DTI, is detected.",
+    owner: "Credit Risk Division",
+    rootGroup: group("OR", [
+      group("AND", [cond("credit_score", "<", "700"), cond("employment_type", "=", "Self-Employed")]),
+      group("AND", [cond("loan_amount", ">", "3000000"), cond("dti_ratio", ">", "40")]),
+    ]),
+    actions: [
+      { id: cid(), type: "Show Message", reasonCode: "COMPOSITE_RISK_REVIEW", message: "Composite risk profile detected — route to senior underwriter." },
+    ],
+    createdDaysAgo: 10,
+    updatedDaysAgo: 3,
+    groupId: "grp-risk-review",
+  }),
 
   // ---------------- INSURANCE ----------------
   makeRule({
@@ -329,6 +349,26 @@ export const CORE_RULES: BusinessRule[] = [
     actions: [{ id: cid(), type: "Reject", reasonCode: "HAZARDOUS_EXCLUSION", message: "Combined smoker and high-risk occupation profile excluded under draft policy." }],
     createdDaysAgo: 4, updatedDaysAgo: 1,
   }),
+  makeRule({
+    id: "RL-210",
+    name: "Composite Underwriting Risk Gate",
+    domain: "Insurance",
+    category: "Risk & Fraud",
+    priority: 2,
+    status: "Active",
+    description:
+      "Nested group demo (OR of two ANDs): flags a proposal if either an overweight smoker, or a high-risk occupation combined with a large sum assured, is detected.",
+    owner: "Actuarial Underwriting",
+    rootGroup: group("OR", [
+      group("AND", [cond("smoker", "=", "true"), cond("bmi", ">", "30")]),
+      group("AND", [cond("occupation_type", "=", "High Risk"), cond("sum_assured", ">", "3000000")]),
+    ]),
+    actions: [
+      { id: cid(), type: "Show Message", reasonCode: "COMPOSITE_UNDERWRITING_RISK", message: "Composite underwriting risk detected — route for manual review." },
+    ],
+    createdDaysAgo: 7, updatedDaysAgo: 1,
+    groupId: "grp-risk-review",
+  }),
 
   // ---------------- NBFC / GOLD LOAN ----------------
   makeRule({
@@ -424,6 +464,24 @@ export const CORE_RULES: BusinessRule[] = [
     rootGroup: group("AND", [cond("collateral_type", "=", "Vehicle")]),
     actions: [{ id: cid(), type: "Show Message", reasonCode: "VEHICLE_AGE_CHECK", message: "Vehicle registration age verification required." }],
     createdDaysAgo: 55, updatedDaysAgo: 48,
+  }),
+  makeRule({
+    id: "RL-310",
+    name: "Bulk High-Value Pledge Escalation",
+    domain: "NBFC",
+    category: "Risk & Fraud",
+    priority: 2,
+    status: "Active",
+    description:
+      "Nested group demo (OR of two ANDs): escalates a pledge if either high-value gold collateral or a high-LTV property pledge is detected.",
+    owner: "Credit Risk Division",
+    rootGroup: group("OR", [
+      group("AND", [cond("collateral_type", "=", "Gold"), cond("appraised_value", ">", "800000")]),
+      group("AND", [cond("collateral_type", "=", "Property"), cond("ltv_requested", ">", "60")]),
+    ]),
+    actions: [{ id: cid(), type: "Show Message", reasonCode: "BULK_PLEDGE_ESCALATION", message: "High-value pledge profile detected — route for manager escalation." }],
+    createdDaysAgo: 5, updatedDaysAgo: 1,
+    groupId: "grp-risk-review",
   }),
 ];
 
@@ -600,6 +658,39 @@ export const DEFAULT_RULE_GROUPS: RuleGroup[] = [
   { id: "grp-core-eligibility", name: "Core Eligibility Bundle", description: "The baseline pass/fail checks every application must clear first." },
   { id: "grp-risk-review", name: "Risk & Compliance Review", description: "Rules that flag a case for manual review rather than an automatic decision." },
   { id: "grp-pricing", name: "Pricing & Calculation", description: "Rules that compute or adjust a numeric outcome rather than approve/reject." },
+];
+
+// ============================================================
+// PRODUCT MASTER + PRODUCT-RULE MAPPING — a Product is just a configurable
+// named scheme a client offers (Home Loan, Auto Loan, ...); which rules apply
+// to it is entirely data (ProductRuleMapping), not code. Seeded here so the
+// new Studio pages and Simulator aren't empty on first load.
+// ============================================================
+
+const PRODUCT_SEED_TIMESTAMP = "2026-01-15T09:00:00.000Z";
+
+export const DEFAULT_PRODUCTS: Product[] = [
+  { id: "prod-home-loan", name: "Home Loan", code: "HOME_LOAN", domain: "Lending", description: "Standard salaried/self-employed home loan scheme.", status: "Active", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+  { id: "prod-auto-loan", name: "Auto Loan", code: "AUTO_LOAN", domain: "Lending", description: "New/used vehicle purchase financing.", status: "Active", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+  { id: "prod-term-life", name: "Term Life Cover", code: "TERM_LIFE", domain: "Insurance", description: "Pure protection term life plan.", status: "Active", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+  { id: "prod-gold-loan", name: "Gold Loan", code: "GOLD_LOAN", domain: "NBFC", description: "Collateral-backed gold loan scheme.", status: "Active", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+];
+
+function mapping(id: string, productId: string, ruleId: string, order: number): ProductRuleMapping {
+  return { id, productId, ruleId, active: true, order, createdAt: PRODUCT_SEED_TIMESTAMP };
+}
+
+export const DEFAULT_PRODUCT_RULE_MAPPINGS: ProductRuleMapping[] = [
+  mapping("prm-1", "prod-home-loan", "RL-101", 0),
+  mapping("prm-2", "prod-home-loan", "RL-103", 1),
+  mapping("prm-3", "prod-home-loan", "RL-104", 2),
+  mapping("prm-4", "prod-home-loan", "RL-106", 3),
+  mapping("prm-5", "prod-auto-loan", "RL-103", 0),
+  mapping("prm-6", "prod-auto-loan", "RL-107", 1),
+  mapping("prm-7", "prod-term-life", "RL-202", 0),
+  mapping("prm-8", "prod-term-life", "RL-201", 1),
+  mapping("prm-9", "prod-gold-loan", "RL-301", 0),
+  mapping("prm-10", "prod-gold-loan", "RL-302", 1),
 ];
 
 // ============================================================

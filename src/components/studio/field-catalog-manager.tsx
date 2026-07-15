@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Search, Download, Upload, AlertTriangle, Link2 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { BusinessField, FieldDataType, FieldItemType } from "@/lib/types";
+import { BusinessField, FieldDataType } from "@/lib/types";
 import { fieldUsage } from "@/lib/condition-tree";
 import { downloadCsv, parseCsv } from "@/lib/csv";
 import { Button } from "@/components/ui/button";
@@ -35,8 +35,10 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 
-const FIELD_TYPES: FieldDataType[] = ["number", "string", "boolean", "enum", "currency", "list"];
-const ITEM_TYPES: FieldItemType[] = ["number", "string", "boolean", "enum", "currency"];
+// "list" is deliberately excluded — it's still a valid FieldDataType (JSON
+// Mapping uses it independently for JSON array attribute inference), but no
+// BusinessField consumer exists for it anymore, so it isn't offered here.
+const FIELD_TYPES: FieldDataType[] = ["number", "string", "boolean", "enum", "currency", "date"];
 const STATUSES: NonNullable<BusinessField["status"]>[] = ["Active", "Draft", "Deprecated"];
 
 const BLANK: BusinessField = { key: "", label: "", domain: "Common", type: "string", status: "Active" };
@@ -59,7 +61,6 @@ export function FieldCatalogManager() {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState<BusinessField>(BLANK);
   const [optionsText, setOptionsText] = useState("");
-  const [itemOptionsText, setItemOptionsText] = useState("");
   const [open, setOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<BusinessField | null>(null);
 
@@ -86,14 +87,12 @@ export function FieldCatalogManager() {
     setEditingKey(null);
     setDraft(BLANK);
     setOptionsText("");
-    setItemOptionsText("");
     setOpen(true);
   };
   const startEdit = (field: BusinessField) => {
     setEditingKey(field.key);
     setDraft(field);
     setOptionsText((field.options ?? []).join(", "));
-    setItemOptionsText((field.itemOptions ?? []).join(", "));
     setOpen(true);
   };
 
@@ -102,26 +101,16 @@ export function FieldCatalogManager() {
       toast.error("Field label is required.");
       return;
     }
-    if (draft.type === "list" && !draft.itemType) {
-      toast.error("Pick the item type for this list field.");
-      return;
-    }
     const key = editingKey ?? draft.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
     if (!editingKey && fieldCatalog.some((f) => f.key === key)) {
       toast.error(`A field with key "${key}" already exists.`);
       return;
     }
     const options = draft.type === "enum" ? optionsText.split(",").map((o) => o.trim()).filter(Boolean) : undefined;
-    const itemOptions =
-      draft.type === "list" && draft.itemType === "enum"
-        ? itemOptionsText.split(",").map((o) => o.trim()).filter(Boolean)
-        : undefined;
     const field: BusinessField = {
       ...draft,
       key,
       options,
-      itemType: draft.type === "list" ? draft.itemType : undefined,
-      itemOptions: draft.type === "list" ? itemOptions : undefined,
       status: draft.status ?? "Active",
     };
 
@@ -152,7 +141,6 @@ export function FieldCatalogManager() {
         Industry: f.domain,
         Entity: f.entity ?? "",
         Type: f.type,
-        "Item Type": f.itemType ?? "",
         Unit: f.unit ?? "",
         "Source System": f.sourceSystem ?? "",
         Status: f.status ?? "Active",
@@ -184,7 +172,6 @@ export function FieldCatalogManager() {
           domain,
           entity: row.Entity || undefined,
           type,
-          itemType: (row["Item Type"] as FieldItemType) || undefined,
           unit: row.Unit || undefined,
           sourceSystem: row["Source System"] || undefined,
           status: (row.Status as BusinessField["status"]) || "Active",
@@ -312,7 +299,7 @@ export function FieldCatalogManager() {
                   <TableCell className="font-mono text-xs text-muted-foreground">{f.key}</TableCell>
                   <TableCell className="text-xs">{f.domain === "Common" ? "Common (all)" : industries.find((i) => i.id === f.domain)?.name ?? f.domain}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{entities.find((e) => e.id === f.entity)?.name ?? "—"}</TableCell>
-                  <TableCell className="text-xs capitalize">{f.type === "list" ? `list of ${f.itemType ?? "…"}` : f.type}</TableCell>
+                  <TableCell className="text-xs capitalize">{f.type}</TableCell>
                   <TableCell className={`text-xs font-medium ${STATUS_TONE[f.status ?? "Active"]}`}>{f.status ?? "Active"}</TableCell>
                   <TableCell>
                     {usage.count === 0 ? (
@@ -387,14 +374,6 @@ export function FieldCatalogManager() {
                 placeholder="e.g. Policy Term (Months)"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label>Business Name</Label>
-              <Input
-                value={draft.businessName ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, businessName: e.target.value || undefined }))}
-                placeholder="How business users refer to this field"
-              />
-            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Domain *</Label>
@@ -453,35 +432,6 @@ export function FieldCatalogManager() {
               <div className="space-y-1.5">
                 <Label>Options (comma-separated)</Label>
                 <Input value={optionsText} onChange={(e) => setOptionsText(e.target.value)} placeholder="Low Risk, Medium Risk, High Risk" />
-              </div>
-            )}
-            {draft.type === "list" && (
-              <div className="space-y-3 rounded-lg border p-3">
-                <p className="text-[11px] text-muted-foreground">
-                  A list field holds multiple values (e.g. each dependent&apos;s age, or each collateral item&apos;s
-                  value) — the Rule Builder can test it with ANY / ALL / NONE / COUNT conditions instead of a single
-                  value.
-                </p>
-                <div className="space-y-1.5">
-                  <Label>Item Type *</Label>
-                  <Select
-                    value={draft.itemType}
-                    onValueChange={(v) => setDraft((d) => ({ ...d, itemType: (v ?? "number") as FieldItemType }))}
-                  >
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Select..." /></SelectTrigger>
-                    <SelectContent>
-                      {ITEM_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {draft.itemType === "enum" && (
-                  <div className="space-y-1.5">
-                    <Label>Item Options (comma-separated)</Label>
-                    <Input value={itemOptionsText} onChange={(e) => setItemOptionsText(e.target.value)} placeholder="Gold, Vehicle, Property" />
-                  </div>
-                )}
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">

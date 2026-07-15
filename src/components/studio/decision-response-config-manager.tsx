@@ -33,22 +33,20 @@ const DEFAULT_SCOPE = "default";
 
 export function DecisionResponseConfigManager() {
   const industries = useAppStore((s) => s.industries);
-  const ruleExecutionMappings = useAppStore((s) => s.ruleExecutionMappings);
   const decisionResponseSettings = useAppStore((s) => s.decisionResponseSettings);
   const setDecisionResponseConfig = useAppStore((s) => s.setDecisionResponseConfig);
 
   const scopes = [
     { id: DEFAULT_SCOPE, name: "Default (all)" },
     ...industries.map((i) => ({ id: i.id, name: i.name })),
-    ...ruleExecutionMappings.map((m) => ({ id: m.id, name: `Workflow: ${m.name}` })),
   ];
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
         Controls how much detail a decision result exposes — from a lightweight Decision Only response for external
-        APIs up to a Full Audit response with a structured Audit Log entry. Resolution is most-specific-wins: a
-        Workflow (Execution Manager mapping) override beats an Industry override, which beats Default.
+        APIs up to a Full Audit response with a structured Audit Log entry. Resolution is most-specific-wins: an
+        Industry override beats Default.
       </p>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">

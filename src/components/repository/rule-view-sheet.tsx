@@ -18,22 +18,16 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { StatusBadge, PriorityBadge, EnvironmentBadge } from "@/components/status-badge";
-import { BusinessField, BusinessRule, Condition, ConditionGroup, QuantifierCondition, RuleAction, RuleVersion } from "@/lib/types";
+import { StatusBadge, PriorityBadge } from "@/components/status-badge";
+import { BusinessField, BusinessRule, Condition, ConditionGroup, RuleAction, RuleVersion } from "@/lib/types";
 import { getField } from "@/lib/fields";
-import { flattenConditions, flattenQuantifiers } from "@/lib/conflict-detection";
+import { flattenConditions } from "@/lib/conflict-detection";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 function describeCondition(c: Condition, catalog: BusinessField[]): string {
   const label = getField(catalog, c.field)?.label ?? c.field;
   return `${label} ${c.operator} ${c.value}${c.value2 ? ` – ${c.value2}` : ""}`;
-}
-
-function describeQuantifier(q: QuantifierCondition, catalog: BusinessField[]): string {
-  const label = getField(catalog, q.field)?.label ?? q.field;
-  const base = `${q.quantifier} ${label} item ${q.operator} ${q.value}${q.value2 ? ` – ${q.value2}` : ""}`;
-  return q.quantifier === "COUNT" ? `${base} (count ${q.countComparator ?? ">="} ${q.countValue})` : base;
 }
 
 function describeAction(a: RuleVersion["actions"][number]): string {
@@ -48,7 +42,7 @@ const META_FIELDS: { key: keyof RuleVersion; label: string }[] = [
   { key: "category", label: "Category" },
   { key: "subCategory", label: "Sub-category" },
   { key: "priority", label: "Priority" },
-  { key: "owner", label: "Owner" },
+  // { key: "owner", label: "Owner" }, // FUTURE: restore when Owner is reintroduced
   { key: "description", label: "Description" },
 ];
 
@@ -57,16 +51,8 @@ function diffVersions(prev: RuleVersion | undefined, curr: RuleVersion, catalog:
     (m) => prev !== undefined && m.before !== m.after
   );
 
-  const prevConds = prev
-    ? [
-        ...flattenConditions(prev.rootGroup).map((c) => describeCondition(c, catalog)),
-        ...flattenQuantifiers(prev.rootGroup).map((q) => describeQuantifier(q, catalog)),
-      ]
-    : [];
-  const currConds = [
-    ...flattenConditions(curr.rootGroup).map((c) => describeCondition(c, catalog)),
-    ...flattenQuantifiers(curr.rootGroup).map((q) => describeQuantifier(q, catalog)),
-  ];
+  const prevConds = prev ? flattenConditions(prev.rootGroup).map((c) => describeCondition(c, catalog)) : [];
+  const currConds = flattenConditions(curr.rootGroup).map((c) => describeCondition(c, catalog));
   const conditionsAdded = currConds.filter((c) => !prevConds.includes(c));
   const conditionsRemoved = prevConds.filter((c) => !currConds.includes(c));
 
@@ -96,20 +82,6 @@ function GroupView({ group, depth = 0, catalog }: { group: ConditionGroup; depth
               <span className="font-medium">{getField(catalog, child.field)?.label ?? child.field}</span>{" "}
               <span className="text-muted-foreground">{child.operator}</span>{" "}
               <span className="font-mono">{child.value}{child.value2 ? ` – ${child.value2}` : ""}</span>
-            </div>
-          ) : child.type === "quantifier" ? (
-            <div className="rounded-md border border-violet-500/30 bg-violet-500/5 px-2.5 py-1.5 text-xs">
-              <span className="font-semibold text-violet-600 dark:text-violet-400">{child.quantifier}</span>{" "}
-              <span className="font-medium">{getField(catalog, child.field)?.label ?? child.field}</span>{" "}
-              <span className="text-muted-foreground">where item {child.operator}</span>{" "}
-              <span className="font-mono">{child.value}{child.value2 ? ` – ${child.value2}` : ""}</span>
-              {child.quantifier === "COUNT" && (
-                <>
-                  {" "}
-                  <span className="text-muted-foreground">is {child.countComparator ?? ">="}</span>{" "}
-                  <span className="font-mono">{child.countValue}</span>
-                </>
-              )}
             </div>
           ) : (
             <GroupView group={child} depth={depth + 1} catalog={catalog} />
@@ -275,17 +247,18 @@ export function RuleViewSheet({ rule, open, onOpenChange }: { rule: BusinessRule
             <ScrollArea className="flex-1 px-4">
               <div className="flex flex-wrap gap-2 pb-4">
                 <StatusBadge status={rule.status} />
-                <EnvironmentBadge environment={rule.environment} />
                 <PriorityBadge priority={rule.priority} />
                 <span className="rounded-full border px-2 py-0.5 text-[11px]">{rule.domain}</span>
                 <span className="rounded-full border px-2 py-0.5 text-[11px]">{rule.category}</span>
               </div>
               <Separator />
               <div className="grid grid-cols-2 gap-3 py-4 text-xs">
+                {/* FUTURE: Owner metadata removed for demo. Restore when reintroduced:
                 <div>
                   <p className="text-muted-foreground">Owner</p>
                   <p className="font-medium">{rule.owner}</p>
                 </div>
+                */}
                 <div>
                   <p className="text-muted-foreground">Version</p>
                   <p className="font-medium">v{rule.version}</p>

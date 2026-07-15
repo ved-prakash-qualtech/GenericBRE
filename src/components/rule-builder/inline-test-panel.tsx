@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PlayCircle, CheckCircle2, XCircle, FlaskConical } from "lucide-react";
-import { BusinessField, ConditionGroup, RuleAction } from "@/lib/types";
+import { ConditionGroup, RuleAction } from "@/lib/types";
 import { collectFieldKeys } from "@/lib/condition-tree";
 import { evaluateGroup, ConditionEvalDetail } from "@/lib/engine";
 import { getField } from "@/lib/fields";
@@ -12,18 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-function coerceListValue(raw: string, itemType: BusinessField["itemType"]): (string | number | boolean)[] {
-  return raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((s) => {
-      if (itemType === "number" || itemType === "currency") return parseFloat(s) || 0;
-      if (itemType === "boolean") return s.toLowerCase() === "true" || s === "yes";
-      return s;
-    });
-}
-
+// Single-rule inline testing — a standalone rule is tested in isolation
+// here. A real multi-rule chained run (mapped rules, in configured
+// Product-Rule Mapping order) belongs to Rule Simulator, which already does
+// this correctly against live execution semantics.
 export function InlineTestPanel({
   rootGroup,
   actions,
@@ -34,25 +26,27 @@ export function InlineTestPanel({
   elseActions?: RuleAction[];
 }) {
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
-  const fieldKeys = useMemo(() => Array.from(collectFieldKeys(rootGroup)), [rootGroup]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [result, setResult] = useState<{ passed: boolean; details: ConditionEvalDetail[] } | null>(null);
 
-  const runTest = () => {
-    const details: ConditionEvalDetail[] = [];
-    const input: Record<string, string | number | boolean | (string | number | boolean)[]> = {};
+  const fieldKeys = useMemo(() => Array.from(collectFieldKeys(rootGroup)), [rootGroup]);
+
+  const buildInput = () => {
+    const input: Record<string, string | number | boolean> = {};
     for (const key of fieldKeys) {
       const field = getField(fieldCatalog, key);
       const raw = values[key] ?? "";
-      if (field?.type === "list") {
-        input[key] = coerceListValue(raw, field.itemType);
-        continue;
-      }
       let v: string | number | boolean = raw;
       if (field?.type === "number" || field?.type === "currency") v = parseFloat(String(v)) || 0;
       if (field?.type === "boolean") v = v === "true";
       input[key] = v;
     }
+    return input;
+  };
+
+  const runTest = () => {
+    const input = buildInput();
+    const details: ConditionEvalDetail[] = [];
     const passed = evaluateGroup(rootGroup, input, details, fieldCatalog);
     setResult({ passed, details });
   };
@@ -74,7 +68,7 @@ export function InlineTestPanel({
             {fieldKeys.map((key) => {
               const field = getField(fieldCatalog, key);
               return (
-                <div key={key} className={cn("space-y-1", field?.type === "list" && "col-span-2")}>
+                <div key={key} className="space-y-1">
                   <label className="text-[11px] text-muted-foreground">{field?.label ?? key}</label>
                   {field?.type === "boolean" ? (
                     <Select items={{ true: "Yes", false: "No" }} value={values[key]} onValueChange={(v) => setValues((s) => ({ ...s, [key]: v as string }))}>
@@ -93,16 +87,9 @@ export function InlineTestPanel({
                         ))}
                       </SelectContent>
                     </Select>
-                  ) : field?.type === "list" ? (
-                    <Input
-                      value={values[key] ?? ""}
-                      onChange={(e) => setValues((s) => ({ ...s, [key]: e.target.value }))}
-                      placeholder={`e.g. ${field.itemType === "number" ? "10, 20, 30" : "item1, item2, item3"}`}
-                      className="h-8 text-xs"
-                    />
                   ) : (
                     <Input
-                      type={field?.type === "number" || field?.type === "currency" ? "number" : "text"}
+                      type={field?.type === "number" || field?.type === "currency" ? "number" : field?.type === "date" ? "date" : "text"}
                       value={values[key] ?? ""}
                       onChange={(e) => setValues((s) => ({ ...s, [key]: e.target.value }))}
                       className="h-8 text-xs"

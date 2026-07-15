@@ -1,16 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, FolderPlus, Trash2, ChevronDown, ChevronRight, Layers } from "lucide-react";
+import { Plus, FolderPlus, Trash2, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Condition, ConditionGroup, Domain, QuantifierCondition } from "@/lib/types";
-import { emptyCondition, emptyGroup, emptyQuantifierCondition } from "@/lib/condition-tree";
+import { Condition, ConditionGroup, Domain } from "@/lib/types";
+import { emptyCondition, emptyGroup } from "@/lib/condition-tree";
 import { ConditionEditor } from "./condition-editor";
-import { QuantifierConditionEditor } from "./quantifier-condition-editor";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type TreeNode = Condition | ConditionGroup | QuantifierCondition;
+type TreeNode = Condition | ConditionGroup;
 
 interface GroupEditorProps {
   group: ConditionGroup;
@@ -19,16 +17,31 @@ interface GroupEditorProps {
   onDelete: (id: string) => void;
   onAddChild: (groupId: string, child: TreeNode) => void;
   isRoot?: boolean;
+  /** The rule being edited — threaded down so ConditionEditor can exclude
+   *  its own outputs from its "Generated Variables" list (rule chaining is
+   *  global, see src/lib/rule-chaining.ts). Absent for Rule Templates. */
+  currentRuleId?: string;
 }
 
-export function ConditionGroupEditor({ group, domain, onUpdate, onDelete, onAddChild, isRoot }: GroupEditorProps) {
-  const [collapsed, setCollapsed] = useState(false);
+function collectGroupIds(group: ConditionGroup, out: string[] = []): string[] {
+  out.push(group.id);
+  for (const child of group.children) {
+    if (child.type === "group") collectGroupIds(child, out);
+  }
+  return out;
+}
+
+export function ConditionGroupEditor({ group, domain, onUpdate, onDelete, onAddChild, isRoot, currentRuleId }: GroupEditorProps) {
+  // Collapse state lives on the group itself (ConditionGroup.collapsed) so it
+  // persists with the rule and a root "Collapse All/Expand All" can drive
+  // every nested group at once, instead of being local-only UI state.
+  const collapsed = !isRoot && !!group.collapsed;
 
   return (
     <div className={cn("rounded-xl border", isRoot ? "border-border bg-muted/20" : "border-dashed bg-background/60 ml-1")}>
       <div className="flex items-center gap-2 border-b px-3 py-2">
         {!isRoot && (
-          <button onClick={() => setCollapsed((c) => !c)} className="text-muted-foreground hover:text-foreground">
+          <button onClick={() => onUpdate(group.id, { collapsed: !collapsed })} className="text-muted-foreground hover:text-foreground">
             {collapsed ? <ChevronRight className="size-3.5" /> : <ChevronDown className="size-3.5" />}
           </button>
         )}
@@ -52,11 +65,28 @@ export function ConditionGroupEditor({ group, domain, onUpdate, onDelete, onAddC
         </span>
 
         <div className="ml-auto flex items-center gap-1">
+          {isRoot && group.children.some((c) => c.type === "group") && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs text-muted-foreground"
+                onClick={() => collectGroupIds(group).forEach((id) => id !== group.id && onUpdate(id, { collapsed: true }))}
+              >
+                <ChevronsDownUp className="size-3" /> Collapse All
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 text-xs text-muted-foreground"
+                onClick={() => collectGroupIds(group).forEach((id) => id !== group.id && onUpdate(id, { collapsed: false }))}
+              >
+                <ChevronsUpDown className="size-3" /> Expand All
+              </Button>
+            </>
+          )}
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => onAddChild(group.id, emptyCondition())}>
             <Plus className="size-3" /> Condition
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => onAddChild(group.id, emptyQuantifierCondition())}>
-            <Layers className="size-3" /> Quantifier
           </Button>
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => onAddChild(group.id, emptyGroup())}>
             <FolderPlus className="size-3" /> Group
@@ -93,13 +123,7 @@ export function ConditionGroupEditor({ group, domain, onUpdate, onDelete, onAddC
                     <ConditionEditor
                       condition={child}
                       domain={domain}
-                      onChange={(patch) => onUpdate(child.id, patch)}
-                      onDelete={() => onDelete(child.id)}
-                    />
-                  ) : child.type === "quantifier" ? (
-                    <QuantifierConditionEditor
-                      condition={child}
-                      domain={domain}
+                      currentRuleId={currentRuleId}
                       onChange={(patch) => onUpdate(child.id, patch)}
                       onDelete={() => onDelete(child.id)}
                     />
@@ -110,6 +134,7 @@ export function ConditionGroupEditor({ group, domain, onUpdate, onDelete, onAddC
                       onUpdate={onUpdate}
                       onDelete={onDelete}
                       onAddChild={onAddChild}
+                      currentRuleId={currentRuleId}
                     />
                   )}
                 </div>
