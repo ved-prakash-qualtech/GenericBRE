@@ -5,6 +5,10 @@ import { persist } from "zustand/middleware";
 import {
   ALL_RULES,
   AUDIT_LOG,
+  DEFAULT_NOTIFY_CATEGORIES,
+  DEFAULT_NOTIFY_TRIGGERS,
+  DEFAULT_NOTIFY_WORKFLOWS,
+  DEFAULT_NOTIFY_WORKFLOW_TEMPLATES,
   DEFAULT_PRODUCTS,
   DEFAULT_PRODUCT_RULE_MAPPINGS,
   DEFAULT_ROLES,
@@ -12,7 +16,6 @@ import {
   DEFAULT_RULE_TEMPLATES,
   DEFAULT_USERS,
   MATRICES,
-  NOTIFICATIONS,
 } from "./mock-data";
 import {
   AppNotification,
@@ -34,6 +37,10 @@ import {
   ExecutionSettings,
   Industry,
   JsonMapping,
+  NotifyCategory,
+  NotifyTrigger,
+  NotifyWorkflow,
+  NotifyWorkflowTemplate,
   Product,
   ProductRuleMapping,
   RuleCategory,
@@ -85,6 +92,8 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   largeClickTargets: false,
   showInsights: true,
   logo: null,
+  appName: "Business Rules Engine",
+  tagline: "Decision Platform",
 };
 
 function snapshotFromRule(
@@ -126,7 +135,6 @@ const DEFAULT_GLOBAL_FILTERS: GlobalFilters = { domains: [], statuses: [] };
 interface AppState {
   rules: BusinessRule[];
   matrices: DecisionMatrix[];
-  notifications: AppNotification[];
   auditLog: AuditEntry[];
   simulations: SimulationResult[];
   appearance: AppearanceSettings;
@@ -226,6 +234,20 @@ interface AppState {
   // for a checklist-style mapping UI (see product-rule-mapping-manager.tsx).
   saveProductRuleMapping: (productId: string, ruleIds: string[]) => void;
 
+  // NotifyX — trigger -> condition -> action workflow automation (config-only
+  // prototype, no execution engine). Categories/Triggers are configurable
+  // registries; see src/components/studio/notify-x-manager.tsx.
+  notifyCategories: NotifyCategory[];
+  notifyTriggers: NotifyTrigger[];
+  notifyWorkflows: NotifyWorkflow[];
+  notifyWorkflowTemplates: NotifyWorkflowTemplate[];
+  addNotifyWorkflow: (workflow: NotifyWorkflow) => void;
+  updateNotifyWorkflow: (id: string, patch: Partial<NotifyWorkflow>) => void;
+  deleteNotifyWorkflow: (id: string) => void;
+  toggleNotifyWorkflowStatus: (id: string) => void;
+  cloneNotifyWorkflow: (id: string) => void;
+  importNotifyWorkflowTemplate: (templateId: string) => void;
+
   // rule templates (reusable starting shapes for the Rule Builder)
   ruleTemplates: RuleTemplate[];
   addRuleTemplate: (template: RuleTemplate) => void;
@@ -270,11 +292,6 @@ interface AppState {
   // simulations
   addSimulation: (result: SimulationResult) => void;
 
-  // notifications
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
-  pushNotification: (n: Omit<AppNotification, "id" | "timestamp" | "read">) => void;
-
   // audit
   logAudit: (entry: Omit<AuditEntry, "id" | "timestamp" | "prevHash" | "hash">) => void;
 
@@ -295,7 +312,6 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       rules: ALL_RULES,
       matrices: MATRICES,
-      notifications: NOTIFICATIONS,
       auditLog: AUDIT_LOG,
       simulations: [],
       appearance: DEFAULT_APPEARANCE,
@@ -544,6 +560,90 @@ export const useAppStore = create<AppState>()(
           ],
         }));
         get().logAudit({ user: currentUser.name, action: "Mapped Rules to Product", entity: "Product", entityId: productId, details: `${ruleIds.length} rule(s) mapped.` });
+      },
+
+      notifyCategories: DEFAULT_NOTIFY_CATEGORIES,
+      notifyTriggers: DEFAULT_NOTIFY_TRIGGERS,
+      notifyWorkflows: DEFAULT_NOTIFY_WORKFLOWS,
+      notifyWorkflowTemplates: DEFAULT_NOTIFY_WORKFLOW_TEMPLATES,
+      addNotifyWorkflow: (workflow) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "notifyx.create")) return;
+        set((s) => ({ notifyWorkflows: [...s.notifyWorkflows, workflow] }));
+        get().logAudit({ user: currentUser.name, action: "Created Workflow", entity: "NotifyWorkflow", entityId: workflow.id, details: `Added workflow "${workflow.name}".` });
+      },
+      updateNotifyWorkflow: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "notifyx.edit")) return;
+        set((s) => ({
+          notifyWorkflows: s.notifyWorkflows.map((w) => (w.id === id ? { ...w, ...patch, updatedAt: new Date().toISOString() } : w)),
+        }));
+        get().logAudit({ user: currentUser.name, action: "Updated Workflow", entity: "NotifyWorkflow", entityId: id, details: `Workflow "${id}" updated.` });
+      },
+      deleteNotifyWorkflow: (id) => {
+        const { currentUser, roles, notifyWorkflows } = get();
+        if (!hasCapability(roles, currentUser.role, "notifyx.edit")) return;
+        const workflow = notifyWorkflows.find((w) => w.id === id);
+        if (!workflow || workflow.status !== "Draft") return;
+        set((s) => ({ notifyWorkflows: s.notifyWorkflows.filter((w) => w.id !== id) }));
+        get().logAudit({ user: currentUser.name, action: "Deleted Workflow", entity: "NotifyWorkflow", entityId: id, details: `Draft workflow "${workflow.name}" deleted.` });
+      },
+      toggleNotifyWorkflowStatus: (id) => {
+        const { currentUser, roles, notifyWorkflows } = get();
+        if (!hasCapability(roles, currentUser.role, "notifyx.toggle")) return;
+        const workflow = notifyWorkflows.find((w) => w.id === id);
+        if (!workflow) return;
+        // Active -> Paused; anything else (Draft or Paused) -> Active — same
+        // toggle semantics as the reference blueprint's list-screen behavior.
+        const nextStatus = workflow.status === "Active" ? "Paused" : "Active";
+        const now = new Date().toISOString();
+        set((s) => ({
+          notifyWorkflows: s.notifyWorkflows.map((w) => (w.id === id ? { ...w, status: nextStatus, updatedAt: now } : w)),
+        }));
+        get().logAudit({ user: currentUser.name, action: nextStatus === "Active" ? "Activated Workflow" : "Paused Workflow", entity: "NotifyWorkflow", entityId: id, details: `Workflow "${workflow.name}" is now ${nextStatus}.` });
+      },
+      cloneNotifyWorkflow: (id) => {
+        const { currentUser, roles, notifyWorkflows } = get();
+        if (!hasCapability(roles, currentUser.role, "notifyx.create")) return;
+        const source = notifyWorkflows.find((w) => w.id === id);
+        if (!source) return;
+        const now = new Date().toISOString();
+        const clone: NotifyWorkflow = {
+          ...source,
+          id: `wf-${Date.now()}`,
+          name: `${source.name} (Copy)`,
+          status: "Draft",
+          steps: source.steps.map((step) => ({ ...step, id: `${step.id}-${Date.now()}` })),
+          createdAt: now,
+          updatedAt: now,
+          createdBy: currentUser.name,
+          runCount: 0,
+          logs: [],
+        };
+        set((s) => ({ notifyWorkflows: [...s.notifyWorkflows, clone] }));
+        get().logAudit({ user: currentUser.name, action: "Cloned Workflow", entity: "NotifyWorkflow", entityId: clone.id, details: `Cloned "${source.name}" to "${clone.name}" as Draft.` });
+      },
+      importNotifyWorkflowTemplate: (templateId) => {
+        const { currentUser, roles, notifyWorkflowTemplates } = get();
+        if (!hasCapability(roles, currentUser.role, "notifyx.create")) return;
+        const template = notifyWorkflowTemplates.find((t) => t.id === templateId);
+        if (!template) return;
+        const now = new Date().toISOString();
+        const workflow: NotifyWorkflow = {
+          id: `wf-${Date.now()}`,
+          name: template.name,
+          categoryId: template.categoryId,
+          triggerId: template.triggerId,
+          status: "Draft",
+          steps: template.steps.map((step) => ({ ...step, id: `${step.id}-${Date.now()}` })),
+          createdAt: now,
+          updatedAt: now,
+          createdBy: currentUser.name,
+          runCount: 0,
+          logs: [],
+        };
+        set((s) => ({ notifyWorkflows: [...s.notifyWorkflows, workflow] }));
+        get().logAudit({ user: currentUser.name, action: "Created Workflow", entity: "NotifyWorkflow", entityId: workflow.id, details: `Imported template "${template.name}" as a new Draft workflow.` });
       },
 
       ruleGroups: DEFAULT_RULE_GROUPS,
@@ -859,22 +959,6 @@ export const useAppStore = create<AppState>()(
 
       addSimulation: (result) => set((s) => ({ simulations: [result, ...s.simulations].slice(0, 50) })),
 
-      markNotificationRead: (id) =>
-        set((s) => ({
-          notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
-        })),
-
-      markAllNotificationsRead: () =>
-        set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })),
-
-      pushNotification: (n) =>
-        set((s) => ({
-          notifications: [
-            { ...n, id: `N-${Date.now()}`, timestamp: new Date().toISOString(), read: false },
-            ...s.notifications,
-          ],
-        })),
-
       logAudit: (entry) =>
         set((s) => {
           const timestamp = new Date().toISOString();
@@ -943,6 +1027,43 @@ export const useAppStore = create<AppState>()(
         // brand-new key — the default shallow merge fills it in from initial
         // state (DEFAULT_USERS) automatically, nothing to backfill here.
         //
+      version: 21,
+      skipHydration: true,
+      migrate: (persistedState) => {
+        // v20 -> v21 added `appName`/`tagline` to AppearanceSettings (the
+        // Branding tab in Appearance Studio) — backfill the same default
+        // strings the hardcoded sidebar/login text used before, so nothing
+        // visibly changes for an existing session until an admin customizes it.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.appearance && (s.appearance.appName === undefined || s.appearance.tagline === undefined)) {
+            s.appearance = {
+              ...s.appearance,
+              appName: s.appearance.appName ?? "Business Rules Engine",
+              tagline: s.appearance.tagline ?? "Decision Platform",
+            };
+          }
+        }
+        // v19 -> v20 added NotifyX (workflow automation) and its 4 new
+        // capabilities (notifyx.view/create/edit/toggle). notifyCategories/
+        // notifyTriggers/notifyWorkflows/notifyWorkflowTemplates are brand-new
+        // keys — the default shallow merge fills them in automatically. Role
+        // capabilities need an explicit backfill (same shape as the v8->v9
+        // config.manage backfill below) so an already-persisted role gains
+        // whichever of the 4 its matching seed role in roles.json grants,
+        // instead of silently having no NotifyX access after the upgrade.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.roles) {
+            const notifyCaps: Capability[] = ["notifyx.view", "notifyx.create", "notifyx.edit", "notifyx.toggle"];
+            s.roles = s.roles.map((r) => {
+              const fallback = DEFAULT_ROLES.find((d) => d.id === r.id);
+              if (!fallback) return r;
+              const missing = notifyCaps.filter((c) => fallback.capabilities.includes(c) && !r.capabilities.includes(c));
+              return missing.length ? { ...r, capabilities: [...r.capabilities, ...missing] } : r;
+            });
+          }
+        }
         // v18 -> v19 added `publishStatus`/`lastPublishedAt` to Product (the
         // Product Workspace's guided Stepper). Backfill "Draft" onto any
         // persisted product missing it — SimulationResult's new `productId`
@@ -1107,6 +1228,8 @@ export const useAppStore = create<AppState>()(
             largeClickTargets: false,
             showInsights: true,
             logo: old.logo ?? null,
+            appName: old.appName ?? DEFAULT_APPEARANCE.appName,
+            tagline: old.tagline ?? DEFAULT_APPEARANCE.tagline,
           };
         }
 

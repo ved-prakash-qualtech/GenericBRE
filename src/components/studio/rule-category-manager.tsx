@@ -144,15 +144,15 @@ export function RuleCategoryManager() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Industry</Label>
+              <Label>Domain</Label>
               <Select
-                items={{ "": "Shared across all industries", ...Object.fromEntries(industries.map((i) => [i.id, i.name])) }}
+                items={{ "": "Shared across all domains", ...Object.fromEntries(industries.map((i) => [i.id, i.name])) }}
                 value={draft.industry ?? ""}
                 onValueChange={(v) => setDraft((d) => ({ ...d, industry: v ? (v as string) : undefined }))}
               >
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Shared across all industries</SelectItem>
+                  <SelectItem value="">Shared across all domains</SelectItem>
                   {industries.map((i) => (
                     <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
                   ))}

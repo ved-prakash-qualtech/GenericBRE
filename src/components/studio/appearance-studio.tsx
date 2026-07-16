@@ -9,6 +9,7 @@ import {
   Monitor,
   Moon,
   RotateCcw,
+  ShieldCheck,
   Sparkles,
   Sun,
   TrendingDown,
@@ -17,7 +18,7 @@ import {
   Workflow,
   X,
 } from "lucide-react";
-import { useAppStore, DEFAULT_APPEARANCE } from "@/lib/store";
+import { useAppStore, useHasCapability, DEFAULT_APPEARANCE } from "@/lib/store";
 import { applyAppearance } from "@/components/providers";
 import { THEME_PRESETS } from "@/lib/theme-presets";
 import type {
@@ -158,9 +159,12 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
   const setAppearance = useAppStore((s) => s.setAppearance);
   const roles = useAppStore((s) => s.roles);
   const currentUser = useAppStore((s) => s.currentUser);
+  const canManageBranding = useHasCapability("config.manage");
   const [draft, setDraft] = useState<AppearanceSettings>(stored);
   const [wasOpen, setWasOpen] = useState(open);
+  const [activeTab, setActiveTab] = useState("theme");
   const bgInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const role = roles.find((r) => r.id === currentUser.role);
 
@@ -170,6 +174,12 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) setDraft(stored);
+  }
+
+  // Safety net: snap back to a public tab if a non-admin ends up on the
+  // Branding tab (role switched mid-session, or stale state).
+  if (activeTab === "branding" && !canManageBranding) {
+    setActiveTab("theme");
   }
 
   // Apply the draft straight to the DOM while the studio is open — the whole
@@ -248,12 +258,13 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
             </div>
           </div>
 
-          <Tabs defaultValue="theme" className="flex min-h-0 flex-1 flex-col">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as string)} className="flex min-h-0 flex-1 flex-col">
             <TabsList className="mx-4 mt-3 w-fit shrink-0">
               <TabsTrigger value="theme">Theme</TabsTrigger>
               <TabsTrigger value="colors">Colors</TabsTrigger>
               <TabsTrigger value="bg">BG</TabsTrigger>
               <TabsTrigger value="display">Display</TabsTrigger>
+              {canManageBranding && <TabsTrigger value="branding">Branding</TabsTrigger>}
             </TabsList>
 
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -460,6 +471,66 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                     />
                   </section>
                 </TabsContent>
+
+                {canManageBranding && (
+                  <TabsContent value="branding" className="space-y-4">
+                    <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <ShieldCheck className="size-3 shrink-0" /> Organization-wide — applies for every user, not just you.
+                    </p>
+                    <section className="space-y-1.5">
+                      <Label className="text-xs">Organization / App Name</Label>
+                      <input
+                        type="text"
+                        value={draft.appName}
+                        onChange={(e) => patch({ appName: e.target.value })}
+                        className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                        placeholder="e.g. Business Rules Engine"
+                      />
+                    </section>
+                    <section className="space-y-1.5">
+                      <Label className="text-xs">Tagline</Label>
+                      <input
+                        type="text"
+                        value={draft.tagline}
+                        onChange={(e) => patch({ tagline: e.target.value })}
+                        className="h-9 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                        placeholder="e.g. Decision Platform"
+                      />
+                    </section>
+                    <section className="space-y-1.5">
+                      <Label className="text-xs">Logo</Label>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => logoInputRef.current?.click()}>
+                          <Upload className="size-3.5" /> Upload Logo
+                        </Button>
+                        {draft.logo && (
+                          <Button variant="ghost" size="sm" onClick={() => patch({ logo: null })}>
+                            Remove
+                          </Button>
+                        )}
+                        <input
+                          ref={logoInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const dataUrl = await readFileAsDataUrl(file);
+                            patch({ logo: dataUrl });
+                          }}
+                        />
+                      </div>
+                      {draft.logo && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={draft.logo} alt="Logo preview" className="size-12 rounded-lg border object-contain p-1" />
+                      )}
+                      <p className="text-[11px] text-muted-foreground">
+                        Replaces the default brand mark in the sidebar, header, and login screen.
+                      </p>
+                    </section>
+                  </TabsContent>
+                )}
               </div>
 
               {/* Live preview mockup — reads the same CSS variables applyAppearance

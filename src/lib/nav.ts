@@ -5,7 +5,6 @@ import {
   Library,
   Grid3x3,
   FlaskConical,
-  Bell,
   ScrollText,
   Settings,
   Compass,
@@ -19,7 +18,6 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   disabled?: boolean;
-  badgeKey?: "notifications";
   /** Hidden from the nav entirely (not just disabled) when the current role lacks this capability. */
   requiredCapability?: Capability;
 }
@@ -34,7 +32,6 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 export const NAV_ITEMS_SECONDARY: NavItem[] = [
-  { href: "/notifications", label: "Notifications", icon: Bell, badgeKey: "notifications" },
   { href: "/audit-log", label: "Audit Log", icon: ScrollText },
   { href: "/metadata-explorer", label: "Metadata Explorer", icon: Compass },
   { href: "/settings", label: "Configuration Studio", icon: Settings, requiredCapability: "config.manage" },

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, CheckCircle2, XCircle, Calculator, Tag, MessageSquare, ChevronsUpDown, Check, Variable, Sparkles } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, Trash2, CheckCircle2, XCircle, Calculator, Tag, MessageSquare, ChevronsUpDown, Check, Variable, Sparkles, Braces } from "lucide-react";
 import { ActionType, BusinessRule, Domain, FieldDataType, RuleAction } from "@/lib/types";
 import { fieldsForDomain, getField } from "@/lib/fields";
 import { getGeneratedVariables } from "@/lib/rule-chaining";
@@ -123,6 +123,69 @@ function OutputFieldPicker({
   );
 }
 
+// Inserts a `{{field_key}}` reference at the caret position of a Calculate
+// action's expression input — the same Business Fields + Generated
+// Variables lists as OutputFieldPicker, but purely for insertion (no
+// create-new option — an expression only ever *reads* existing keys).
+function ExpressionFieldPicker({
+  domain,
+  rules,
+  currentRuleId,
+  onInsert,
+}: {
+  domain: Domain;
+  rules: BusinessRule[];
+  currentRuleId?: string;
+  onInsert: (key: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const fieldCatalog = useAppStore((s) => s.fieldCatalog);
+  const fields = fieldsForDomain(fieldCatalog, domain);
+  const variables = getGeneratedVariables(rules, currentRuleId);
+
+  const select = (key: string) => {
+    onInsert(key);
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={<Button type="button" variant="ghost" size="icon-sm" className="shrink-0" title="Insert field reference" />}
+      >
+        <Braces className="size-3.5" />
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 p-0">
+        <Command>
+          <CommandInput placeholder="Search fields to insert..." />
+          <CommandList>
+            <CommandEmpty>No matching fields.</CommandEmpty>
+            <CommandGroup heading="Business Fields">
+              {fields.map((f) => (
+                <CommandItem key={f.key} value={f.label} onSelect={() => select(f.key)} className="gap-2">
+                  <span className="truncate">{f.label}</span>
+                  <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">{f.key}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            {variables.length > 0 && (
+              <CommandGroup heading="Generated Variables">
+                {variables.map((v) => (
+                  <CommandItem key={v.key} value={v.key} onSelect={() => select(v.key)} className="gap-2">
+                    <Variable className="size-3.5 shrink-0 text-primary" />
+                    <span className="truncate">{v.key}</span>
+                    <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">from {v.sourceRuleName}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function ActionRow({
   action,
   domain,
@@ -141,6 +204,25 @@ function ActionRow({
   const meta = ACTION_TYPES.find((t) => t.value === action.type)!;
   const needsOutput = action.type === "Calculate" || action.type === "Assign Value";
   const needsMessage = action.type === "Show Message" || action.type === "Approve" || action.type === "Reject";
+  const valueInputRef = useRef<HTMLInputElement>(null);
+
+  // Inserts `{{key}}` at the current caret position (falls back to
+  // appending if the input isn't focused/measurable), then restores focus
+  // and places the caret right after the inserted token.
+  const insertFieldReference = (key: string) => {
+    const token = `{{${key}}}`;
+    const current = action.outputValue ?? "";
+    const input = valueInputRef.current;
+    const start = input?.selectionStart ?? current.length;
+    const end = input?.selectionEnd ?? current.length;
+    const next = current.slice(0, start) + token + current.slice(end);
+    onChange({ outputValue: next });
+    requestAnimationFrame(() => {
+      const pos = start + token.length;
+      input?.focus();
+      input?.setSelectionRange(pos, pos);
+    });
+  };
 
   return (
     <div className="rounded-xl border bg-background p-3">
@@ -182,12 +264,18 @@ function ActionRow({
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              placeholder={action.type === "Calculate" ? "e.g. {{loan_amount}} * 0.05" : "Value"}
-              value={action.outputValue ?? ""}
-              onChange={(e) => onChange({ outputValue: e.target.value })}
-              className="h-8 text-xs sm:col-span-2"
-            />
+            <div className="flex items-center gap-1 sm:col-span-2">
+              <Input
+                ref={valueInputRef}
+                placeholder={action.type === "Calculate" ? "e.g. {{loan_amount}} * 0.05" : "Value"}
+                value={action.outputValue ?? ""}
+                onChange={(e) => onChange({ outputValue: e.target.value })}
+                className="h-8 flex-1 text-xs"
+              />
+              {action.type === "Calculate" && (
+                <ExpressionFieldPicker domain={domain} rules={rules} currentRuleId={currentRuleId} onInsert={insertFieldReference} />
+              )}
+            </div>
             {action.type === "Calculate" && (
               <p className="text-[10px] text-muted-foreground sm:col-span-2">
                 Reference any field or earlier Generated Variable with <code className="rounded bg-muted px-1">{"{{field_key}}"}</code> — supports

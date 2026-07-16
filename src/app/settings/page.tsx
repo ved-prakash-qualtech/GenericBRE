@@ -23,6 +23,7 @@ import {
   Plug,
   Package,
   Link2,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 import { useAppStore, useHasCapability } from "@/lib/store";
@@ -44,6 +45,7 @@ import { DashboardManagementManager } from "@/components/studio/dashboard-manage
 import { ListManager } from "@/components/studio/list-manager";
 import { RolesManager } from "@/components/studio/roles-manager";
 import { UserManager } from "@/components/studio/user-manager";
+import { NotifyXManager } from "@/components/studio/notify-x-manager";
 
 type SectionId =
   | "fields"
@@ -58,6 +60,7 @@ type SectionId =
   | "industries"
   | "roles"
   | "users";
+  | "notifyx";
 
 interface NavItem {
   id: SectionId;
@@ -102,6 +105,12 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "users", label: "User Management", icon: Users },
     ],
   },
+  {
+    label: "Automation",
+    items: [
+      { id: "notifyx", label: "NotifyX", icon: Workflow },
+    ],
+  },
 ];
 
 const ROADMAP = [
@@ -124,6 +133,8 @@ const SECTION_DESCRIPTIONS: Record<SectionId, string> = {
   industries: "Every business domain/vertical the platform supports.",
   roles: "Reusable capability templates several users can share — who can do what, enforced both in the UI and at the data layer.",
   users: "Every named person on the roster — their Role, System Permissions, and which Rule Categories they're authorized to approve under Maker-Checker.",
+  roles: "Who can do what — capabilities are assigned per role, enforced both in the UI and at the data layer.",
+  notifyx: "Automate reminders, escalations, and notifications with trigger -> condition -> action workflows.",
 };
 
 export default function SettingsPage() {
@@ -206,7 +217,7 @@ export default function SettingsPage() {
           </nav>
         </ScrollArea>
 
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea className="min-h-0 min-w-0 flex-1">
           <div className="mx-auto max-w-350 space-y-3 px-5 py-5 sm:px-6">
             <div>
               <h2 className="text-sm font-semibold">{[...NAV_GROUPS.flatMap((g) => g.items)].find((i) => i.id === section)?.label}</h2>
@@ -227,6 +238,7 @@ export default function SettingsPage() {
             {section === "industries" && <IndustriesManager />}
             {section === "roles" && <RolesManager />}
             {section === "users" && <UserManager />}
+            {section === "notifyx" && <NotifyXManager />}
 
             {section === "fields" && (
               <p className="pt-2 text-[11px] text-muted-foreground">

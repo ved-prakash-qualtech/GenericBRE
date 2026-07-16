@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LogoLockup } from "./logo";
 import { GlobalFilterBar, MobileFilterButton } from "./global-filter-bar";
-import { NotificationBell } from "./notification-panel";
 import { HelpDesk } from "./help-desk";
 import { UserMenu } from "./user-menu";
 import { CommandPalette } from "./command-palette";
@@ -67,7 +66,6 @@ export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
           >
             <Palette className="size-[18px]" />
           </Button>
-          <NotificationBell />
           <HelpDesk />
           <UserMenu />
         </div>

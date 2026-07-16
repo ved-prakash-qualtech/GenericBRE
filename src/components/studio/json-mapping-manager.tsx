@@ -26,12 +26,14 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const FIELD_TYPES: FieldDataType[] = ["number", "string", "boolean", "enum", "currency", "list"];
+const ANY_PRODUCT = "__any__";
 
 function newDraft(industry: string): JsonMapping {
   return {
     id: "",
     name: "",
     industry,
+    productId: undefined,
     direction: "request",
     entries: [],
     createdAt: new Date().toISOString(),
@@ -42,6 +44,7 @@ function newDraft(industry: string): JsonMapping {
 export function JsonMappingManager() {
   const jsonMappings = useAppStore((s) => s.jsonMappings);
   const industries = useAppStore((s) => s.industries);
+  const products = useAppStore((s) => s.products);
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   const addJsonMapping = useAppStore((s) => s.addJsonMapping);
   const updateJsonMapping = useAppStore((s) => s.updateJsonMapping);
@@ -142,10 +145,11 @@ export function JsonMappingManager() {
   };
 
   const industryFields = active ? fieldCatalog.filter((f) => f.domain === active.industry || f.domain === "Common") : [];
+  const productsForIndustry = active ? products.filter((p) => p.domain === active.industry) : [];
 
   return (
     <div className="flex h-full min-h-100 gap-4">
-      <div className="w-64 shrink-0 space-y-2">
+      <div className="w-48 shrink-0 space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-muted-foreground">Saved Mappings</p>
           <Button size="icon-sm" variant="ghost" onClick={startCreate}>
@@ -160,8 +164,11 @@ export function JsonMappingManager() {
               className={`w-full rounded-lg border p-2.5 text-left transition-colors ${selectedId === m.id ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
             >
               <p className="truncate text-xs font-semibold">{m.name}</p>
-              <div className="mt-1 flex items-center gap-1.5">
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <Badge variant="secondary" className="text-[9px]">{m.direction}</Badge>
+                <Badge variant="outline" className="text-[9px]">
+                  {m.productId ? products.find((p) => p.id === m.productId)?.name ?? m.productId : "Domain-wide"}
+                </Badge>
                 <span className="text-[10px] text-muted-foreground">{m.entries.length} attrs</span>
               </div>
             </button>
@@ -181,8 +188,8 @@ export function JsonMappingManager() {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 rounded-xl border bg-card p-3.5 sm:grid-cols-3">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-1 gap-3 rounded-xl border bg-card p-3.5 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="min-w-0 space-y-1.5">
                 <Label>Name *</Label>
                 <Input
                   value={active.name}
@@ -191,9 +198,17 @@ export function JsonMappingManager() {
                   placeholder="e.g. Loan Origination Request"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label>Industry</Label>
-                <Select value={active.industry} onValueChange={(v) => updateActive({ industry: (v as string) ?? "" })}>
+              <div className="min-w-0 space-y-1.5">
+                <Label>Domain</Label>
+                <Select
+                  value={active.industry}
+                  onValueChange={(v) => {
+                    const nextIndustry = (v as string) ?? "";
+                    const productStillValid =
+                      active.productId && products.find((p) => p.id === active.productId)?.domain === nextIndustry;
+                    updateActive({ industry: nextIndustry, productId: productStillValid ? active.productId : undefined });
+                  }}
+                >
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {industries.map((i) => (
@@ -202,7 +217,22 @@ export function JsonMappingManager() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
+                <Label>Product</Label>
+                <Select
+                  value={active.productId ?? ANY_PRODUCT}
+                  onValueChange={(v) => updateActive({ productId: v === ANY_PRODUCT ? undefined : (v as string) })}
+                >
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ANY_PRODUCT}>Any Product (industry-wide)</SelectItem>
+                    {productsForIndustry.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-0 space-y-1.5">
                 <Label>Direction</Label>
                 <Select value={active.direction} onValueChange={(v) => updateActive({ direction: (v as "request" | "response") ?? "request" })}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
@@ -243,11 +273,11 @@ export function JsonMappingManager() {
                 value={payloadText}
                 onChange={(e) => setPayloadText(e.target.value)}
                 placeholder={'{\n  "applicant": { "age": 34, "city": "Pune" },\n  "loan": { "amount": 500000 }\n}'}
-                className="min-h-24 font-mono text-xs"
+                className="min-h-24 max-h-[320px] resize-none overflow-y-auto font-mono text-xs"
               />
             </div>
 
-            <div className="max-h-100 overflow-auto rounded-xl border">
+            <div className="w-full max-h-[320px] overflow-x-auto overflow-y-auto rounded-xl border">
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-card">
                   <TableRow className="hover:bg-transparent">

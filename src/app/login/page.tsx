@@ -51,6 +51,8 @@ export default function LoginPage() {
   const login = useAppStore((s) => s.login);
   const rules = useAppStore((s) => s.rules);
   const simulations = useAppStore((s) => s.simulations);
+  const appName = useAppStore((s) => s.appearance.appName);
+  const tagline = useAppStore((s) => s.appearance.tagline);
 
   const [employeeId, setEmployeeId] = useState("");
   const [password, setPassword] = useState("");
@@ -87,8 +89,8 @@ export default function LoginPage() {
           <div className="flex items-center gap-3">
             <LogoMark className="size-10" />
             <div>
-              <p className="text-lg font-semibold tracking-tight">Business Rules Engine</p>
-              <p className="text-xs text-sidebar-foreground/60">Universal Decision Platform</p>
+              <p className="text-lg font-semibold tracking-tight">{appName}</p>
+              <p className="text-xs text-sidebar-foreground/60">{tagline}</p>
             </div>
           </div>
 
@@ -156,12 +158,12 @@ export default function LoginPage() {
           <div className="mb-7 lg:hidden">
             <div className="flex items-center gap-2.5">
               <LogoMark className="size-8" />
-              <p className="text-base font-semibold tracking-tight">Business Rules Engine</p>
+              <p className="text-base font-semibold tracking-tight">{appName}</p>
             </div>
           </div>
 
           <h2 className="text-xl font-semibold tracking-tight">Welcome Back</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in to your Business Rules Engine account</p>
+          <p className="mt-1 text-sm text-muted-foreground">Sign in to your {appName} account</p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSignIn}>
             <div className="space-y-1.5">
