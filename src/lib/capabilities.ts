@@ -10,6 +10,10 @@ export const ALL_CAPABILITIES: Capability[] = [
   "rule.simulate",
   "rule.publish",
   "system.manage",
+  "notifyx.view",
+  "notifyx.create",
+  "notifyx.edit",
+  "notifyx.toggle",
 ];
 
 // Display text only — the underlying Capability id ("rule.publish") and every

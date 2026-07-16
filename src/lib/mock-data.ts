@@ -1,5 +1,4 @@
 import {
-  AppNotification,
   AppUser,
   AuditEntry,
   BusinessRule,

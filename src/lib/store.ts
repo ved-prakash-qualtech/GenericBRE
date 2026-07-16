@@ -18,7 +18,6 @@ import {
   MATRICES,
 } from "./mock-data";
 import {
-  AppNotification,
   AppUser,
   AppearanceSettings,
   ApprovalRequest,
@@ -1019,14 +1018,6 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 20,
-      skipHydration: true,
-      migrate: (persistedState) => {
-        // v19 -> v20 added `users` (the User Management roster, distinct from
-        // `roles`) with per-user `approvalCategories` for Maker-Checker. A
-        // brand-new key — the default shallow merge fills it in from initial
-        // state (DEFAULT_USERS) automatically, nothing to backfill here.
-        //
       version: 21,
       skipHydration: true,
       migrate: (persistedState) => {
@@ -1044,6 +1035,11 @@ export const useAppStore = create<AppState>()(
             };
           }
         }
+        // v19 -> v20 added `users` (the User Management roster, distinct from
+        // `roles`) with per-user `approvalCategories` for Maker-Checker. A
+        // brand-new key — the default shallow merge fills it in from initial
+        // state (DEFAULT_USERS) automatically, nothing to backfill here.
+        //
         // v19 -> v20 added NotifyX (workflow automation) and its 4 new
         // capabilities (notifyx.view/create/edit/toggle). notifyCategories/
         // notifyTriggers/notifyWorkflows/notifyWorkflowTemplates are brand-new

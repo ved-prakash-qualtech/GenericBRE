@@ -59,7 +59,7 @@ type SectionId =
   | "dashboard-management"
   | "industries"
   | "roles"
-  | "users";
+  | "users"
   | "notifyx";
 
 interface NavItem {
@@ -133,7 +133,6 @@ const SECTION_DESCRIPTIONS: Record<SectionId, string> = {
   industries: "Every business domain/vertical the platform supports.",
   roles: "Reusable capability templates several users can share — who can do what, enforced both in the UI and at the data layer.",
   users: "Every named person on the roster — their Role, System Permissions, and which Rule Categories they're authorized to approve under Maker-Checker.",
-  roles: "Who can do what — capabilities are assigned per role, enforced both in the UI and at the data layer.",
   notifyx: "Automate reminders, escalations, and notifications with trigger -> condition -> action workflows.",
 };
 
