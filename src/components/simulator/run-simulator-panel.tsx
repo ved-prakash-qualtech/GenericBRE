@@ -260,8 +260,6 @@ export function RunSimulatorResult({ product, sim }: { product: Product | null; 
       <DecisionResultView
         result={sim.decisionResult}
         config={sim.activeConfig}
-        mode={sim.responseMode}
-        onModeChange={sim.setResponseMode}
         rules={sim.rules}
       />
     </div>

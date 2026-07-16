@@ -284,12 +284,6 @@ function ActionRow({
             )}
           </>
         )}
-        <Input
-          placeholder="Reason code (e.g. LOW_CREDIT_SCORE)"
-          value={action.reasonCode ?? ""}
-          onChange={(e) => onChange({ reasonCode: e.target.value })}
-          className={cn("h-8 text-xs", needsOutput ? "sm:col-span-2" : "")}
-        />
         {needsMessage && (
           <Textarea
             placeholder="Message shown to the business user / audit trail"

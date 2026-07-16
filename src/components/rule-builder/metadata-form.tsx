@@ -21,8 +21,8 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
 
   return (
     <div className="rounded-xl border bg-card p-4">
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-1.5 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="space-y-1.5">
           <Label className={cn(errors.name && "text-destructive")}>Rule Name *</Label>
           <Input
             value={data.name}
@@ -70,7 +70,7 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
           <p className="text-[10px] text-muted-foreground/70">Changed via the workflow actions (Save Draft / Submit for Review / Publish), not directly.</p>
         </div>
 
-        <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+        <div className="space-y-1.5 sm:col-span-2 lg:col-span-5">
           <Label>Description</Label>
           <Textarea
             value={data.description ?? ""}

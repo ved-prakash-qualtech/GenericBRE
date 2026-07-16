@@ -13,12 +13,12 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { MODE_LABELS, MODE_COLORS } from "@/lib/execution-mode";
 import { cn } from "@/lib/utils";
 
-const MODES: { value: ResponseMode; label: string; description: string }[] = [
-  { value: "decision-only", label: "Decision Only", description: "Final decision + status — optimized for API integrations." },
-  { value: "decision-explanation", label: "Decision + Explanation", description: "Adds reason, triggered rules, and evaluation summary." },
-  { value: "decision-trace", label: "Decision + Trace", description: "Full per-rule evaluation trace and API request/response." },
-  { value: "full-audit", label: "Full Audit", description: "Everything, plus a structured audit log entry." },
-];
+// This view always renders the full audit-grade breakdown — decision,
+// explanation, trace, and audit metadata together — rather than letting the
+// viewer pick a narrower slice. `mode` is kept as an internal constant (not a
+// prop) purely so the existing section-visibility conditions below stay
+// untouched and behave exactly as the old "Full Audit" tab did.
+const mode: ResponseMode = "full-audit";
 
 // One shared result view for both the Simulator and Execution Manager's Test
 // Mapping panel — the two engines produce different result shapes
@@ -29,14 +29,10 @@ const MODES: { value: ResponseMode; label: string; description: string }[] = [
 export function DecisionResultView({
   result,
   config,
-  mode,
-  onModeChange,
   rules,
 }: {
   result: DecisionResult;
   config: DecisionResponseConfig;
-  mode: ResponseMode;
-  onModeChange: (m: ResponseMode) => void;
   rules: BusinessRule[];
 }) {
   const [showRequest, setShowRequest] = useState(false);
@@ -50,22 +46,6 @@ export function DecisionResultView({
 
   return (
     <div className="space-y-4">
-      <div className="flex overflow-hidden rounded-lg border text-xs">
-        {MODES.map((m) => (
-          <button
-            key={m.value}
-            onClick={() => onModeChange(m.value)}
-            title={m.description}
-            className={cn(
-              "flex-1 px-2 py-1.5 font-medium transition-colors",
-              mode === m.value ? "bg-primary text-primary-foreground" : "hover:bg-accent"
-            )}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-
       <DecisionBanner result={result} />
 
       {mode !== "decision-only" && (
@@ -189,7 +169,7 @@ export function DecisionResultView({
           )}
           {config.showApiResponse && (
             <JsonPanel
-              title={`API Response — ${MODES.find((m) => m.value === mode)?.label}`}
+              title="API Response — Full Audit"
               data={responsePayload}
               open={showResponse}
               onToggle={() => setShowResponse((v) => !v)}
