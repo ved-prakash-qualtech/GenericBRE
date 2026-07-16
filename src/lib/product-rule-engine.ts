@@ -63,6 +63,7 @@ export function executeRulesByProduct(
       result: {
         id: `SIM-${Date.now()}`,
         domain: product.domain,
+        productId: product.id,
         outcome: "Approved",
         reasonCode: "NO_RULES_MAPPED",
         summary: `No rules are currently mapped to "${product.name}" — nothing to evaluate.`,
@@ -86,6 +87,7 @@ export function executeRulesByProduct(
     result: {
       id: `SIM-${Date.now()}`,
       domain: product.domain,
+      productId: product.id,
       ...core,
       input: payload,
       timestamp: new Date().toISOString(),

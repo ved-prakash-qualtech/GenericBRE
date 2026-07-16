@@ -1,4 +1,5 @@
 import { getField } from "./fields";
+import { evaluateExpression, ExpressionResult } from "./expression";
 import {
   BusinessField,
   BusinessRule,
@@ -267,8 +268,13 @@ export function runRulesForCase(
       triggeredRules.push(rule.id);
       const producedValues: Record<string, string | number> = {};
       for (const action of step.actionsApplied) {
-        applyAction(action, calculatedValues);
-        applyAction(action, producedValues);
+        // Calculate's {{field}} expressions resolve against the case's
+        // current field values plus every value computed so far in this run
+        // (this rule's earlier actions and, when chainInputs is on, earlier
+        // rules' outputs already folded into workingInput above).
+        const context = { ...workingInput, ...calculatedValues };
+        applyAction(action, calculatedValues, context);
+        applyAction(action, producedValues, context);
         if (action.type === "Reject") {
           // Reject always wins and halts further evaluation.
           outcome = "Rejected";
@@ -335,20 +341,33 @@ export function runSimulation(
   };
 }
 
+// What a Calculate/Assign Value action would set its Output Field to, given
+// a resolution context (case fields + values computed so far). Calculate
+// treats outputValue as a `{{field}} * 1.05`-style expression (see
+// src/lib/expression.ts); Assign Value stays a literal (numeric-coerced only
+// when the whole string is a bare number, same as before expressions existed).
+export function resolveActionValue(
+  action: RuleAction,
+  context: InputMap
+): ExpressionResult {
+  const raw = action.outputValue ?? "";
+  if (action.type === "Calculate") return evaluateExpression(raw, context);
+  let value: string | number = raw;
+  const numeric = coerceNumber(raw);
+  if (!Number.isNaN(numeric) && /^[0-9.\-]+$/.test(raw.trim())) {
+    value = numeric;
+  }
+  return { value };
+}
+
 export function applyAction(
   action: RuleAction,
-  calculatedValues: Record<string, string | number>
+  calculatedValues: Record<string, string | number>,
+  context: InputMap = calculatedValues
 ) {
   if (action.type === "Calculate" || action.type === "Assign Value") {
     if (action.outputField && action.outputValue !== undefined) {
-      // Support simple templated expressions like "{{loan_amount}} * 1.0" evaluated loosely,
-      // otherwise treat as a literal value.
-      let value: string | number = action.outputValue;
-      const numeric = coerceNumber(action.outputValue);
-      if (!Number.isNaN(numeric) && /^[0-9.\-]+$/.test(action.outputValue.trim())) {
-        value = numeric;
-      }
-      calculatedValues[action.outputField] = value;
+      calculatedValues[action.outputField] = resolveActionValue(action, context).value;
     }
   }
 }

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Sparkles, GripVertical } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Download, Sparkles, GripVertical, ArrowRight } from "lucide-react";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
+import { ProductHubGrid } from "@/components/products/product-hub-grid";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { RecentRulesPanel, RecentActivityPanel, RecentDeploymentsPanel } from "@/components/dashboard/recent-panels";
 import { DomainDistributionChart, RuleStatusChart } from "@/components/dashboard/charts";
@@ -51,10 +53,15 @@ const WIDGET_RENDERERS: Record<string, () => React.ReactNode> = {
 const WIDGET_DEFAULT_SIZE: Record<string, WidgetSize> = { "demo-scenarios": "LG" };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const rules = useAppStore((s) => s.rules);
   const showInsights = useAppStore((s) => s.appearance.showInsights);
   const roleId = useAppStore((s) => s.currentUser.role);
   const dashboardConfigs = useAppStore((s) => s.dashboardConfigs);
+  const products = useAppStore((s) => s.products);
+  const industries = useAppStore((s) => s.industries);
+  const productRuleMappings = useAppStore((s) => s.productRuleMappings);
+  const simulations = useAppStore((s) => s.simulations);
   const [editMode, setEditMode] = useState(false);
 
   // The widget catalog for this page is scoped to the current role's
@@ -147,6 +154,26 @@ export default function DashboardPage() {
           )}
           <div className="mb-2.5">
             <KpiCards />
+          </div>
+          <div className="mb-2.5">
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Products</p>
+              <button
+                onClick={() => router.push("/products")}
+                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+              >
+                View all <ArrowRight className="size-3" />
+              </button>
+            </div>
+            <ProductHubGrid
+              products={products}
+              industries={industries}
+              rules={rules}
+              mappings={productRuleMappings}
+              simulations={simulations}
+              onConfigure={(p) => router.push(`/products/${p.id}`)}
+              onRunSimulation={(p) => router.push(`/products/${p.id}?tab=simulate`)}
+            />
           </div>
           <div className="grid grid-cols-1 items-start gap-2.5 md:grid-cols-2 xl:grid-cols-6">
             {visibleWidgets.map((w) => {

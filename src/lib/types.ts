@@ -186,6 +186,11 @@ export interface Product {
   domain: Domain;
   description?: string;
   status: "Active" | "Inactive";
+  /** Publish lifecycle for the Product Workspace's guided journey — separate
+   *  from `status` (which gates execution eligibility). Missing on legacy
+   *  rows is treated as "Draft" (see store.ts migration). */
+  publishStatus?: "Draft" | "Published";
+  lastPublishedAt?: string;
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -234,6 +239,8 @@ export interface RuleTemplate {
   /** Optional — scopes the field picker while authoring and which industry's
    *  "Start from a Template" list shows this template. Unset = shown for every industry. */
   domain?: Domain;
+  /** Optional — links to a RuleCategory so templates can be grouped/filtered by purpose. */
+  categoryId?: string;
   rootGroup: ConditionGroup;
   actions: RuleAction[];
   elseActions?: RuleAction[];
@@ -347,6 +354,10 @@ export type DecisionOutcome = "Approved" | "Rejected" | "Review Required";
 export interface SimulationResult {
   id: string;
   domain: Domain;
+  /** The Product this run was executed against, when run from a Product
+   *  context (Product Workspace's Run Simulator tab, or /simulator with
+   *  ?productId=) — absent for older/domain-only runs. */
+  productId?: string;
   outcome: DecisionOutcome;
   reasonCode: string;
   summary: string;

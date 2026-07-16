@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 // lives on a dedicated handle span, not the whole row. Operates on the live
 // saved mapping directly (reorder saves immediately on drop), independent of
 // any in-progress add/remove selection below.
-function MappedRulesReorder({
+export function MappedRulesReorder({
   product,
   rules,
   mappings,
@@ -85,34 +85,33 @@ function MappedRulesReorder({
   );
 }
 
-// Product-Rule Mapping — the many-to-many wiring that replaces Execution
-// Manager's group/step routing. Category here is filter-only (narrows the
-// picker), never part of execution.
-export function ProductRuleMappingManager() {
-  const products = useAppStore((s) => s.products);
-  const rules = useAppStore((s) => s.rules);
-  const ruleCategories = useAppStore((s) => s.ruleCategories);
-  const productRuleMappings = useAppStore((s) => s.productRuleMappings);
+// The map/unmap checklist half — search + category filter + select-all +
+// table + explicit "Save Mapping" (dirty-state gated). Extracted so both the
+// Settings-page two-pane manager below and the Product Workspace's Mapped
+// Rules tab (src/app/products/[id]/page.tsx) share one implementation
+// instead of two copies that could drift.
+export function MappedRulesChecklist({
+  product,
+  rules,
+  ruleCategories,
+  mappings,
+}: {
+  product: Product;
+  rules: BusinessRule[];
+  ruleCategories: { id: string; name: string }[];
+  mappings: ProductRuleMapping[];
+}) {
   const saveProductRuleMapping = useAppStore((s) => s.saveProductRuleMapping);
-
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(products[0] ?? null);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [selection, setSelection] = useState<Set<string> | null>(null);
 
   const savedRuleIds = useMemo(
-    () => new Set(selectedProduct ? getMappedRules(selectedProduct.id, rules, productRuleMappings).map((r) => r.id) : []),
-    [selectedProduct, rules, productRuleMappings]
+    () => new Set(getMappedRules(product.id, rules, mappings).map((r) => r.id)),
+    [product.id, rules, mappings]
   );
   const activeSelection = selection ?? savedRuleIds;
   const dirty = selection !== null;
-
-  const selectProduct = (p: Product) => {
-    setSelectedProduct(p);
-    setSelection(null);
-    setSearch("");
-    setCategoryFilter("");
-  };
 
   const filteredRules = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -142,10 +141,105 @@ export function ProductRuleMappingManager() {
   };
 
   const save = () => {
-    if (!selectedProduct) return;
-    saveProductRuleMapping(selectedProduct.id, Array.from(activeSelection));
+    saveProductRuleMapping(product.id, Array.from(activeSelection));
     setSelection(null);
-    toast.success(`Mapping saved — ${activeSelection.size} rule${activeSelection.size === 1 ? "" : "s"} mapped to "${selectedProduct.name}".`);
+    toast.success(`Mapping saved — ${activeSelection.size} rule${activeSelection.size === 1 ? "" : "s"} mapped to "${product.name}".`);
+  };
+
+  return (
+    <div className="flex h-full flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-48">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search rules by name or ID..."
+            className="h-8 pl-8 text-xs"
+          />
+        </div>
+        <Select value={categoryFilter || "__all__"} onValueChange={(v) => setCategoryFilter(v === "__all__" ? "" : (v as string))}>
+          <SelectTrigger size="sm" className="h-8 w-44"><SelectValue placeholder="All categories" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All categories</SelectItem>
+            {ruleCategories.map((c) => (
+              <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={toggleSelectAllFiltered}>
+          {allFilteredSelected ? <Square className="size-3.5" /> : <CheckSquare className="size-3.5" />}
+          {allFilteredSelected ? "Clear filtered" : "Select all filtered"}
+        </Button>
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground">
+        <span>
+          <span className="font-semibold text-foreground">{activeSelection.size}</span> rule{activeSelection.size === 1 ? "" : "s"} mapped to{" "}
+          <span className="font-semibold text-foreground">{product.name}</span>
+        </span>
+        <span>{filteredRules.length} shown</span>
+      </div>
+
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="flex items-center gap-3 bg-muted/40 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b select-none">
+          <div className="flex items-center">
+            <Checkbox checked={allFilteredSelected} onCheckedChange={toggleSelectAllFiltered} />
+          </div>
+          <span className="w-16 shrink-0">ID</span>
+          <span className="min-w-0 flex-1">Rule</span>
+          <span className="w-24 shrink-0 text-center">Eligibility</span>
+          <span className="w-20 shrink-0 text-center">Domain</span>
+        </div>
+
+        <ScrollArea className="h-[260px]">
+          <div className="divide-y">
+            {filteredRules.map((r) => (
+              <label
+                key={r.id}
+                className="flex cursor-pointer items-center gap-3 px-3 py-2 text-xs hover:bg-muted/40"
+              >
+                <Checkbox checked={activeSelection.has(r.id)} onCheckedChange={() => toggleRule(r.id)} />
+                <span className="w-16 shrink-0 font-mono text-[10px] text-muted-foreground">{r.id}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{r.name}</span>
+                <div className="w-24 shrink-0 flex justify-center">
+                  <Badge variant="secondary" className="text-[9px]">{r.category || "Uncategorized"}</Badge>
+                </div>
+                <div className="w-20 shrink-0 flex justify-center">
+                  <Badge variant="outline" className="text-[9px]">{r.domain}</Badge>
+                </div>
+              </label>
+            ))}
+            {filteredRules.length === 0 && (
+              <p className="p-6 text-center text-[11px] text-muted-foreground">No rules match this filter.</p>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
+
+      <div className="flex justify-end">
+        <Button size="sm" className="gap-1.5" onClick={save} disabled={!dirty}>
+          <Save className="size-3.5" /> Save Mapping
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Product-Rule Mapping — the many-to-many wiring that replaces Execution
+// Manager's group/step routing. Category here is filter-only (narrows the
+// picker), never part of execution.
+export function ProductRuleMappingManager() {
+  const products = useAppStore((s) => s.products);
+  const rules = useAppStore((s) => s.rules);
+  const ruleCategories = useAppStore((s) => s.ruleCategories);
+  const productRuleMappings = useAppStore((s) => s.productRuleMappings);
+  const saveProductRuleMapping = useAppStore((s) => s.saveProductRuleMapping);
+
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(products[0] ?? null);
+
+  const selectProduct = (p: Product) => {
+    setSelectedProduct(p);
   };
 
   const reorderMapped = (orderedIds: string[]) => {
@@ -198,81 +292,12 @@ export function ProductRuleMappingManager() {
               mappings={productRuleMappings}
               onReorder={reorderMapped}
             />
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-48">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search rules by name or ID..."
-                  className="h-8 pl-8 text-xs"
-                />
-              </div>
-              <Select value={categoryFilter || "__all__"} onValueChange={(v) => setCategoryFilter(v === "__all__" ? "" : (v as string))}>
-                <SelectTrigger size="sm" className="h-8 w-44"><SelectValue placeholder="All categories" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">All categories</SelectItem>
-                  {ruleCategories.map((c) => (
-                    <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={toggleSelectAllFiltered}>
-                {allFilteredSelected ? <Square className="size-3.5" /> : <CheckSquare className="size-3.5" />}
-                {allFilteredSelected ? "Clear filtered" : "Select all filtered"}
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-1.5 text-[11px] text-muted-foreground">
-              <span>
-                <span className="font-semibold text-foreground">{activeSelection.size}</span> rule{activeSelection.size === 1 ? "" : "s"} mapped to{" "}
-                <span className="font-semibold text-foreground">{selectedProduct.name}</span>
-              </span>
-              <span>{filteredRules.length} shown</span>
-            </div>
-
-            <div className="rounded-xl border bg-card overflow-hidden">
-              <div className="flex items-center gap-3 bg-muted/40 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b select-none">
-                <div className="flex items-center">
-                  <Checkbox checked={allFilteredSelected} onCheckedChange={toggleSelectAllFiltered} />
-                </div>
-                <span className="w-16 shrink-0">ID</span>
-                <span className="min-w-0 flex-1">Rule</span>
-                <span className="w-24 shrink-0 text-center">Eligibility</span>
-                <span className="w-20 shrink-0 text-center">Domain</span>
-              </div>
-
-              <ScrollArea className="h-[260px]">
-                <div className="divide-y">
-                  {filteredRules.map((r) => (
-                    <label
-                      key={r.id}
-                      className="flex cursor-pointer items-center gap-3 px-3 py-2 text-xs hover:bg-muted/40"
-                    >
-                      <Checkbox checked={activeSelection.has(r.id)} onCheckedChange={() => toggleRule(r.id)} />
-                      <span className="w-16 shrink-0 font-mono text-[10px] text-muted-foreground">{r.id}</span>
-                      <span className="min-w-0 flex-1 truncate font-medium">{r.name}</span>
-                      <div className="w-24 shrink-0 flex justify-center">
-                        <Badge variant="secondary" className="text-[9px]">{r.category || "Uncategorized"}</Badge>
-                      </div>
-                      <div className="w-20 shrink-0 flex justify-center">
-                        <Badge variant="outline" className="text-[9px]">{r.domain}</Badge>
-                      </div>
-                    </label>
-                  ))}
-                  {filteredRules.length === 0 && (
-                    <p className="p-6 text-center text-[11px] text-muted-foreground">No rules match this filter.</p>
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
-
-            <div className="flex justify-end">
-              <Button size="sm" className="gap-1.5" onClick={save} disabled={!dirty}>
-                <Save className="size-3.5" /> Save Mapping
-              </Button>
-            </div>
+            <MappedRulesChecklist
+              product={selectedProduct}
+              rules={rules}
+              ruleCategories={ruleCategories}
+              mappings={productRuleMappings}
+            />
           </div>
         )}
       </div>

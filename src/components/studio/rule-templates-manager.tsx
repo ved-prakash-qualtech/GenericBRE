@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const ANY_INDUSTRY = "__any__";
+const NO_CATEGORY = "__none__";
 
 function newDraft(): RuleTemplate {
   return { id: "", name: "", description: "", rootGroup: emptyGroup("AND"), actions: [] };
@@ -38,6 +39,7 @@ function newDraft(): RuleTemplate {
 export function RuleTemplatesManager() {
   const templates = useAppStore((s) => s.ruleTemplates);
   const industries = useAppStore((s) => s.industries);
+  const ruleCategories = useAppStore((s) => s.ruleCategories);
   const addRuleTemplate = useAppStore((s) => s.addRuleTemplate);
   const updateRuleTemplate = useAppStore((s) => s.updateRuleTemplate);
   const deleteRuleTemplate = useAppStore((s) => s.deleteRuleTemplate);
@@ -127,13 +129,18 @@ export function RuleTemplatesManager() {
               >
                 <p className="truncate text-xs font-semibold">{t.name}</p>
                 <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{t.description || "No description"}</p>
-                <div className="mt-1 flex items-center gap-1.5">
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <span className="text-[10px] text-muted-foreground">
                     {conditionCount} condition{conditionCount === 1 ? "" : "s"}
                   </span>
                   {t.domain && (
                     <Badge variant="secondary" className="text-[9px]">
                       {industries.find((i) => i.id === t.domain)?.name ?? t.domain}
+                    </Badge>
+                  )}
+                  {t.categoryId && (
+                    <Badge variant="outline" className="text-[9px]">
+                      {ruleCategories.find((c) => c.id === t.categoryId)?.name ?? t.categoryId}
                     </Badge>
                   )}
                 </div>
@@ -155,7 +162,7 @@ export function RuleTemplatesManager() {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5 rounded-xl border bg-card p-3.5">
                 <Label>Name *</Label>
                 <Input
@@ -175,6 +182,21 @@ export function RuleTemplatesManager() {
                     <SelectItem value={ANY_INDUSTRY}>Any Industry</SelectItem>
                     {industries.map((i) => (
                       <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 rounded-xl border bg-card p-3.5">
+                <Label>Category — groups this template in the picker</Label>
+                <Select
+                  value={active.categoryId ?? NO_CATEGORY}
+                  onValueChange={(v) => updateActive({ categoryId: v === NO_CATEGORY ? undefined : (v as string) })}
+                >
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_CATEGORY}>No Category</SelectItem>
+                    {ruleCategories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

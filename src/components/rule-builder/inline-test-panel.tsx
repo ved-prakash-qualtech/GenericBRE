@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { PlayCircle, CheckCircle2, XCircle, FlaskConical } from "lucide-react";
 import { ConditionGroup, RuleAction } from "@/lib/types";
 import { collectFieldKeys } from "@/lib/condition-tree";
-import { evaluateGroup, ConditionEvalDetail } from "@/lib/engine";
+import { evaluateGroup, resolveActionValue, ConditionEvalDetail } from "@/lib/engine";
 import { getField } from "@/lib/fields";
 import { useAppStore } from "@/lib/store";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,11 @@ export function InlineTestPanel({
 }) {
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   const [values, setValues] = useState<Record<string, string>>({});
-  const [result, setResult] = useState<{ passed: boolean; details: ConditionEvalDetail[] } | null>(null);
+  const [result, setResult] = useState<{
+    passed: boolean;
+    details: ConditionEvalDetail[];
+    outputs: Record<string, { value: string | number; error?: string }>;
+  } | null>(null);
 
   const fieldKeys = useMemo(() => Array.from(collectFieldKeys(rootGroup)), [rootGroup]);
 
@@ -48,7 +52,22 @@ export function InlineTestPanel({
     const input = buildInput();
     const details: ConditionEvalDetail[] = [];
     const passed = evaluateGroup(rootGroup, input, details, fieldCatalog);
-    setResult({ passed, details });
+
+    // Resolve Calculate/Assign Value outputs for whichever branch actually
+    // fires, chaining each action's result into the context for the next
+    // (so a later Calculate can reference an earlier one's output by name).
+    const firingActions = passed ? actions : elseActions ?? [];
+    const outputs: Record<string, { value: string | number; error?: string }> = {};
+    const context: Record<string, string | number | boolean> = { ...input };
+    for (const action of firingActions) {
+      if ((action.type === "Calculate" || action.type === "Assign Value") && action.outputField) {
+        const resolved = resolveActionValue(action, context);
+        outputs[action.outputField] = resolved;
+        context[action.outputField] = resolved.value;
+      }
+    }
+
+    setResult({ passed, details, outputs });
   };
 
   const activeActions = result?.passed ? actions : elseActions;
@@ -136,6 +155,24 @@ export function InlineTestPanel({
                   </div>
                 ))}
               </div>
+              {Object.keys(result.outputs).length > 0 && (
+                <div className="space-y-1">
+                  {Object.entries(result.outputs).map(([field, out]) => (
+                    <div key={field} className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1 text-[11px]">
+                      <span className="font-mono">{field}</span>
+                      {out.error ? (
+                        <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                          <XCircle className="size-3" /> {out.error}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="size-3" /> = {out.value}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>

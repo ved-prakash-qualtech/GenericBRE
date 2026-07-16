@@ -14,6 +14,7 @@ import {
   Copy,
   Undo2,
   Redo2,
+  X,
 } from "lucide-react";
 import { useAppStore, useHasCapability } from "@/lib/store";
 import { BusinessField, BusinessRule, Condition, ConditionGroup, RuleAction, RuleTemplate } from "@/lib/types";
@@ -108,6 +109,7 @@ function RuleBuilderContent() {
   const industries = useAppStore((s) => s.industries);
   const owners = useAppStore((s) => s.owners);
   const ruleTemplates = useAppStore((s) => s.ruleTemplates);
+  const ruleCategories = useAppStore((s) => s.ruleCategories);
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   const canCreate = useHasCapability("rule.create");
   const canEdit = useHasCapability("rule.edit");
@@ -128,9 +130,17 @@ function RuleBuilderContent() {
     return existingRule ?? blankRule(nextRuleId(rules), industries[0]?.id ?? "", owners[0] ?? "");
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  // FUTURE: Change back to (!existingRule) to auto-open template picker on creation
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [showElseBranch, setShowElseBranch] = useState(() => !!existingRule?.elseActions?.length);
+  // Non-blocking template hint — shown once per browser session on a fresh,
+  // untouched new rule; never forces a modal on rule creation (see below).
+  const [templateHintDismissed, setTemplateHintDismissed] = useState(
+    () => typeof window !== "undefined" && window.sessionStorage.getItem("bre-template-hint-dismissed") === "1"
+  );
+  const dismissTemplateHint = () => {
+    setTemplateHintDismissed(true);
+    window.sessionStorage.setItem("bre-template-hint-dismissed", "1");
+  };
 
   useEffect(() => {
     // Re-seed the editable draft whenever the ?id= query param points at a different
@@ -387,13 +397,11 @@ function RuleBuilderContent() {
             <Copy className="size-3.5" /> Duplicate
           </Button>
         )}
-        {/* FUTURE: Re-enable templates button when enhanced templates are ready
         {!existingRule && (
           <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setTemplatePickerOpen(true)}>
             <LayoutTemplate className="size-3.5" /> Use Template
           </Button>
         )}
-        */}
         <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSaveDraft} title="Save Draft (Ctrl+S)">
           <Save className="size-3.5" /> Save Draft
         </Button>
@@ -407,6 +415,7 @@ function RuleBuilderContent() {
         onOpenChange={setTemplatePickerOpen}
         templates={ruleTemplates.filter((t) => !t.domain || t.domain === rule.domain)}
         industries={industries}
+        categories={ruleCategories}
         onUse={applyTemplate}
       />
 
@@ -420,6 +429,21 @@ function RuleBuilderContent() {
               {errors.duplicateVariable && <p>{errors.duplicateVariable}</p>}
               {errors.variables && <p>{errors.variables}</p>}
               {errors.chain && <p>{errors.chain}</p>}
+            </div>
+          )}
+
+          {!existingRule && !templateHintDismissed && countConditions(rule.rootGroup) === 0 && rule.actions.length === 0 && (
+            <div className="flex items-center gap-3 rounded-lg border border-dashed bg-muted/30 px-3.5 py-2.5">
+              <LayoutTemplate className="size-4 shrink-0 text-primary" />
+              <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+                Starting from scratch? A template can pre-fill the condition and action builder below — fully editable after.
+              </p>
+              <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1.5 text-xs" onClick={() => setTemplatePickerOpen(true)}>
+                <LayoutTemplate className="size-3.5" /> Browse Templates
+              </Button>
+              <Button size="icon-sm" variant="ghost" className="shrink-0" title="Dismiss" onClick={dismissTemplateHint}>
+                <X className="size-3.5" />
+              </Button>
             </div>
           )}
 

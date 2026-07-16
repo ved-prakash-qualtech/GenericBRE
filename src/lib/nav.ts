@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  Boxes,
   Wand2,
   Library,
   Grid3x3,
@@ -25,6 +26,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/products", label: "Products", icon: Boxes },
   { href: "/rule-builder", label: "Rule Builder", icon: Wand2, requiredCapability: "rule.create" },
   { href: "/repository", label: "Rule Repository", icon: Library, requiredCapability: "rule.view" },
   { href: "/matrix", label: "Decision Matrix", icon: Grid3x3 },

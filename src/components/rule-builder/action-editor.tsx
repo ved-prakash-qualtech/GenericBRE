@@ -183,11 +183,17 @@ function ActionRow({
               </SelectContent>
             </Select>
             <Input
-              placeholder="Value or expression"
+              placeholder={action.type === "Calculate" ? "e.g. {{loan_amount}} * 0.05" : "Value"}
               value={action.outputValue ?? ""}
               onChange={(e) => onChange({ outputValue: e.target.value })}
               className="h-8 text-xs sm:col-span-2"
             />
+            {action.type === "Calculate" && (
+              <p className="text-[10px] text-muted-foreground sm:col-span-2">
+                Reference any field or earlier Generated Variable with <code className="rounded bg-muted px-1">{"{{field_key}}"}</code> — supports
+                +, -, *, /, %, and parentheses. Plain numbers/text work too, same as Assign Value.
+              </p>
+            )}
           </>
         )}
         <Input

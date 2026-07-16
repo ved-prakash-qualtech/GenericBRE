@@ -29,6 +29,18 @@ export const DEFAULT_INDUSTRIES: Industry[] = [
     icon: "Landmark",
     description: "Collateral valuation, purity checks & LTV-based haircut calculation.",
   },
+  {
+    id: "CreditCards",
+    name: "Credit Cards",
+    icon: "CreditCard",
+    description: "Eligibility screening, credit limit assignment, and reward multipliers.",
+  },
+  {
+    id: "Wealth",
+    name: "Wealth Management",
+    icon: "Building2",
+    description: "Risk profiling, asset allocation strategies, and investment threshold validation.",
+  },
 ];
 
 const ICON_MAP: Record<string, LucideIcon> = {

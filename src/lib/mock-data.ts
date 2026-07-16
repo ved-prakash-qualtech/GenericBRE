@@ -670,10 +670,10 @@ export const DEFAULT_RULE_GROUPS: RuleGroup[] = [
 const PRODUCT_SEED_TIMESTAMP = "2026-01-15T09:00:00.000Z";
 
 export const DEFAULT_PRODUCTS: Product[] = [
-  { id: "prod-home-loan", name: "Home Loan", code: "HOME_LOAN", domain: "Lending", description: "Standard salaried/self-employed home loan scheme.", status: "Active", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
-  { id: "prod-auto-loan", name: "Auto Loan", code: "AUTO_LOAN", domain: "Lending", description: "New/used vehicle purchase financing.", status: "Active", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
-  { id: "prod-term-life", name: "Term Life Cover", code: "TERM_LIFE", domain: "Insurance", description: "Pure protection term life plan.", status: "Active", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
-  { id: "prod-gold-loan", name: "Gold Loan", code: "GOLD_LOAN", domain: "NBFC", description: "Collateral-backed gold loan scheme.", status: "Active", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+  { id: "prod-home-loan", name: "Home Loan", code: "HOME_LOAN", domain: "Lending", description: "Standard salaried/self-employed home loan scheme.", status: "Active", publishStatus: "Published", lastPublishedAt: PRODUCT_SEED_TIMESTAMP, createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+  { id: "prod-auto-loan", name: "Auto Loan", code: "AUTO_LOAN", domain: "Lending", description: "New/used vehicle purchase financing.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+  { id: "prod-term-life", name: "Term Life Cover", code: "TERM_LIFE", domain: "Insurance", description: "Pure protection term life plan.", status: "Active", publishStatus: "Published", lastPublishedAt: PRODUCT_SEED_TIMESTAMP, createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+  { id: "prod-gold-loan", name: "Gold Loan", code: "GOLD_LOAN", domain: "NBFC", description: "Collateral-backed gold loan scheme.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
 ];
 
 function mapping(id: string, productId: string, ruleId: string, order: number): ProductRuleMapping {
@@ -698,10 +698,13 @@ export const DEFAULT_PRODUCT_RULE_MAPPINGS: ProductRuleMapping[] = [
 // one just pre-fills the Rule Builder; the result is a normal editable rule.
 // ============================================================
 export const DEFAULT_RULE_TEMPLATES: RuleTemplate[] = [
+  // Generic, industry-agnostic skeletons — blank field slots are intentional
+  // since these apply across every domain; pick a field after inserting.
   {
     id: "tmpl-threshold-check",
     name: "Threshold Check",
     description: "Reject when a numeric field breaches a configured minimum or maximum.",
+    categoryId: "eligibility",
     rootGroup: group("AND", [cond("", "<", "")]),
     actions: [{ id: cid(), type: "Reject", reasonCode: "THRESHOLD_BREACH", message: "Value did not meet the configured threshold." }],
   },
@@ -709,6 +712,7 @@ export const DEFAULT_RULE_TEMPLATES: RuleTemplate[] = [
     id: "tmpl-eligibility-gate",
     name: "Eligibility Gate",
     description: "Require two conditions to both hold before allowing the case to proceed.",
+    categoryId: "eligibility",
     rootGroup: group("AND", [cond("", "=", ""), cond("", "=", "")]),
     actions: [{ id: cid(), type: "Approve", reasonCode: "ELIGIBLE_CUSTOMER", message: "All eligibility conditions satisfied." }],
   },
@@ -716,6 +720,7 @@ export const DEFAULT_RULE_TEMPLATES: RuleTemplate[] = [
     id: "tmpl-review-flag",
     name: "Manual Review Flag",
     description: "Route a case to manual review when a risk condition is met, without an automatic reject.",
+    categoryId: "risk-fraud",
     rootGroup: group("AND", [cond("", ">", "")]),
     actions: [{ id: cid(), type: "Show Message", reasonCode: "MANUAL_REVIEW", message: "This case has been flagged for manual review." }],
   },
@@ -723,7 +728,38 @@ export const DEFAULT_RULE_TEMPLATES: RuleTemplate[] = [
     id: "tmpl-value-assignment",
     name: "Value Assignment",
     description: "Assign or calculate an output value onto the case when a condition is met.",
+    categoryId: "pricing",
     rootGroup: group("AND", [cond("", "=", "")]),
     actions: [{ id: cid(), type: "Assign Value", outputField: "", outputValue: "" }],
+  },
+
+  // Domain-scoped examples — real field references, so they're usable
+  // as-is (adjust the threshold/value) instead of just a bare shape.
+  {
+    id: "tmpl-lending-high-dti-reject",
+    name: "High DTI Reject",
+    description: "Decline lending applications whose debt-to-income ratio exceeds a safe threshold.",
+    domain: "Lending",
+    categoryId: "underwriting",
+    rootGroup: group("AND", [cond("dti_ratio", ">", "50")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "DTI_EXCEEDED", message: "Debt-to-income ratio exceeds the acceptable limit." }],
+  },
+  {
+    id: "tmpl-insurance-smoker-loading",
+    name: "Smoker Premium Loading",
+    description: "Apply an extra premium loading percentage when the applicant is a declared smoker.",
+    domain: "Insurance",
+    categoryId: "pricing",
+    rootGroup: group("AND", [cond("smoker", "=", "true")]),
+    actions: [{ id: cid(), type: "Assign Value", outputField: "premium_loading_pct", outputValue: "15", outputType: "number" }],
+  },
+  {
+    id: "tmpl-nbfc-ltv-cap",
+    name: "LTV Cap Check",
+    description: "Reject gold/asset-backed loan requests whose requested LTV breaches the collateral policy cap.",
+    domain: "NBFC",
+    categoryId: "collateral",
+    rootGroup: group("AND", [cond("ltv_requested", ">", "75")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "LTV_CAP_BREACH", message: "Requested LTV exceeds the collateral policy cap." }],
   },
 ];

@@ -210,6 +210,8 @@ interface AppState {
   products: Product[];
   addProduct: (product: Product) => void;
   updateProduct: (id: string, patch: Partial<Product>) => void;
+  /** Sets publishStatus="Published" + lastPublishedAt (see Product Workspace's guided Stepper). */
+  publishProduct: (id: string) => void;
   productRuleMappings: ProductRuleMapping[];
   // Full-replace semantics for a given product — simplest correct behavior
   // for a checklist-style mapping UI (see product-rule-mapping-manager.tsx).
@@ -479,6 +481,18 @@ export const useAppStore = create<AppState>()(
           products: s.products.map((p) => (p.id === id ? { ...p, ...patch, updatedAt: new Date().toISOString() } : p)),
         }));
         get().logAudit({ user: currentUser.name, action: "Updated Product", entity: "Product", entityId: id, details: `Product "${id}" updated.` });
+      },
+      publishProduct: (id) => {
+        const { currentUser, roles, products } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        const product = products.find((p) => p.id === id);
+        const now = new Date().toISOString();
+        set((s) => ({
+          products: s.products.map((p) =>
+            p.id === id ? { ...p, publishStatus: "Published", lastPublishedAt: now, updatedAt: now } : p
+          ),
+        }));
+        get().logAudit({ user: currentUser.name, action: "Published Product", entity: "Product", entityId: id, details: `Product "${product?.name ?? id}" published — available via the Product API.` });
       },
 
       productRuleMappings: DEFAULT_PRODUCT_RULE_MAPPINGS,
@@ -892,9 +906,42 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 16,
+      version: 19,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v18 -> v19 added `publishStatus`/`lastPublishedAt` to Product (the
+        // Product Workspace's guided Stepper). Backfill "Draft" onto any
+        // persisted product missing it — SimulationResult's new `productId`
+        // needs no backfill since it's optional and only new/product-driven
+        // runs ever set it.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.products?.some((p) => p.publishStatus === undefined)) {
+            s.products = s.products.map((p) => (p.publishStatus ? p : { ...p, publishStatus: "Draft" }));
+          }
+        }
+        // v17 -> v18 added Credit Cards and Wealth Management to default domains.
+        // Merge in any default industries missing from what's persisted.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.industries) {
+            const existingIds = new Set(s.industries.map((ind) => ind.id));
+            const missing = DEFAULT_INDUSTRIES.filter((ind) => !existingIds.has(ind.id));
+            if (missing.length) s.industries = [...s.industries, ...missing];
+          }
+        }
+        // v16 -> v17 added 3 domain-scoped example templates (Lending/
+        // Insurance/NBFC) and `categoryId` to Rule Templates. Merge in any
+        // default template id missing from what's persisted, so accounts
+        // that already had the store saved don't miss the new examples.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.ruleTemplates) {
+            const existingIds = new Set(s.ruleTemplates.map((t) => t.id));
+            const missing = DEFAULT_RULE_TEMPLATES.filter((t) => !existingIds.has(t.id));
+            if (missing.length) s.ruleTemplates = [...s.ruleTemplates, ...missing];
+          }
+        }
         // v15 -> v16 added `order` to ProductRuleMapping (product-based Rule
         // Sequencer/chaining). Backfill any persisted mapping missing it
         // using its existing position within that product's mappings, so
