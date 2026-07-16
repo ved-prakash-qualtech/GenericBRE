@@ -1,11 +1,15 @@
 import {
-  AppNotification,
   AuditEntry,
   BusinessRule,
   Condition,
   ConditionGroup,
   DecisionMatrix,
   Domain,
+  NotifyCategory,
+  NotifyExecutionLog,
+  NotifyTrigger,
+  NotifyWorkflow,
+  NotifyWorkflowTemplate,
   Priority,
   Product,
   ProductRuleMapping,
@@ -610,19 +614,6 @@ export const MATRICES: DecisionMatrix[] = [
 ];
 
 // ============================================================
-// NOTIFICATIONS
-// ============================================================
-export const NOTIFICATIONS: AppNotification[] = [
-  { id: "N1", type: "Success", title: "Rule Published", message: "RL-101 Minimum Credit Score Validation is now Active.", timestamp: daysAgo(0.05), read: false, module: "Rule Builder" },
-  { id: "N2", type: "Warning", title: "Matrix Overlap Detected", message: "Two rows in Bank Risk-Tiered Core Pricing Slabs have overlapping score bands.", timestamp: daysAgo(0.3), read: false, module: "Decision Matrix" },
-  { id: "N3", type: "Info", title: "Simulation Completed", message: "Digital Lending scenario returned Approved for applicant profile #4471.", timestamp: daysAgo(0.5), read: false, module: "Simulator" },
-  { id: "N4", type: "Success", title: "Rule Cloned", message: "RL-206 High Sum Assured Verification was cloned to RL-2061 (Draft).", timestamp: daysAgo(1), read: true, module: "Rule Repository" },
-  { id: "N5", type: "Error", title: "Validation Failed", message: "Gold Purity Grade Check could not be saved — mandatory Value field missing.", timestamp: daysAgo(1.4), read: true, module: "Rule Builder" },
-  { id: "N6", type: "Info", title: "Scheduled Export Delivered", message: "Weekly Rule Repository CSV export sent to risk-ops@qualtechedge.com.", timestamp: daysAgo(2), read: true, module: "Data & Export" },
-  { id: "N7", type: "Warning", title: "Draft Rule Ageing", message: "RL-108 Non-Metro KYC Compliance Check has been in Draft for 6 days.", timestamp: daysAgo(3), read: true, module: "Rule Repository" },
-];
-
-// ============================================================
 // AUDIT LOG
 // ============================================================
 export const AUDIT_LOG: AuditEntry[] = buildHashChain([
@@ -761,5 +752,235 @@ export const DEFAULT_RULE_TEMPLATES: RuleTemplate[] = [
     categoryId: "collateral",
     rootGroup: group("AND", [cond("ltv_requested", ">", "75")]),
     actions: [{ id: cid(), type: "Reject", reasonCode: "LTV_CAP_BREACH", message: "Requested LTV exceeds the collateral policy cap." }],
+  },
+];
+
+// ============================================================
+// NOTIFYX — trigger -> condition -> action workflow automation (config-only
+// prototype, no execution engine — runCount/logs are seed data, same as
+// every other seeded rollup in this file). Categories/Triggers are
+// configurable registries; see src/lib/notify-vocabulary.ts for the small
+// fixed vocabularies (action types/operators/delays).
+// ============================================================
+let notifyStepCounter = 0;
+const nsid = () => `NS-${(++notifyStepCounter).toString().padStart(4, "0")}`;
+
+export const DEFAULT_NOTIFY_CATEGORIES: NotifyCategory[] = [
+  { id: "cat-rule-governance", name: "Rule Governance", colorToken: "blue" },
+  { id: "cat-product-lifecycle", name: "Product Lifecycle", colorToken: "emerald" },
+  { id: "cat-simulation", name: "Simulation & Testing", colorToken: "violet" },
+  { id: "cat-compliance", name: "Compliance & Audit", colorToken: "red" },
+  { id: "cat-system-access", name: "System & Access", colorToken: "slate" },
+];
+
+export const DEFAULT_NOTIFY_TRIGGERS: NotifyTrigger[] = [
+  { id: "trg-rule-submitted", label: "Rule Submitted for Review", categoryId: "cat-rule-governance" },
+  { id: "trg-rule-approved", label: "Rule Approved & Published", categoryId: "cat-rule-governance" },
+  { id: "trg-rule-sent-back", label: "Rule Sent Back to Draft", categoryId: "cat-rule-governance" },
+  { id: "trg-product-published", label: "Product Published", categoryId: "cat-product-lifecycle" },
+  { id: "trg-product-created", label: "Product Created", categoryId: "cat-product-lifecycle" },
+  { id: "trg-sim-rejected", label: "Simulation Rejected Outcome", categoryId: "cat-simulation" },
+  { id: "trg-sim-review", label: "Simulation Review-Required Outcome", categoryId: "cat-simulation" },
+  { id: "trg-sandbox-run", label: "Sandbox Test Run", categoryId: "cat-simulation" },
+  { id: "trg-audit-chain-failed", label: "Audit Chain Verification Failed", categoryId: "cat-compliance" },
+  { id: "trg-rule-conflict", label: "Rule Conflict Detected", categoryId: "cat-compliance" },
+  { id: "trg-role-created", label: "New Role Created", categoryId: "cat-system-access" },
+];
+
+function nlog(description: string, result: NotifyExecutionLog["result"], daysBack: number): NotifyExecutionLog {
+  return { id: nsid(), timestamp: daysAgo(daysBack), description, result };
+}
+
+export const DEFAULT_NOTIFY_WORKFLOWS: NotifyWorkflow[] = [
+  {
+    id: "wf-rule-review-reminder",
+    name: "Rule Review Reminder",
+    categoryId: "cat-rule-governance",
+    triggerId: "trg-rule-submitted",
+    status: "Active",
+    steps: [
+      { id: nsid(), kind: "wait", duration: "24 hours" },
+      { id: nsid(), kind: "condition", field: "Rule Status", operator: "is", value: "Testing" },
+      { id: nsid(), kind: "action", actionType: "Notify Stakeholders", recipient: "Credit/Risk Manager", message: "This rule has been awaiting review for over 24 hours." },
+    ],
+    createdAt: daysAgo(90),
+    updatedAt: daysAgo(2),
+    createdBy: "Vikram Chawla",
+    runCount: 14,
+    logs: [
+      nlog("Notified Credit/Risk Manager — RL-303 still in Testing after 24h", "Success", 0.6),
+      nlog("Notified Credit/Risk Manager — RL-108 still in Testing after 24h", "Success", 5),
+      nlog("Skipped — RL-206 approved before the 24h wait elapsed", "Skipped", 9),
+    ],
+  },
+  {
+    id: "wf-rule-rejection-escalation",
+    name: "Rule Rejection Escalation",
+    categoryId: "cat-rule-governance",
+    triggerId: "trg-rule-sent-back",
+    status: "Active",
+    steps: [
+      { id: nsid(), kind: "condition", field: "Priority", operator: "is", value: "1" },
+      { id: nsid(), kind: "action", actionType: "Create Escalation", recipient: "System Administrator", message: "Critical-priority rule was sent back to Draft — needs attention." },
+    ],
+    createdAt: daysAgo(60),
+    updatedAt: daysAgo(12),
+    createdBy: "Rohan Mehta",
+    runCount: 3,
+    logs: [
+      nlog("Escalated RL-109 rejection to System Administrator", "Success", 12),
+      nlog("Escalated RL-303 rejection to System Administrator", "Success", 40),
+    ],
+  },
+  {
+    id: "wf-product-publish-broadcast",
+    name: "Product Publish Broadcast",
+    categoryId: "cat-product-lifecycle",
+    triggerId: "trg-product-published",
+    status: "Active",
+    steps: [
+      { id: nsid(), kind: "action", actionType: "Send Email", recipient: "All Stakeholders", message: "A product has just been published and is now live via the API." },
+      { id: nsid(), kind: "action", actionType: "Send In-App Notification", recipient: "Product Manager", message: "Review the published product's API Information tab." },
+    ],
+    createdAt: daysAgo(75),
+    updatedAt: daysAgo(1),
+    createdBy: "Rohan Mehta",
+    runCount: 22,
+    logs: [
+      nlog("Broadcast sent for Home Loan publish", "Success", 1),
+      nlog("Broadcast sent for Term Life Cover publish", "Success", 20),
+      nlog("Email delivery failed — distribution list unreachable", "Failed", 33),
+    ],
+  },
+  {
+    id: "wf-new-product-setup-reminder",
+    name: "New Product Setup Reminder",
+    categoryId: "cat-product-lifecycle",
+    triggerId: "trg-product-created",
+    status: "Draft",
+    steps: [
+      { id: nsid(), kind: "wait", duration: "3 days" },
+      { id: nsid(), kind: "condition", field: "Mapped Rules", operator: "is", value: "0" },
+      { id: nsid(), kind: "action", actionType: "Create Follow-up Task", recipient: "Product Manager", message: "This product still has no rules mapped 3 days after creation." },
+    ],
+    createdAt: daysAgo(10),
+    updatedAt: daysAgo(10),
+    createdBy: "Rohan Mehta",
+    runCount: 0,
+    logs: [],
+  },
+  {
+    id: "wf-simulation-rejection-followup",
+    name: "Simulation Rejection Follow-up",
+    categoryId: "cat-simulation",
+    triggerId: "trg-sim-rejected",
+    status: "Paused",
+    steps: [
+      { id: nsid(), kind: "action", actionType: "Notify Stakeholders", recipient: "Underwriter/Claims", message: "A simulation returned a Rejected outcome for review." },
+      { id: nsid(), kind: "wait", duration: "24 hours" },
+      { id: nsid(), kind: "action", actionType: "Create Follow-up Task", recipient: "Underwriter/Claims", message: "Follow up on the rejected simulation if unactioned." },
+    ],
+    createdAt: daysAgo(45),
+    updatedAt: daysAgo(15),
+    createdBy: "Kavita Rao",
+    runCount: 2,
+    logs: [
+      nlog("Notified Underwriter/Claims of Rejected outcome", "Success", 16),
+      nlog("Notified Underwriter/Claims of Rejected outcome", "Success", 38),
+    ],
+  },
+  {
+    id: "wf-sandbox-test-digest",
+    name: "Sandbox Test Digest",
+    categoryId: "cat-simulation",
+    triggerId: "trg-sandbox-run",
+    status: "Draft",
+    steps: [{ id: nsid(), kind: "action", actionType: "Send In-App Notification", recipient: "Business Analyst", message: "A sandbox test was run against a pending rule." }],
+    createdAt: daysAgo(5),
+    updatedAt: daysAgo(5),
+    createdBy: "Ananya Verma",
+    runCount: 0,
+    logs: [],
+  },
+  {
+    id: "wf-compliance-audit-alert",
+    name: "Compliance Audit Alert",
+    categoryId: "cat-compliance",
+    triggerId: "trg-audit-chain-failed",
+    status: "Active",
+    steps: [
+      { id: nsid(), kind: "action", actionType: "Create Escalation", recipient: "System Administrator", message: "Audit chain integrity check failed — investigate immediately." },
+      { id: nsid(), kind: "action", actionType: "Send Email", recipient: "System Administrator" },
+    ],
+    createdAt: daysAgo(70),
+    updatedAt: daysAgo(25),
+    createdBy: "Vikram Chawla",
+    runCount: 3,
+    logs: [
+      nlog("Escalated audit chain verification failure", "Success", 25),
+      nlog("Escalated audit chain verification failure", "Success", 55),
+    ],
+  },
+  {
+    id: "wf-new-role-provisioning-notice",
+    name: "New Role Provisioning Notice",
+    categoryId: "cat-system-access",
+    triggerId: "trg-role-created",
+    status: "Paused",
+    steps: [{ id: nsid(), kind: "action", actionType: "Send In-App Notification", recipient: "All Stakeholders", message: "A new role has been provisioned in Configuration Studio." }],
+    createdAt: daysAgo(30),
+    updatedAt: daysAgo(18),
+    createdBy: "Vikram Chawla",
+    runCount: 2,
+    logs: [
+      nlog("Notified all stakeholders of new role \"Operations\"", "Success", 18),
+      nlog("Notified all stakeholders of new role \"Underwriter/Claims\"", "Success", 28),
+    ],
+  },
+];
+
+export const DEFAULT_NOTIFY_WORKFLOW_TEMPLATES: NotifyWorkflowTemplate[] = [
+  {
+    id: "tmpl-notify-rule-approval-reminder",
+    name: "Rule Approval Reminder",
+    categoryId: "cat-rule-governance",
+    triggerId: "trg-rule-submitted",
+    steps: [
+      { id: nsid(), kind: "wait", duration: "24 hours" },
+      { id: nsid(), kind: "condition", field: "Rule Status", operator: "is", value: "Testing" },
+      { id: nsid(), kind: "action", actionType: "Notify Stakeholders", recipient: "Credit/Risk Manager", message: "Reminder: this rule is still awaiting review." },
+    ],
+  },
+  {
+    id: "tmpl-notify-sla-breach-escalation",
+    name: "SLA Breach Escalation",
+    categoryId: "cat-compliance",
+    triggerId: "trg-audit-chain-failed",
+    steps: [
+      { id: nsid(), kind: "action", actionType: "Notify Stakeholders", recipient: "System Administrator", message: "An SLA-relevant compliance event occurred." },
+      { id: nsid(), kind: "wait", duration: "24 hours before SLA breach" },
+      { id: nsid(), kind: "action", actionType: "Create Escalation", recipient: "System Administrator", message: "SLA is about to breach — escalating." },
+    ],
+  },
+  {
+    id: "tmpl-notify-product-publish-broadcast",
+    name: "Product Publish Broadcast",
+    categoryId: "cat-product-lifecycle",
+    triggerId: "trg-product-published",
+    steps: [
+      { id: nsid(), kind: "action", actionType: "Send Email", recipient: "All Stakeholders", message: "A product has just been published." },
+      { id: nsid(), kind: "action", actionType: "Send In-App Notification", recipient: "Product Manager" },
+    ],
+  },
+  {
+    id: "tmpl-notify-simulation-failure-followup",
+    name: "Simulation Failure Follow-up",
+    categoryId: "cat-simulation",
+    triggerId: "trg-sim-rejected",
+    steps: [
+      { id: nsid(), kind: "action", actionType: "Notify Stakeholders", recipient: "Underwriter/Claims", message: "A simulation returned a Rejected outcome." },
+      { id: nsid(), kind: "wait", duration: "24 hours" },
+      { id: nsid(), kind: "action", actionType: "Create Follow-up Task", recipient: "Underwriter/Claims", message: "Follow up if this case is still unresolved." },
+    ],
   },
 ];

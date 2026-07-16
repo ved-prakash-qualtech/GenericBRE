@@ -83,7 +83,6 @@ function NavLink({
 }
 
 export function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
-  const unread = useAppStore((s) => s.notifications.filter((n) => !n.read).length);
   const roles = useAppStore((s) => s.roles);
   const roleId = useAppStore((s) => s.currentUser.role);
   const primaryItems = visibleNavItems(NAV_ITEMS, roles, roleId);
@@ -123,7 +122,6 @@ export function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNa
             Icon={item.icon}
             collapsed={collapsed}
             disabled={item.disabled}
-            badge={item.badgeKey === "notifications" ? unread : undefined}
             onNavigate={onNavigate}
           />
         ))}

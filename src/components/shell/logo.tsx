@@ -23,15 +23,17 @@ export function LogoMark({ className }: { className?: string }) {
 }
 
 export function LogoLockup({ collapsed }: { collapsed?: boolean }) {
+  const appName = useAppStore((s) => s.appearance.appName);
+  const tagline = useAppStore((s) => s.appearance.tagline);
   return (
     <div className="flex items-center gap-2.5 overflow-hidden">
       <LogoMark />
       {!collapsed && (
         <div className="flex flex-col leading-none">
-          <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">
-            Business Rules Engine
+          <span className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">
+            {appName}
           </span>
-          <span className="text-[11px] text-sidebar-foreground/55">Decision Platform</span>
+          <span className="truncate text-[11px] text-sidebar-foreground/55">{tagline}</span>
         </div>
       )}
     </div>

@@ -1,19 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { RotateCcw, Building2, SlidersHorizontal, Check } from "lucide-react";
+import { RotateCcw, SlidersHorizontal, Check } from "lucide-react";
 import { useAppStore, useHasCapability } from "@/lib/store";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { RuleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -35,22 +28,6 @@ export function GlobalFilterBar() {
 
   return (
     <div className="hidden items-center gap-2 lg:flex">
-      {canManageSystem && (
-        <Select
-          items={{ qualtechedge: "QualtechEdge Bank", northstar: "NorthStar NBFC", "unity-life": "Unity Life Insurance" }}
-          defaultValue="qualtechedge"
-        >
-          <SelectTrigger size="sm" className="h-9 w-38 gap-1.5">
-            <Building2 className="size-3.5 text-muted-foreground" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="qualtechedge">QualtechEdge Bank</SelectItem>
-            <SelectItem value="northstar">NorthStar NBFC</SelectItem>
-            <SelectItem value="unity-life">Unity Life Insurance</SelectItem>
-          </SelectContent>
-        </Select>
-      )}
       <MultiSelect
         label="Domain"
         options={DOMAIN_OPTIONS}

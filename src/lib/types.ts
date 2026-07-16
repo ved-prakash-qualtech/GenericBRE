@@ -320,7 +320,10 @@ export interface JsonMappingEntry {
 export interface JsonMapping {
   id: string;
   name: string;
+  /** Determines which Field Catalog entries are offered for "Mapped Field" (domain-scoped, same as everywhere else). */
   industry: string;
+  /** Optional — scopes this mapping to one product's integration contract. Unset = applies industry-wide (every product in `industry` shares this shape). */
+  productId?: string;
   direction: "request" | "response";
   entries: JsonMappingEntry[];
   createdAt: string;
@@ -438,16 +441,73 @@ export interface DecisionResponseConfig {
   enableAuditLogging: boolean;
 }
 
-export type NotificationType = "Error" | "Warning" | "Success" | "Info";
+// ============================================================
+// NotifyX — trigger -> condition -> action workflow automation. Categories
+// and Triggers are configurable registries (mirrors RuleCategory/Industry);
+// action types/operators/delay presets are a small fixed vocabulary (mirrors
+// RuleAction's closed ActionType union) — see src/lib/notify-vocabulary.ts.
+// Recipients are computed live from the `roles` registry, not stored here.
+// ============================================================
+export type NotifyWorkflowStatus = "Draft" | "Active" | "Paused";
 
-export interface AppNotification {
+export interface NotifyCategory {
   id: string;
-  type: NotificationType;
-  title: string;
-  message: string;
+  name: string;
+  /** Keys into the color-token map in notify-vocabulary.ts (light + dark classes). */
+  colorToken: string;
+}
+
+export interface NotifyTrigger {
+  id: string;
+  label: string;
+  categoryId: string;
+}
+
+export type NotifyActionType =
+  | "Send Email"
+  | "Send In-App Notification"
+  | "Send WhatsApp Message"
+  | "Notify Stakeholders"
+  | "Create Follow-up Task"
+  | "Create Escalation"
+  | "Change Status";
+
+export type NotifyOperator = "is" | "is not" | "contains";
+
+export type NotifyStep =
+  | { id: string; kind: "condition"; field: string; operator: NotifyOperator; value: string }
+  | { id: string; kind: "action"; actionType: NotifyActionType; recipient: string; message?: string }
+  | { id: string; kind: "wait"; duration: string };
+
+export interface NotifyExecutionLog {
+  id: string;
   timestamp: string;
-  read: boolean;
-  module?: string;
+  description: string;
+  result: "Success" | "Failed" | "Skipped";
+}
+
+export interface NotifyWorkflow {
+  id: string;
+  name: string;
+  categoryId: string;
+  triggerId: string;
+  status: NotifyWorkflowStatus;
+  steps: NotifyStep[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  /** Runtime rollups — this is a config-only prototype (no execution engine), so these are
+   *  seeded/static, never incremented by real triggers. See NOTIFYX_BLUEPRINT gap G-08/G-22. */
+  runCount: number;
+  logs: NotifyExecutionLog[];
+}
+
+export interface NotifyWorkflowTemplate {
+  id: string;
+  name: string;
+  categoryId: string;
+  triggerId: string;
+  steps: NotifyStep[];
 }
 
 export interface AuditEntry {
@@ -489,7 +549,11 @@ export type Capability =
   | "rule.simulate"
   | "rule.publish"
   | "system.manage"
-  | "config.manage";
+  | "config.manage"
+  | "notifyx.view"
+  | "notifyx.create"
+  | "notifyx.edit"
+  | "notifyx.toggle";
 
 // A configurable role — enforced client-side only (no backend). Seeded from
 // BRD §5.4's persona matrix, but fully editable/renameable via the
@@ -598,6 +662,10 @@ export interface AppearanceSettings {
   largeClickTargets: boolean;
   showInsights: boolean;
   logo: string | null; // data URI, overrides default brand mark
+  /** Org/product name shown in the sidebar lockup, login screen, and browser tab. Admin-only (Appearance Studio's Branding tab). */
+  appName: string;
+  /** Short tagline shown under appName in the sidebar lockup and login screen. Admin-only. */
+  tagline: string;
 }
 
 export interface CurrentUser {

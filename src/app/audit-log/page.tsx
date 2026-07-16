@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Download, Search, ScrollText, ShieldCheck, ShieldAlert, ShieldQuestion, ChevronRight } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { AuditEntry, BusinessRule, Product, SimulationResult } from "@/lib/types";
 import { verifyAuditChain, AuditIntegrityResult } from "@/lib/audit-chain";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,10 +13,36 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { downloadCsv } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 
+// Best-effort domain resolution — AuditEntry itself carries no `domain` field
+// (most actions, e.g. role/category edits, have no domain at all), so this
+// cross-references the entity types that genuinely do: a rule/product's own
+// domain, or a simulation's domain (SimulationResult already carries one
+// directly). Anything else (Role, RuleCategory, RuleTemplate, ...) has no
+// resolvable domain and is simply excluded when a Domain filter is active.
+function resolveDomain(
+  entry: AuditEntry,
+  rules: BusinessRule[],
+  products: Product[],
+  simulations: SimulationResult[]
+): string | undefined {
+  if (entry.entity === "BusinessRule") return rules.find((r) => r.id === entry.entityId)?.domain;
+  if (entry.entity === "Product") return products.find((p) => p.id === entry.entityId)?.domain;
+  if (entry.entity === "Simulation") return simulations.find((s) => s.id === entry.entityId)?.domain;
+  if (entry.entity === "Industry") return entry.entityId;
+  return undefined;
+}
+
 export default function AuditLogPage() {
   const auditLog = useAppStore((s) => s.auditLog);
+  const rules = useAppStore((s) => s.rules);
+  const products = useAppStore((s) => s.products);
+  const simulations = useAppStore((s) => s.simulations);
+  const industries = useAppStore((s) => s.industries);
   const [search, setSearch] = useState("");
   const [actions, setActions] = useState<string[]>([]);
+  const [entityTypes, setEntityTypes] = useState<string[]>([]);
+  const [domains, setDomains] = useState<string[]>([]);
+  const [users, setUsers] = useState<string[]>([]);
   const [integrity, setIntegrity] = useState<AuditIntegrityResult | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
@@ -29,16 +56,49 @@ export default function AuditLogPage() {
 
   const runVerify = () => setIntegrity(verifyAuditChain(auditLog));
 
+  const domainByEntry = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of auditLog) {
+      const d = resolveDomain(a, rules, products, simulations);
+      if (d) map.set(a.id, d);
+    }
+    return map;
+  }, [auditLog, rules, products, simulations]);
+
   const actionOptions = useMemo(
     () => Array.from(new Set(auditLog.map((a) => a.action))).map((a) => ({ value: a, label: a })),
+    [auditLog]
+  );
+  const entityTypeOptions = useMemo(
+    () => Array.from(new Set(auditLog.map((a) => a.entity))).map((e) => ({ value: e, label: e })),
+    [auditLog]
+  );
+  const domainOptions = useMemo(() => {
+    const present = new Set(domainByEntry.values());
+    return industries.filter((i) => present.has(i.id)).map((i) => ({ value: i.id, label: i.name }));
+  }, [domainByEntry, industries]);
+  const userOptions = useMemo(
+    () => Array.from(new Set(auditLog.map((a) => a.user))).map((u) => ({ value: u, label: u })),
     [auditLog]
   );
 
   const filtered = auditLog.filter((a) => {
     if (search && !`${a.user} ${a.entityId} ${a.details}`.toLowerCase().includes(search.toLowerCase())) return false;
     if (actions.length && !actions.includes(a.action)) return false;
+    if (entityTypes.length && !entityTypes.includes(a.entity)) return false;
+    if (users.length && !users.includes(a.user)) return false;
+    if (domains.length && !domains.includes(domainByEntry.get(a.id) ?? "")) return false;
     return true;
   });
+
+  const hasFilters = !!(search || actions.length || entityTypes.length || domains.length || users.length);
+  const clearAll = () => {
+    setSearch("");
+    setActions([]);
+    setEntityTypes([]);
+    setDomains([]);
+    setUsers([]);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -112,6 +172,14 @@ export default function AuditLogPage() {
           <Input placeholder="Search by user, entity, or details..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-72 pl-8" />
         </div>
         <MultiSelect label="Action Type" options={actionOptions} selected={actions} onChange={setActions} />
+        <MultiSelect label="Entity Type" options={entityTypeOptions} selected={entityTypes} onChange={setEntityTypes} />
+        <MultiSelect label="Domain" options={domainOptions} selected={domains} onChange={setDomains} />
+        <MultiSelect label="User" options={userOptions} selected={users} onChange={setUsers} />
+        {hasFilters && (
+          <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={clearAll}>
+            Clear all
+          </Button>
+        )}
         <span className="ml-auto text-xs text-muted-foreground">{filtered.length} entries</span>
       </div>
 
@@ -125,7 +193,8 @@ export default function AuditLogPage() {
                   <th className="px-3 py-2 text-left font-medium">Timestamp</th>
                   <th className="px-3 py-2 text-left font-medium">User</th>
                   <th className="px-3 py-2 text-left font-medium">Action</th>
-                  <th className="px-3 py-2 text-left font-medium">Entity</th>
+                  <th className="px-3 py-2 text-left font-medium">Entity Type</th>
+                  <th className="px-3 py-2 text-left font-medium">Entity ID</th>
                   <th className="px-3 py-2 text-left font-medium">Details</th>
                 </tr>
               </thead>
@@ -149,15 +218,14 @@ export default function AuditLogPage() {
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">{format(new Date(a.timestamp), "dd MMM yyyy, HH:mm")}</td>
                         <td className="px-3 py-2 text-xs font-medium">{a.user}</td>
-                        <td className="px-3 py-2 text-xs">
-                          <span className="rounded-full border px-2 py-0.5">{a.action}</span>
-                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-xs font-medium text-primary">{a.action}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{a.entity}</td>
                         <td className="px-3 py-2 text-xs font-mono text-muted-foreground">{a.entityId}</td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">{a.details}</td>
                       </tr>
                       {isOpen && a.decisionContext && (
                         <tr key={`${a.id}-detail`} className="bg-muted/20">
-                          <td colSpan={6} className="px-5 py-3">
+                          <td colSpan={7} className="px-5 py-3">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
                               <DetailField label="Correlation ID" value={a.decisionContext.correlationId} mono />
                               {/* Environment removed — FUTURE: restore <DetailField label="Environment" value={a.decisionContext.environment} /> */}
