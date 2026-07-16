@@ -1018,9 +1018,22 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 21,
+      version: 22,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v21 -> v22 removed 4 generic rule templates from selection list.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.ruleTemplates) {
+            const genericIds = new Set([
+              "tmpl-threshold-check",
+              "tmpl-eligibility-gate",
+              "tmpl-review-flag",
+              "tmpl-value-assignment",
+            ]);
+            s.ruleTemplates = s.ruleTemplates.filter((t) => !genericIds.has(t.id));
+          }
+        }
         // v20 -> v21 added `appName`/`tagline` to AppearanceSettings (the
         // Branding tab in Appearance Studio) — backfill the same default
         // strings the hardcoded sidebar/login text used before, so nothing

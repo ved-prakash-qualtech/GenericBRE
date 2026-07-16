@@ -781,41 +781,6 @@ export const DEFAULT_USERS: AppUser[] = [
 // one just pre-fills the Rule Builder; the result is a normal editable rule.
 // ============================================================
 export const DEFAULT_RULE_TEMPLATES: RuleTemplate[] = [
-  // Generic, industry-agnostic skeletons — blank field slots are intentional
-  // since these apply across every domain; pick a field after inserting.
-  {
-    id: "tmpl-threshold-check",
-    name: "Threshold Check",
-    description: "Reject when a numeric field breaches a configured minimum or maximum.",
-    categoryId: "eligibility",
-    rootGroup: group("AND", [cond("", "<", "")]),
-    actions: [{ id: cid(), type: "Reject", reasonCode: "THRESHOLD_BREACH", message: "Value did not meet the configured threshold." }],
-  },
-  {
-    id: "tmpl-eligibility-gate",
-    name: "Eligibility Gate",
-    description: "Require two conditions to both hold before allowing the case to proceed.",
-    categoryId: "eligibility",
-    rootGroup: group("AND", [cond("", "=", ""), cond("", "=", "")]),
-    actions: [{ id: cid(), type: "Approve", reasonCode: "ELIGIBLE_CUSTOMER", message: "All eligibility conditions satisfied." }],
-  },
-  {
-    id: "tmpl-review-flag",
-    name: "Manual Review Flag",
-    description: "Route a case to manual review when a risk condition is met, without an automatic reject.",
-    categoryId: "risk-fraud",
-    rootGroup: group("AND", [cond("", ">", "")]),
-    actions: [{ id: cid(), type: "Show Message", reasonCode: "MANUAL_REVIEW", message: "This case has been flagged for manual review." }],
-  },
-  {
-    id: "tmpl-value-assignment",
-    name: "Value Assignment",
-    description: "Assign or calculate an output value onto the case when a condition is met.",
-    categoryId: "pricing",
-    rootGroup: group("AND", [cond("", "=", "")]),
-    actions: [{ id: cid(), type: "Assign Value", outputField: "", outputValue: "" }],
-  },
-
   // Domain-scoped examples — real field references, so they're usable
   // as-is (adjust the threshold/value) instead of just a bare shape.
   {

@@ -40,7 +40,6 @@ import { RuleTemplatesManager } from "@/components/studio/rule-templates-manager
 // PriorityConfigManager import removed
 import { ProductManager } from "@/components/studio/product-manager";
 import { ProductRuleMappingManager } from "@/components/studio/product-rule-mapping-manager";
-import { DecisionResponseConfigManager } from "@/components/studio/decision-response-config-manager";
 import { DashboardManagementManager } from "@/components/studio/dashboard-management-manager";
 import { ListManager } from "@/components/studio/list-manager";
 import { RolesManager } from "@/components/studio/roles-manager";
@@ -55,7 +54,6 @@ type SectionId =
   | "rule-templates"
   | "products"
   | "product-rule-mapping"
-  | "decision-response"
   | "dashboard-management"
   | "industries"
   | "roles"
@@ -90,7 +88,6 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "product-rule-mapping", label: "Product-Rule Mapping", icon: Link2 },
       { id: "categories", label: "Rule Categories", icon: Tag },
       { id: "rule-templates", label: "Rule Templates", icon: LayoutTemplate },
-      { id: "decision-response", label: "Decision Response Configuration", icon: Sliders },
     ],
   },
   {
@@ -128,7 +125,6 @@ const SECTION_DESCRIPTIONS: Record<SectionId, string> = {
   "rule-templates": "Reusable starting shapes for Rule Builder's condition and action editors — pre-fill a rule, then edit freely.",
   products: "Configurable product/scheme master (Home Loan, Auto Loan, ...) — a client can offer many. Rules stay standalone; see Product-Rule Mapping for which rules apply to each.",
   "product-rule-mapping": "Map each product to the rules that should execute for it — many-to-many. This is what /api/decision uses to identify and run only the rules mapped to the request's product.",
-  "decision-response": "How much detail a decision result exposes — Decision Only, Decision + Explanation, Decision + Trace, or Full Audit — per Industry or per Product.",
   "dashboard-management": "Per-role landing page and default dashboard widgets — BRD §5.3's Persona-to-Module Mapping, made configurable.",
   industries: "Every business domain/vertical the platform supports.",
   roles: "Reusable capability templates several users can share — who can do what, enforced both in the UI and at the data layer.",
@@ -232,7 +228,7 @@ export default function SettingsPage() {
             {/* PriorityConfigManager render block removed */}
             {section === "products" && <ProductManager />}
             {section === "product-rule-mapping" && <ProductRuleMappingManager />}
-            {section === "decision-response" && <DecisionResponseConfigManager />}
+            {/* decision-response config manager removed */}
             {section === "dashboard-management" && <DashboardManagementManager />}
             {section === "industries" && <IndustriesManager />}
             {section === "roles" && <RolesManager />}

@@ -1,0 +1,9 @@
+{
+  "applicant": {
+    "age": 34,
+    "city": "Pune"
+  },
+  "loan": {
+    "amount": 500000
+  }
+}

@@ -44,10 +44,10 @@ export function RuleTemplatesManager() {
   const updateRuleTemplate = useAppStore((s) => s.updateRuleTemplate);
   const deleteRuleTemplate = useAppStore((s) => s.deleteRuleTemplate);
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => templates[0]?.id ?? null);
   const [draft, setDraft] = useState<RuleTemplate | null>(null);
   const [pendingDelete, setPendingDelete] = useState<RuleTemplate | null>(null);
-  const [showElseBranch, setShowElseBranch] = useState(false);
+  const [showElseBranch, setShowElseBranch] = useState(() => !!templates[0]?.elseActions?.length);
 
   const selected = selectedId ? templates.find((t) => t.id === selectedId) ?? null : null;
   const active = draft ?? selected;
@@ -172,14 +172,14 @@ export function RuleTemplatesManager() {
                 />
               </div>
               <div className="space-y-1.5 rounded-xl border bg-card p-3.5">
-                <Label>Industry — scopes the field picker below</Label>
+                <Label>Domain — scopes the field picker below</Label>
                 <Select
                   value={active.domain ?? ANY_INDUSTRY}
                   onValueChange={(v) => updateActive({ domain: v === ANY_INDUSTRY ? undefined : (v as string) })}
                 >
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ANY_INDUSTRY}>Any Industry</SelectItem>
+                    <SelectItem value={ANY_INDUSTRY}>Any Domain</SelectItem>
                     {industries.map((i) => (
                       <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
                     ))}
