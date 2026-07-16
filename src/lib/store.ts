@@ -10,11 +10,13 @@ import {
   DEFAULT_ROLES,
   DEFAULT_RULE_GROUPS,
   DEFAULT_RULE_TEMPLATES,
+  DEFAULT_USERS,
   MATRICES,
   NOTIFICATIONS,
 } from "./mock-data";
 import {
   AppNotification,
+  AppUser,
   AppearanceSettings,
   ApprovalRequest,
   AuditEntry,
@@ -197,6 +199,13 @@ interface AppState {
   addRole: (role: Role) => void;
   updateRole: (id: string, patch: Partial<Role>) => void;
   deleteRole: (id: string) => void;
+
+  // user roster — named individuals, each pointing at a Role; also carries
+  // per-user Maker-Checker rule-approval category responsibilities
+  users: AppUser[];
+  addUser: (user: AppUser) => void;
+  updateUser: (id: string, patch: Partial<AppUser>) => void;
+  deleteUser: (id: string) => void;
 
   // rule groups (organizational collections, independent of Category)
   ruleGroups: RuleGroup[];
@@ -465,6 +474,26 @@ export const useAppStore = create<AppState>()(
         if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({ roles: s.roles.filter((r) => r.id !== id) }));
         get().logAudit({ user: get().currentUser.name, action: "Deleted Role", entity: "Role", entityId: id, details: `Role "${id}" removed.` });
+      },
+
+      users: DEFAULT_USERS,
+      addUser: (userToAdd) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ users: [...s.users, userToAdd] }));
+        get().logAudit({ user: get().currentUser.name, action: "Created User", entity: "User", entityId: userToAdd.id, details: `Added user "${userToAdd.name}".` });
+      },
+      updateUser: (id, patch) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ users: s.users.map((u) => (u.id === id ? { ...u, ...patch, updatedAt: new Date().toISOString() } : u)) }));
+        get().logAudit({ user: get().currentUser.name, action: "Updated User", entity: "User", entityId: id, details: `User "${id}" updated.` });
+      },
+      deleteUser: (id) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        set((s) => ({ users: s.users.filter((u) => u.id !== id) }));
+        get().logAudit({ user: get().currentUser.name, action: "Deleted User", entity: "User", entityId: id, details: `User "${id}" removed.` });
       },
 
       products: DEFAULT_PRODUCTS,
@@ -906,9 +935,14 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 19,
+      version: 20,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v19 -> v20 added `users` (the User Management roster, distinct from
+        // `roles`) with per-user `approvalCategories` for Maker-Checker. A
+        // brand-new key — the default shallow merge fills it in from initial
+        // state (DEFAULT_USERS) automatically, nothing to backfill here.
+        //
         // v18 -> v19 added `publishStatus`/`lastPublishedAt` to Product (the
         // Product Workspace's guided Stepper). Backfill "Draft" onto any
         // persisted product missing it — SimulationResult's new `productId`

@@ -506,6 +506,29 @@ export interface Role {
   defaultAppearance?: Partial<AppearanceSettings>;
 }
 
+// A named individual on the team's user roster — distinct from Role (a
+// reusable capability template several users can share). Enforced
+// client-side only (no backend), same as the rest of this prototype.
+export interface AppUser {
+  id: string;
+  name: string;
+  email: string;
+  /** Free-text job title/role label (e.g. "Credit Risk Manager") — not a
+   *  foreign key into the `Role` capability-template list, deliberately
+   *  independent of it so this roster never depends on Role data existing. */
+  role: string;
+  department: string;
+  status: "Active" | "Inactive";
+  permissions: Capability[];
+  /** RuleCategory.name values this user is authorized to approve as part of
+   *  Maker-Checker approval. Zero, one, or many — a single approver can cover
+   *  multiple categories. Purely configuration; the workflow that reads this
+   *  (matching a rule's category to eligible approvers) isn't implemented yet. */
+  approvalCategories: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Per-role dashboard defaults (BRD §5.3 Persona-to-Module Mapping) — where a
 // role lands after login/switch, and which dashboard widgets it starts with.
 // Admin-configured via Configuration Studio → Dashboard Management; a user's

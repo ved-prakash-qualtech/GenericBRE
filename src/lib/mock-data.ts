@@ -1,5 +1,6 @@
 import {
   AppNotification,
+  AppUser,
   AuditEntry,
   BusinessRule,
   Condition,
@@ -691,6 +692,97 @@ export const DEFAULT_PRODUCT_RULE_MAPPINGS: ProductRuleMapping[] = [
   mapping("prm-8", "prod-term-life", "RL-201", 1),
   mapping("prm-9", "prod-gold-loan", "RL-301", 0),
   mapping("prm-10", "prod-gold-loan", "RL-302", 1),
+];
+
+// ============================================================
+// USER ROSTER — individual named people. `role` is a free-text title, not a
+// foreign key (deliberately independent of the `Role` capability-template
+// list below). approvalCategories powers Maker-Checker: which Rule Category
+// names (RuleCategory.name, from the configurable ruleCategories list) this
+// person is authorized to approve. Seeded here with the business-reference
+// mapping from the BRD, but it's plain configuration — the System
+// Administrator can assign any category to any user via the checkboxes,
+// nothing below is enforced in code.
+//
+// Mirrors the 6 personas from src/data/roles.json (name + capabilities) so
+// User Management is a complete, self-contained roster — Roles itself is no
+// longer surfaced as its own Configuration Studio page.
+// ============================================================
+const USER_SEED_TIMESTAMP = "2026-02-01T09:00:00.000Z";
+
+export const DEFAULT_USERS: AppUser[] = [
+  {
+    id: "usr-kavita-rao",
+    name: "Kavita Rao",
+    email: "kavita.rao@example.com",
+    role: "Credit/Risk Manager",
+    department: "Credit Risk",
+    status: "Active",
+    permissions: ["rule.view", "rule.create", "rule.edit", "rule.simulate", "rule.publish"],
+    approvalCategories: ["Eligibility"],
+    createdAt: USER_SEED_TIMESTAMP,
+    updatedAt: USER_SEED_TIMESTAMP,
+  },
+  {
+    id: "usr-arjun-nair",
+    name: "Arjun Nair",
+    email: "arjun.nair@example.com",
+    role: "Underwriter/Claims",
+    department: "Underwriting & Claims",
+    status: "Active",
+    permissions: ["rule.view", "rule.create", "rule.edit", "rule.simulate", "rule.publish"],
+    approvalCategories: ["Risk & Fraud", "Collateral"],
+    createdAt: USER_SEED_TIMESTAMP,
+    updatedAt: USER_SEED_TIMESTAMP,
+  },
+  {
+    id: "usr-rohan-mehta",
+    name: "Rohan Mehta",
+    email: "rohan.mehta@example.com",
+    role: "Product Manager",
+    department: "Product Strategy",
+    status: "Active",
+    permissions: ["rule.view", "rule.create", "rule.edit", "rule.simulate", "rule.publish", "config.manage"],
+    approvalCategories: ["Pricing"],
+    createdAt: USER_SEED_TIMESTAMP,
+    updatedAt: USER_SEED_TIMESTAMP,
+  },
+  {
+    id: "usr-ananya-verma",
+    name: "Ananya Verma",
+    email: "ananya.verma@example.com",
+    role: "Business Analyst",
+    department: "Business Analysis",
+    status: "Active",
+    permissions: ["rule.view", "rule.create", "rule.edit", "rule.simulate"],
+    approvalCategories: [],
+    createdAt: USER_SEED_TIMESTAMP,
+    updatedAt: USER_SEED_TIMESTAMP,
+  },
+  {
+    id: "usr-divya-iyer",
+    name: "Divya Iyer",
+    email: "divya.iyer@example.com",
+    role: "Operations",
+    department: "Operations",
+    status: "Active",
+    permissions: ["rule.view", "rule.simulate"],
+    approvalCategories: [],
+    createdAt: USER_SEED_TIMESTAMP,
+    updatedAt: USER_SEED_TIMESTAMP,
+  },
+  {
+    id: "usr-vikram-chawla",
+    name: "Vikram Chawla",
+    email: "vikram.chawla@example.com",
+    role: "System Administrator",
+    department: "IT / System Administration",
+    status: "Active",
+    permissions: ["rule.view", "rule.create", "rule.edit", "rule.delete", "rule.simulate", "rule.publish", "system.manage", "config.manage"],
+    approvalCategories: [],
+    createdAt: USER_SEED_TIMESTAMP,
+    updatedAt: USER_SEED_TIMESTAMP,
+  },
 ];
 
 // ============================================================

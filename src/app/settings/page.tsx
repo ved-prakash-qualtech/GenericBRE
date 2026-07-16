@@ -15,7 +15,6 @@ import {
   LayoutDashboard,
   Building2,
   Users,
-  ShieldCheck,
   Sliders,
   LayoutTemplate,
   Compass,
@@ -44,6 +43,7 @@ import { DecisionResponseConfigManager } from "@/components/studio/decision-resp
 import { DashboardManagementManager } from "@/components/studio/dashboard-management-manager";
 import { ListManager } from "@/components/studio/list-manager";
 import { RolesManager } from "@/components/studio/roles-manager";
+import { UserManager } from "@/components/studio/user-manager";
 
 type SectionId =
   | "fields"
@@ -56,7 +56,8 @@ type SectionId =
   | "decision-response"
   | "dashboard-management"
   | "industries"
-  | "roles";
+  | "roles"
+  | "users";
 
 interface NavItem {
   id: SectionId;
@@ -98,7 +99,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Access",
     items: [
-      { id: "roles", label: "User Management", icon: ShieldCheck },
+      { id: "users", label: "User Management", icon: Users },
     ],
   },
 ];
@@ -121,7 +122,8 @@ const SECTION_DESCRIPTIONS: Record<SectionId, string> = {
   "decision-response": "How much detail a decision result exposes — Decision Only, Decision + Explanation, Decision + Trace, or Full Audit — per Industry or per Product.",
   "dashboard-management": "Per-role landing page and default dashboard widgets — BRD §5.3's Persona-to-Module Mapping, made configurable.",
   industries: "Every business domain/vertical the platform supports.",
-  roles: "Who can do what — capabilities are assigned per role, enforced both in the UI and at the data layer.",
+  roles: "Reusable capability templates several users can share — who can do what, enforced both in the UI and at the data layer.",
+  users: "Every named person on the roster — their Role, System Permissions, and which Rule Categories they're authorized to approve under Maker-Checker.",
 };
 
 export default function SettingsPage() {
@@ -224,6 +226,7 @@ export default function SettingsPage() {
             {section === "dashboard-management" && <DashboardManagementManager />}
             {section === "industries" && <IndustriesManager />}
             {section === "roles" && <RolesManager />}
+            {section === "users" && <UserManager />}
 
             {section === "fields" && (
               <p className="pt-2 text-[11px] text-muted-foreground">

@@ -272,14 +272,15 @@ function RepositoryContent() {
     // setEnvironmentFilters([]); // FUTURE: restore when environment promotion is reintroduced
   };
 
-  const hasFilters =
+  const hasFilters = Boolean(
     search ||
     domains.length ||
     statuses.length ||
-    categoryFilters.length;
+    categoryFilters.length
     // ownerFilters.length || // FUTURE: restore when Owner is reintroduced
     // groupFilters.length removed — Rule Group is no longer a filter dimension
-    // || environmentFilters.length; // FUTURE: restore when environment promotion is reintroduced
+    // || environmentFilters.length // FUTURE: restore when environment promotion is reintroduced
+  );
 
   return (
     <div className="flex h-full flex-col">

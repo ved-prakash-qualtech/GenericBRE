@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { Capability, Role } from "@/lib/types";
+import { ALL_CAPABILITIES, capabilityLabel } from "@/lib/capabilities";
 import { ROLE_ICON_OPTIONS, iconForRole } from "@/lib/role-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,23 +31,6 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-
-const ALL_CAPABILITIES: Capability[] = [
-  "rule.view",
-  "rule.create",
-  "rule.edit",
-  "rule.delete",
-  "rule.simulate",
-  "rule.publish",
-  "system.manage",
-];
-
-// Display text only — the underlying Capability id ("rule.publish") and every
-// hasCapability(...) check elsewhere stay unchanged.
-const CAPABILITY_LABELS: Partial<Record<Capability, string>> = {
-  "rule.publish": "rule.approve",
-};
-const capabilityLabel = (cap: Capability) => CAPABILITY_LABELS[cap] ?? cap;
 
 const BLANK: Role = { id: "", name: "", personaName: "", icon: "Briefcase", capabilities: ["rule.view"] };
 
