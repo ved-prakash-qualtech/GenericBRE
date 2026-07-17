@@ -7,7 +7,7 @@ function sampleValueFor(field: BusinessField): string | number | boolean {
   switch (field.type) {
     case "number":
     case "currency":
-      return 0;
+      return "";
     case "boolean":
       return false;
     case "enum":
