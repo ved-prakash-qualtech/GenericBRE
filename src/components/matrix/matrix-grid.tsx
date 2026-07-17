@@ -2,14 +2,20 @@
 
 import { useMemo, useRef } from "react";
 import { toast } from "sonner";
-import { Plus, Copy, Trash2, Download, Upload, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Plus, Copy, Trash2, Download, Upload, AlertTriangle, CheckCircle2, MoreVertical } from "lucide-react";
 import { DecisionMatrix, MatrixRow } from "@/lib/types";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, useHasCapability } from "@/lib/store";
 import { validateMatrix, MatrixIssue } from "@/lib/matrix-lookup";
 import { downloadCsv } from "@/lib/csv";
 import { EditableCell } from "./editable-cell";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 let rowSeq = 5000;
@@ -20,9 +26,17 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
   const deleteMatrixRow = useAppStore((s) => s.deleteMatrixRow);
   const duplicateMatrixRow = useAppStore((s) => s.duplicateMatrixRow);
   const updateMatrixRows = useAppStore((s) => s.updateMatrixRows);
+  const deleteMatrix = useAppStore((s) => s.deleteMatrix);
   const logAudit = useAppStore((s) => s.logAudit);
   const currentUser = useAppStore((s) => s.currentUser);
+  const canEdit = useHasCapability("rule.edit");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDeleteMatrix = () => {
+    if (!window.confirm(`Delete "${matrix.name}"? This removes all ${matrix.rows.length} row(s). This can't be undone.`)) return;
+    deleteMatrix(matrix.id);
+    toast.success(`"${matrix.name}" deleted.`);
+  };
 
   const issues = useMemo(() => validateMatrix(matrix), [matrix]);
   const issueRowIds = useMemo(() => new Set(issues.flatMap((i) => i.rowIds)), [issues]);
@@ -73,23 +87,27 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
           <p className="text-sm font-semibold">{matrix.name}</p>
           <p className="text-xs text-muted-foreground">{matrix.description}</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleAddRow}>
-          <Plus className="size-3.5" /> Add Row
-        </Button>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => fileInputRef.current?.click()}>
-          <Upload className="size-3.5" /> Import
-        </Button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".csv"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleImport(file);
-            e.target.value = "";
-          }}
-        />
+        {canEdit && (
+          <>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleAddRow}>
+              <Plus className="size-3.5" /> Add Row
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="size-3.5" /> Import
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImport(file);
+                e.target.value = "";
+              }}
+            />
+          </>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -103,6 +121,18 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
         >
           <Download className="size-3.5" /> Export
         </Button>
+        {canEdit && (
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" size="icon-sm" title="More" />}>
+              <MoreVertical className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem variant="destructive" onClick={handleDeleteMatrix}>
+                <Trash2 className="size-3.5" /> Delete Matrix
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {issues.length > 0 ? (
@@ -140,23 +170,26 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
                       value={row.values[c.key]}
                       onCommit={(v) => handleCommit(row, c.key, v)}
                       invalid={issueRowIds.has(row.id)}
+                      readOnly={!canEdit}
                     />
                   </TableCell>
                 ))}
                 <TableCell className="p-1">
-                  <div className="flex gap-0.5">
-                    <Button variant="ghost" size="icon-sm" onClick={() => duplicateMatrixRow(matrix.id, row.id)}>
-                      <Copy className="size-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteMatrixRow(matrix.id, row.id)}
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </div>
+                  {canEdit && (
+                    <div className="flex gap-0.5">
+                      <Button variant="ghost" size="icon-sm" onClick={() => duplicateMatrixRow(matrix.id, row.id)}>
+                        <Copy className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteMatrixRow(matrix.id, row.id)}
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

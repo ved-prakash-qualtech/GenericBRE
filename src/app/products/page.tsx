@@ -38,6 +38,7 @@ export default function ProductsPage() {
             simulations={simulations}
             onConfigure={openWorkspace}
             onRunSimulation={runSimulation}
+            showControls
           />
         </div>
       </ScrollArea>

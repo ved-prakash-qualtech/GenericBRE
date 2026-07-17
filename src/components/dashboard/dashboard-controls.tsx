@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { MoreVertical, LayoutGrid, Pencil, RotateCcw, Save, GripVertical, Check, EyeOff, CheckCircle2 } from "lucide-react";
-import { WidgetDef, WidgetSize } from "@/lib/types";
-import { useDashboardLayout, WIDGET_SIZE_LABEL } from "@/lib/dashboard-layout";
+import { MoreVertical, LayoutGrid, Pencil, RotateCcw, Save, CheckCircle2 } from "lucide-react";
+import { WidgetDef } from "@/lib/types";
+import { useDashboardLayout } from "@/lib/dashboard-layout";
+import { WidgetReorderList } from "@/components/dashboard/widget-reorder-list";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,27 +40,12 @@ export function DashboardControls({
   editMode: boolean;
   onEditModeChange: (v: boolean) => void;
 }) {
-  const { layout, defsById, totalCount, visibleCount, reorder, toggleVisibility, resetLayout } = useDashboardLayout(
+  const { layout, totalCount, visibleCount, reorder, toggleVisibility, resetLayout } = useDashboardLayout(
     dashboardKey,
     widgetDefs
   );
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-
-  const handleDrop = (targetId: string) => {
-    if (!draggedId || draggedId === targetId) {
-      setDraggedId(null);
-      return;
-    }
-    const ids = layout.map((w) => w.id);
-    const fromIndex = ids.indexOf(draggedId);
-    const toIndex = ids.indexOf(targetId);
-    if (fromIndex === -1 || toIndex === -1) return;
-    ids.splice(fromIndex, 1);
-    ids.splice(toIndex, 0, draggedId);
-    reorder(ids);
-    setDraggedId(null);
-  };
+  const defLabels = Object.fromEntries(widgetDefs.map((d) => [d.id, d.label]));
 
   return (
     <>
@@ -115,50 +101,13 @@ export function DashboardControls({
             </SheetDescription>
           </SheetHeader>
 
-          <div className="flex-1 space-y-2 overflow-y-auto px-4">
-            {layout.map((widget) => {
-              const def = defsById.get(widget.id);
-              if (!def) return null;
-              return (
-                <div
-                  key={widget.id}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => handleDrop(widget.id)}
-                  style={{ opacity: widget.hidden ? 0.5 : 1 }}
-                  className={cn(
-                    "flex select-none items-center gap-2.5 rounded-lg border bg-card px-3 py-2.5 shadow-sm transition-opacity",
-                    widget.hidden && "border-dashed"
-                  )}
-                >
-                  <span
-                    draggable
-                    onDragStart={() => setDraggedId(widget.id)}
-                    onDragEnd={() => setDraggedId(null)}
-                    className="flex shrink-0 cursor-grab active:cursor-grabbing"
-                  >
-                    <GripVertical className="size-4 text-muted-foreground" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{def.label}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {WIDGET_SIZE_LABEL[widget.size as WidgetSize]} · {widget.hidden ? "Hidden" : "Visible"}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => toggleVisibility(widget.id)}
-                    aria-label={widget.hidden ? "Show widget" : "Hide widget"}
-                    className={cn(
-                      "flex size-7 shrink-0 items-center justify-center rounded-md border transition-colors",
-                      widget.hidden
-                        ? "border-border text-muted-foreground hover:text-foreground"
-                        : "border-transparent bg-primary text-primary-foreground"
-                    )}
-                  >
-                    {widget.hidden ? <EyeOff className="size-3.5" /> : <Check className="size-3.5" />}
-                  </button>
-                </div>
-              );
-            })}
+          <div className="flex-1 overflow-y-auto px-4">
+            <WidgetReorderList
+              items={layout.map((w) => ({ id: w.id, visible: !w.hidden, order: w.order }))}
+              labels={defLabels}
+              onReorder={(items) => reorder(items.map((i) => i.id))}
+              onToggleVisible={toggleVisibility}
+            />
           </div>
 
           <SheetFooter>

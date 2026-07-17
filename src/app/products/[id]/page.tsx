@@ -109,17 +109,29 @@ export default function ProductWorkspacePage() {
       toast.error("Product name is required.");
       return;
     }
+    const domainChanged = draft.domain !== product.domain;
+    const crossDomainAfterChange = domainChanged && mappedRules.some((r) => r.domain !== draft.domain);
     updateProduct(product.id, {
       name: draft.name,
       domain: draft.domain,
       status: draft.status,
       description: draft.description,
     });
-    toast.success("Overview saved.");
+    if (crossDomainAfterChange) {
+      toast.warning("Overview saved — review Map Rules.", {
+        description: `Some of this product's mapped rules belong to a different domain than the new "${draft.domain}" setting. They'll still execute, but that's rarely intentional.`,
+      });
+    } else {
+      toast.success("Overview saved.");
+    }
   };
 
   const handlePublish = () => {
-    publishProduct(product.id);
+    const result = publishProduct(product.id);
+    if (!result.ok) {
+      toast.error("Publish blocked", { description: result.reason });
+      return;
+    }
     toast.success(`"${product.name}" published — now live via the Product API.`);
     setActiveTab("api");
   };

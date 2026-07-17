@@ -10,6 +10,7 @@ export const ALL_CAPABILITIES: Capability[] = [
   "rule.simulate",
   "rule.publish",
   "system.manage",
+  "config.manage",
   "notifyx.view",
   "notifyx.create",
   "notifyx.edit",

@@ -1,23 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useAppStore } from "@/lib/store";
+import { useState } from "react";
+import { useAppStore, useHasCapability } from "@/lib/store";
 import { MatrixGrid } from "@/components/matrix/matrix-grid";
+import { NewMatrixDialog } from "@/components/matrix/new-matrix-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Domain } from "@/lib/types";
 
 export default function MatrixPage() {
   const matrices = useAppStore((s) => s.matrices);
   const industries = useAppStore((s) => s.industries);
+  const canEdit = useHasCapability("rule.edit");
 
-  // Only industries that actually have a configured matrix get a tab — this
-  // stays correct automatically as industries/matrices are added or removed.
-  const domainsWithMatrices = useMemo(
-    () => industries.filter((i) => matrices.some((m) => m.domain === i.id)),
-    [industries, matrices]
-  );
-
-  const [domain, setDomain] = useState<Domain>(() => domainsWithMatrices[0]?.id ?? "");
+  // Tabs are keyed per-matrix, not per-domain — a domain can have more than
+  // one matrix (e.g. after using New Matrix a second time), and each stays
+  // individually reachable instead of only the first being visible.
+  const [matrixId, setMatrixId] = useState<string>(() => matrices[0]?.id ?? "");
+  // Falls back to the first remaining matrix if the active tab's own was
+  // just deleted, without needing an effect to "fix" state after the fact.
+  const activeMatrixId = matrices.some((m) => m.id === matrixId) ? matrixId : (matrices[0]?.id ?? "");
 
   return (
     <div className="flex h-full flex-col">
@@ -26,24 +26,31 @@ export default function MatrixPage() {
           <h1 className="text-lg font-semibold tracking-tight">Decision Matrix</h1>
           <p className="text-xs text-muted-foreground">Excel-like truth tables for pricing, haircut & premium slabs</p>
         </div>
+        {canEdit && <NewMatrixDialog defaultDomain={industries[0]?.id ?? ""} />}
       </div>
 
       <div className="min-h-0 flex-1 p-5 sm:p-6">
-        <Tabs value={domain} onValueChange={(v) => setDomain(v as Domain)} className="flex h-full flex-col gap-3">
-          <TabsList>
-            {domainsWithMatrices.map((i) => (
-              <TabsTrigger key={i.id} value={i.id}>{i.name}</TabsTrigger>
-            ))}
-          </TabsList>
-          {domainsWithMatrices.map((i) => {
-            const matrix = matrices.find((m) => m.domain === i.id);
-            return (
-              <TabsContent key={i.id} value={i.id} className="min-h-0 flex-1">
-                {matrix && <MatrixGrid matrix={matrix} />}
+        {matrices.length === 0 ? (
+          <p className="rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+            No matrices configured yet. {canEdit && "Create one to get started."}
+          </p>
+        ) : (
+          <Tabs value={activeMatrixId} onValueChange={setMatrixId} className="flex h-full flex-col gap-3">
+            <TabsList>
+              {matrices.map((m) => {
+                const industry = industries.find((i) => i.id === m.domain);
+                return (
+                  <TabsTrigger key={m.id} value={m.id}>{industry?.name ?? m.domain} — {m.name}</TabsTrigger>
+                );
+              })}
+            </TabsList>
+            {matrices.map((m) => (
+              <TabsContent key={m.id} value={m.id} className="min-h-0 flex-1">
+                {activeMatrixId === m.id && <MatrixGrid matrix={m} />}
               </TabsContent>
-            );
-          })}
-        </Tabs>
+            ))}
+          </Tabs>
+        )}
       </div>
     </div>
   );

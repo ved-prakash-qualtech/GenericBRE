@@ -99,7 +99,7 @@ export function UserManager() {
       return;
     }
     if (!draft.role) {
-      toast.error("Role is required.");
+      toast.error("Job Title is required.");
       return;
     }
     if (editing) {
@@ -234,12 +234,15 @@ export function UserManager() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Role *</Label>
+                <Label>Job Title *</Label>
                 <Input
                   value={draft.role}
                   onChange={(e) => setDraft((d) => ({ ...d, role: e.target.value }))}
                   placeholder="e.g. Credit Risk Manager"
                 />
+                <p className="text-[10.5px] text-muted-foreground">
+                  Free-text title, shown on the roster — access is granted separately below via System Permissions, not this field.
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label>Department</Label>

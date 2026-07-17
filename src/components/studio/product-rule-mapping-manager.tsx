@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Search, Save, Package, CheckSquare, Square, GripVertical, ListOrdered } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { Search, Save, Package, CheckSquare, Square, GripVertical, ListOrdered, ShieldAlert } from "lucide-react";
+import { useAppStore, useHasCapability } from "@/lib/store";
 import { getMappedRules } from "@/lib/product-rule-engine";
 import { BusinessRule, Product, ProductRuleMapping } from "@/lib/types";
 import { Input } from "@/components/ui/input";
@@ -32,11 +32,12 @@ export function MappedRulesReorder({
   mappings: ProductRuleMapping[];
   onReorder: (orderedIds: string[]) => void;
 }) {
+  const canManage = useHasCapability("config.manage");
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const ordered = getMappedRules(product.id, rules, mappings);
 
   const handleDrop = (targetId: string) => {
-    if (!draggedId || draggedId === targetId) {
+    if (!canManage || !draggedId || draggedId === targetId) {
       setDraggedId(null);
       return;
     }
@@ -76,10 +77,14 @@ export function MappedRulesReorder({
             )}
           >
             <span
-              draggable
-              onDragStart={() => setDraggedId(r.id)}
+              draggable={canManage}
+              onDragStart={() => canManage && setDraggedId(r.id)}
               onDragEnd={() => setDraggedId(null)}
-              className="flex shrink-0 cursor-grab text-muted-foreground/60 active:cursor-grabbing"
+              title={canManage ? undefined : "Your role doesn't include permission to reorder execution sequence"}
+              className={cn(
+                "flex shrink-0 text-muted-foreground/60",
+                canManage ? "cursor-grab active:cursor-grabbing" : "cursor-not-allowed opacity-50"
+              )}
             >
               <GripVertical className="size-4" />
             </span>
@@ -113,9 +118,15 @@ export function MappedRulesChecklist({
   mappings: ProductRuleMapping[];
 }) {
   const saveProductRuleMapping = useAppStore((s) => s.saveProductRuleMapping);
+  const canManage = useHasCapability("config.manage");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [selection, setSelection] = useState<Set<string> | null>(null);
+  // Cross-domain mapping (e.g. an Insurance rule mapped to a Lending product)
+  // is rarely intentional and silently meaningless at execution time — hide
+  // other domains by default, with an explicit opt-out for the deliberate
+  // reuse case.
+  const [showAllDomains, setShowAllDomains] = useState(false);
 
   const savedRuleIds = useMemo(
     () => new Set(getMappedRules(product.id, rules, mappings).map((r) => r.id)),
@@ -123,15 +134,20 @@ export function MappedRulesChecklist({
   );
   const activeSelection = selection ?? savedRuleIds;
   const dirty = selection !== null;
+  const crossDomainMappedCount = useMemo(
+    () => rules.filter((r) => activeSelection.has(r.id) && r.domain !== product.domain).length,
+    [rules, activeSelection, product.domain]
+  );
 
   const filteredRules = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rules.filter((r) => {
+      if (!showAllDomains && r.domain !== product.domain) return false;
       if (categoryFilter && r.category !== categoryFilter) return false;
       if (q && !r.name.toLowerCase().includes(q) && !r.id.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [rules, search, categoryFilter]);
+  }, [rules, search, categoryFilter, showAllDomains, product.domain]);
 
   const toggleRule = (ruleId: string) => {
     const next = new Set(activeSelection);
@@ -152,6 +168,10 @@ export function MappedRulesChecklist({
   };
 
   const save = () => {
+    if (!canManage) {
+      toast.error("You don't have permission to change this product's rule mapping.");
+      return;
+    }
     saveProductRuleMapping(product.id, Array.from(activeSelection));
     setSelection(null);
     toast.success(`Mapping saved — ${activeSelection.size} rule${activeSelection.size === 1 ? "" : "s"} mapped to "${product.name}".`);
@@ -183,6 +203,15 @@ export function MappedRulesChecklist({
             {allFilteredSelected ? <Square className="size-3.5" /> : <CheckSquare className="size-3.5" />}
             {allFilteredSelected ? "Clear filtered" : "Select all filtered"}
           </Button>
+          <Button
+            variant={showAllDomains ? "secondary" : "outline"}
+            size="sm"
+            className={cn("h-8 gap-1.5 text-xs", showAllDomains ? "border-primary/50 text-primary" : "bg-background")}
+            onClick={() => setShowAllDomains((v) => !v)}
+            title={`By default only ${product.domain} rules are shown — this product's own domain`}
+          >
+            {showAllDomains ? `All domains` : `${product.domain} only`}
+          </Button>
         </div>
 
         <div className="flex items-center justify-between px-3.5 py-2 text-[11px] text-muted-foreground">
@@ -192,6 +221,17 @@ export function MappedRulesChecklist({
           </span>
           <span>{filteredRules.length} shown</span>
         </div>
+
+        {crossDomainMappedCount > 0 && (
+          <div className="mx-3.5 mb-3 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+            <ShieldAlert className="size-3.5 shrink-0" />
+            <span>
+              <span className="font-semibold">{crossDomainMappedCount}</span> mapped rule{crossDomainMappedCount === 1 ? "" : "s"} outside this
+              product&apos;s {product.domain} domain — a cross-domain rule still executes, but is rarely intentional. Toggle &quot;All domains&quot;
+              above to review.
+            </span>
+          </div>
+        )}
 
         <div className="mx-3.5 mb-3.5 rounded-lg border overflow-hidden">
           <div className="flex items-center gap-3 bg-muted/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b select-none">
@@ -238,7 +278,13 @@ export function MappedRulesChecklist({
         dirty ? "border-primary/30 bg-primary/5" : "bg-card"
       )}>
         {dirty && <span className="text-[11px] font-medium text-primary">Unsaved changes</span>}
-        <Button size="sm" className="gap-1.5" onClick={save} disabled={!dirty}>
+        <Button
+          size="sm"
+          className="gap-1.5"
+          onClick={save}
+          disabled={!dirty || !canManage}
+          title={canManage ? undefined : "Your role doesn't include permission to change this product's rule mapping"}
+        >
           <Save className="size-3.5" /> Save Mapping
         </Button>
       </div>
@@ -266,10 +312,15 @@ export function ProductRuleMappingManager() {
   const saveProductRuleMapping = useAppStore((s) => s.saveProductRuleMapping);
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(products[0] ?? null);
+  const [productSearch, setProductSearch] = useState("");
 
   const selectProduct = (p: Product) => {
     setSelectedProduct(p);
   };
+
+  const filteredProducts = productSearch.trim()
+    ? products.filter((p) => p.name.toLowerCase().includes(productSearch.trim().toLowerCase()) || p.code.toLowerCase().includes(productSearch.trim().toLowerCase()))
+    : products;
 
   const reorderMapped = (orderedIds: string[]) => {
     if (!selectedProduct) return;
@@ -278,6 +329,57 @@ export function ProductRuleMappingManager() {
   };
 
   return (
+    <div className="flex h-full min-h-100 flex-col gap-4 sm:flex-row">
+      <div className="w-full shrink-0 space-y-2.5 sm:w-64">
+        <div className="flex items-center justify-between px-0.5">
+          <p className="text-xs font-semibold text-muted-foreground">Products</p>
+          <Badge variant="secondary" className="text-[9px]">{filteredProducts.length} of {products.length}</Badge>
+        </div>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={productSearch}
+            onChange={(e) => setProductSearch(e.target.value)}
+            placeholder="Search products..."
+            className="h-8 pl-8 text-xs"
+          />
+        </div>
+        <div className="max-h-125 space-y-1.5 overflow-y-auto pr-0.5 sm:max-h-none">
+          {filteredProducts.map((p) => {
+            const mappedCount = getMappedRules(p.id, rules, productRuleMappings).length;
+            const selected = selectedProduct?.id === p.id;
+            return (
+              <button
+                key={p.id}
+                onClick={() => selectProduct(p)}
+                className={cn(
+                  "relative flex w-full items-center gap-2.5 overflow-hidden rounded-xl border p-2.5 text-left transition-all",
+                  selected ? "border-primary/40 bg-primary/5 shadow-sm" : "hover:border-primary/20 hover:bg-muted/60"
+                )}
+              >
+                {selected && <span className="absolute inset-y-0 left-0 w-1 bg-primary" />}
+                <span className={cn(
+                  "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                  selected ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                )}>
+                  <Package className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold">{p.name}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">
+                    {mappedCount} rule{mappedCount === 1 ? "" : "s"} mapped
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+          {filteredProducts.length === 0 && (
+            <p className="rounded-lg border border-dashed p-4 text-center text-[11px] text-muted-foreground">
+              {products.length === 0 ? "No products yet — add one in Product Master first." : "No products match this search."}
+            </p>
+          )}
+        </div>
+      </div>
     <div className="flex h-full flex-col gap-4">
       {/* Products Horizontal Layout */}
       <div className="space-y-2.5">
@@ -372,5 +474,6 @@ export function ProductRuleMappingManager() {
         </div>
       )}
     </div>
+  </div>
   );
 }

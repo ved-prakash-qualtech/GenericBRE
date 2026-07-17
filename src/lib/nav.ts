@@ -32,7 +32,7 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 export const NAV_ITEMS_SECONDARY: NavItem[] = [
-  { href: "/audit-log", label: "Audit Log", icon: ScrollText },
+  { href: "/audit-log", label: "Audit Log", icon: ScrollText, requiredCapability: "config.manage" },
   { href: "/metadata-explorer", label: "Metadata Explorer", icon: Compass },
   { href: "/settings", label: "Configuration Studio", icon: Settings, requiredCapability: "config.manage" },
 ];

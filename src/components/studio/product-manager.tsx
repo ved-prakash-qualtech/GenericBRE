@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Package } from "lucide-react";
+import { Plus, Pencil, Package, Search, Download, Power, PowerOff } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { Product } from "@/lib/types";
+import { downloadCsv } from "@/lib/csv";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
@@ -39,6 +41,34 @@ export function ProductManager() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [draft, setDraft] = useState<Product>(blank(industries[0]?.id ?? ""));
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [domainFilter, setDomainFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+
+  const filteredProducts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return products.filter((p) => {
+      if (domainFilter.length > 0 && !domainFilter.includes(p.domain)) return false;
+      if (statusFilter.length > 0 && !statusFilter.includes(p.status)) return false;
+      if (q && !p.name.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [products, search, domainFilter, statusFilter]);
+
+  const exportCsv = () => {
+    downloadCsv(
+      "products",
+      filteredProducts.map((p) => ({
+        Name: p.name,
+        Code: p.code,
+        Domain: industries.find((i) => i.id === p.domain)?.name ?? p.domain,
+        Status: p.status,
+        "Publish Status": p.publishStatus ?? "Draft",
+        "Mapped Rules": mappedCount(p.id),
+        Description: p.description ?? "",
+      }))
+    );
+  };
 
   const startCreate = () => {
     setEditing(null);
@@ -52,6 +82,16 @@ export function ProductManager() {
   };
 
   const mappedCount = (productId: string) => productRuleMappings.filter((m) => m.productId === productId && m.active).length;
+
+  // Products previously had no retirement path at all — deprecating one just
+  // left it as permanent, invisible clutter (audit finding B19). Reuses the
+  // existing Active/Inactive status field rather than a hard delete, keeping
+  // history/mappings intact and reversible.
+  const toggleStatus = (p: Product) => {
+    const next = p.status === "Active" ? "Inactive" : "Active";
+    updateProduct(p.id, { status: next });
+    toast.success(`"${p.name}" ${next === "Active" ? "reactivated" : "deactivated"}.`);
+  };
 
   const save = () => {
     if (!draft.name.trim()) {
@@ -95,8 +135,41 @@ export function ProductManager() {
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-48 flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name or code..."
+            className="h-8 pl-8 text-xs"
+          />
+        </div>
+        <MultiSelect
+          label="Domain"
+          options={industries.map((i) => ({ value: i.id, label: i.name }))}
+          selected={domainFilter}
+          onChange={setDomainFilter}
+          className="h-8 text-xs"
+        />
+        <MultiSelect
+          label="Status"
+          options={[
+            { value: "Active", label: "Active" },
+            { value: "Inactive", label: "Inactive" },
+          ]}
+          selected={statusFilter}
+          onChange={setStatusFilter}
+          className="h-8 text-xs"
+        />
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={exportCsv} disabled={filteredProducts.length === 0}>
+          <Download className="size-3.5" /> Export CSV
+        </Button>
+        <span className="text-[11px] text-muted-foreground">{filteredProducts.length} of {products.length}</span>
+      </div>
+
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((p) => (
+        {filteredProducts.map((p) => (
           <div key={p.id} className="flex items-start gap-3 rounded-xl border bg-card p-3.5">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Package className="size-4.5" />
@@ -112,14 +185,24 @@ export function ProductManager() {
                 {mappedCount(p.id)} rule{mappedCount(p.id) === 1 ? "" : "s"} mapped
               </p>
             </div>
-            <Button variant="ghost" size="icon-sm" className="shrink-0" onClick={() => startEdit(p)}>
-              <Pencil className="size-3.5" />
-            </Button>
+            <div className="flex shrink-0 gap-0.5">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                title={p.status === "Active" ? "Deactivate" : "Reactivate"}
+                onClick={() => toggleStatus(p)}
+              >
+                {p.status === "Active" ? <PowerOff className="size-3.5" /> : <Power className="size-3.5" />}
+              </Button>
+              <Button variant="ghost" size="icon-sm" onClick={() => startEdit(p)}>
+                <Pencil className="size-3.5" />
+              </Button>
+            </div>
           </div>
         ))}
-        {products.length === 0 && (
+        {filteredProducts.length === 0 && (
           <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
-            No products configured yet. Add one to get started.
+            {products.length === 0 ? "No products configured yet. Add one to get started." : "No products match this filter."}
           </p>
         )}
       </div>
@@ -146,7 +229,13 @@ export function ProductManager() {
                   onChange={(e) => setDraft((d) => ({ ...d, code: e.target.value }))}
                   placeholder="e.g. HOME_LOAN"
                   className="font-mono"
+                  disabled={editing?.publishStatus === "Published"}
                 />
+                {editing?.publishStatus === "Published" && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Stable API identifier — not editable once published, to avoid breaking existing integrations.
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Domain *</Label>

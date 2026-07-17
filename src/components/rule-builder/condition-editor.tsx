@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { cn } from "@/lib/utils";
 
 const BOOLEAN_ITEMS = { true: "Yes", false: "No" };
@@ -62,6 +63,18 @@ export function ConditionEditor({
             <SelectItem value="false">No</SelectItem>
           </SelectContent>
         </Select>
+      );
+    }
+    if (field?.type === "enum" && field.options && condition.operator === "in") {
+      const selected = condition.value ? condition.value.split(",").map((v) => v.trim()).filter(Boolean) : [];
+      return (
+        <MultiSelect
+          label="Values"
+          options={field.options.map((o) => ({ value: o, label: o }))}
+          selected={selected}
+          onChange={(values) => onChange({ value: values.join(", ") })}
+          className="h-8 w-40"
+        />
       );
     }
     if (field?.type === "enum" && field.options && condition.operator !== "in") {

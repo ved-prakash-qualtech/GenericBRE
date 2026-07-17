@@ -126,6 +126,17 @@ export function FieldCatalogManager() {
 
   const confirmDelete = () => {
     if (!pendingDelete) return;
+    const usage = fieldUsage(pendingDelete.key, rules);
+    if (usage.count > 0) {
+      // Deletion used to proceed anyway despite the dialog's own warning,
+      // silently leaving live rules pointing at a field key that no longer
+      // exists (audit finding B32) — hard-block instead.
+      toast.error(`Can't delete "${pendingDelete.label}"`, {
+        description: `${usage.count} rule(s) still reference this field. Remove or repoint those conditions first.`,
+      });
+      setPendingDelete(null);
+      return;
+    }
     deleteField(pendingDelete.key);
     toast.info(`"${pendingDelete.label}" removed.`);
     setPendingDelete(null);
@@ -460,13 +471,18 @@ export function FieldCatalogManager() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingDelete && fieldUsage(pendingDelete.key, rules).count > 0
-                ? `${fieldUsage(pendingDelete.key, rules).count} rule(s) currently reference this field. Removing it will leave those conditions pointing at a missing field.`
+                ? `${fieldUsage(pendingDelete.key, rules).count} rule(s) currently reference this field — it can't be deleted until those conditions are removed or repointed to a different field.`
                 : "This field isn't referenced by any rule yet. It will no longer appear in Rule Builder or Simulator."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={!!pendingDelete && fieldUsage(pendingDelete.key, rules).count > 0}
+            >
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
