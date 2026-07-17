@@ -7,7 +7,7 @@ export function newId(prefix: string) {
 }
 
 export function emptyCondition(field = ""): Condition {
-  return { id: newId("cond"), type: "condition", field, operator: "=", value: "" };
+  return { id: newId("cond"), type: "condition", field, operator: "=", value: "", prefix: "IF" };
 }
 
 export function emptyGroup(logic: "AND" | "OR" = "AND"): ConditionGroup {

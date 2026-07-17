@@ -141,7 +141,19 @@ export function ConditionEditor({
 
   return (
     <div className={cn("rounded-lg border bg-background px-2 py-1.5", issue && "border-destructive/50 ring-1 ring-destructive/20")}>
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1 rounded-md border border-blue-500 bg-blue-500/5 px-2 py-1">
+        <span className="text-xs font-bold text-blue-600">Condition:</span>
+        <Select value={condition.prefix || "IF"} onValueChange={(v) => onChange({ prefix: v as "IF" | "WHERE" })}>
+          <SelectTrigger size="sm" className="h-7 w-24 border-0 bg-transparent">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="IF" className="font-semibold">IF</SelectItem>
+            <SelectItem value="WHERE" className="font-semibold">WHERE</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <Popover open={fieldPickerOpen} onOpenChange={setFieldPickerOpen}>
         <PopoverTrigger
           render={<Button variant="outline" size="sm" className="h-8 w-48 justify-between gap-1.5 font-normal" />}

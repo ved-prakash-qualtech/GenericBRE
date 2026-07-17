@@ -69,6 +69,7 @@ export interface Condition {
   operator: Operator;
   value: string;
   value2?: string; // used for "between"
+  prefix?: "IF" | "WHERE"; // condition prefix
 }
 
 export interface ConditionGroup {

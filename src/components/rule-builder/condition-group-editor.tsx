@@ -210,14 +210,16 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
             </button>
           </>
         )}
-        <span
-          className={cn(
-            "rounded-md border px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider",
-            isRoot ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-muted/60 text-muted-foreground"
-          )}
-        >
-          {isRoot ? "WHERE" : "("}
-        </span>
+        {!isRoot && (
+          <span
+            className={cn(
+              "rounded-md border px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider",
+              "border-border bg-muted/60 text-muted-foreground"
+            )}
+          >
+            (
+          </span>
+        )}
         <div className="flex overflow-hidden rounded-md border">
           <button
             onClick={() => handlers.onUpdate(group.id, { logic: "AND" })}
