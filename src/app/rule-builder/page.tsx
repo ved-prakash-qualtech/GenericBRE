@@ -170,18 +170,34 @@ function RuleBuilderContent() {
   useEffect(() => {
     // Re-seed the editable draft whenever the ?id= query param points at a different
     // stored rule (e.g. navigating from one rule's edit page to another's).
-    if (!existingRule) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRule(existingRule);
-    setShowElseBranch(!!existingRule.elseActions?.length);
-  }, [existingRule?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    historyRef.current = { past: [], future: [] };
+    if (existingRule) {
+      setRule(existingRule);
+      setShowElseBranch(!!existingRule.elseActions?.length);
+    } else {
+      const saved = typeof window !== "undefined" ? window.localStorage.getItem(draftKeyFor(null)) : null;
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as BusinessRule;
+          setRule(parsed);
+          setShowElseBranch(!!parsed.elseActions?.length);
+          return;
+        } catch {
+          window.localStorage.removeItem(draftKeyFor(null));
+        }
+      }
+      const freshRule = blankRule(nextRuleId(rules), industries[0]?.id ?? "", owners[0] ?? "");
+      setRule(freshRule);
+      setShowElseBranch(false);
+    }
+  }, [editId, existingRule?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (window.localStorage.getItem(draftKeyFor(editId))) {
       toast.info("Draft restored", { description: "Your in-progress edit was restored from autosave." });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [editId]);
 
   // Auto Save Draft — debounced, keyed per rule (or "new"), separate from the
   // Draft RuleStatus lifecycle and the Zustand-persisted store.
