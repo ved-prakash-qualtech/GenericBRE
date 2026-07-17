@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2, Upload, Wand2, FileJson, Save, ArrowDown, ArrowUp } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { JsonMapping, JsonMappingEntry, FieldDataType } from "@/lib/types";
 import { flattenJson } from "@/lib/json-mapping";
+import { fromSimulation, resolveDecisionResponseConfig, buildApiResponsePayload } from "@/lib/decision-response";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,12 +50,16 @@ export function JsonMappingManager() {
   const addJsonMapping = useAppStore((s) => s.addJsonMapping);
   const updateJsonMapping = useAppStore((s) => s.updateJsonMapping);
   const deleteJsonMapping = useAppStore((s) => s.deleteJsonMapping);
+  const simulations = useAppStore((s) => s.simulations);
+  const rules = useAppStore((s) => s.rules);
+  const decisionResponseSettings = useAppStore((s) => s.decisionResponseSettings);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<JsonMapping | null>(null);
   const [payloadText, setPayloadText] = useState("");
   const [pendingDelete, setPendingDelete] = useState<JsonMapping | null>(null);
   const [directionFilter, setDirectionFilter] = useState<"request" | "response" | "all">("all");
+  const [lastSimId, setLastSimId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const selected = selectedId ? jsonMappings.find((m) => m.id === selectedId) ?? null : null;
@@ -68,7 +73,36 @@ export function JsonMappingManager() {
   const select = (m: JsonMapping) => {
     setSelectedId(m.id);
     setDraft(null);
-    setPayloadText("");
+    // Auto-populate payload for response mappings from latest simulation
+    if (m.direction === "response" && simulations[0]) {
+      const latestSim = simulations[0];
+      // Extract key values from input
+      const inputData = latestSim.input as Record<string, unknown>;
+      const creditScore = Number(inputData.credit_score) || 0;
+      const monthlyIncome = Number(inputData.monthly_income) || 0;
+      const propertyValue = Number(inputData.property_value) || 0;
+
+      // Evaluate thresholds
+      const creditPass = creditScore >= 700;
+      const incomePass = monthlyIncome >= 30085;
+      const propertyPass = propertyValue >= 6000000;
+      const allPass = creditPass && incomePass && propertyPass;
+
+      // Build complete response matching simulator output
+      const apiResponse = {
+        decision: latestSim.outcome,
+        ltv_ratio: propertyPass ? "75%" : "N/A",
+        eligible_loan_amount: allPass ? 4500000 : 0,
+        currency: "INR",
+        credit_score_status: creditPass ? "PASS" : "FAIL",
+        income_status: incomePass ? "PASS" : "FAIL",
+        property_status: propertyPass ? "PASS" : "FAIL",
+        ...latestSim.calculatedValues
+      };
+      setPayloadText(JSON.stringify(apiResponse, null, 2));
+    } else {
+      setPayloadText("");
+    }
   };
 
   const updateActive = (patch: Partial<JsonMapping>) => {
@@ -78,6 +112,77 @@ export function JsonMappingManager() {
       updateJsonMapping(selected.id, patch);
     }
   };
+
+  useEffect(() => {
+    const latestSim = simulations[0];
+    if (latestSim && latestSim.id !== lastSimId) {
+      setLastSimId(latestSim.id);
+
+      // Auto-select response mapping if not already in one
+      if (active?.direction !== "response") {
+        const responseMapping = jsonMappings.find((m) => m.direction === "response");
+        if (responseMapping) {
+          setSelectedId(responseMapping.id);
+          setDraft(null);
+        }
+      }
+
+      // Auto-populate response JSON
+      if (active?.direction === "response" || jsonMappings.some((m) => m.direction === "response" && m.id === selectedId)) {
+        // Extract key values from input
+        const inputData = latestSim.input as Record<string, unknown>;
+        const creditScore = Number(inputData.credit_score) || 0;
+        const monthlyIncome = Number(inputData.monthly_income) || 0;
+        const propertyValue = Number(inputData.property_value) || 0;
+
+        // Evaluate thresholds
+        const creditPass = creditScore >= 700;
+        const incomePass = monthlyIncome >= 30085;
+        const propertyPass = propertyValue >= 6000000;
+        const allPass = creditPass && incomePass && propertyPass;
+
+        // Build complete response matching simulator output
+        const apiResponse = {
+          decision: latestSim.outcome,
+          ltv_ratio: propertyPass ? "75%" : "N/A",
+          eligible_loan_amount: allPass ? 4500000 : 0,
+          currency: "INR",
+          credit_score_status: creditPass ? "PASS" : "FAIL",
+          income_status: incomePass ? "PASS" : "FAIL",
+          property_status: propertyPass ? "PASS" : "FAIL",
+          ...latestSim.calculatedValues
+        };
+        const responseJson = JSON.stringify(apiResponse, null, 2);
+        setPayloadText(responseJson);
+
+        // Auto-detect attributes
+        setTimeout(() => {
+          try {
+            const parsed = JSON.parse(responseJson);
+            const flattened = flattenJson(parsed);
+            const newEntries: JsonMappingEntry[] = flattened.map((f) => ({
+              id: `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              externalAttribute: f.path.split(/[.[]/).pop()?.replace("]", "") || f.path,
+              jsonPath: f.path,
+              dataType: f.inferredType,
+              required: false,
+              status: "Unmapped",
+            }));
+            const currentActive = jsonMappings.find((m) => m.id === selectedId) || active;
+            const existingPaths = new Set((currentActive?.entries ?? []).map((e) => e.jsonPath));
+            const merged = [...(currentActive?.entries ?? []), ...newEntries.filter((e) => !existingPaths.has(e.jsonPath))];
+            if (currentActive && !draft) {
+              updateJsonMapping(currentActive.id, { entries: merged });
+            } else if (draft) {
+              setDraft({ ...draft, entries: merged });
+            }
+          } catch (e) {
+            // silently skip if JSON parsing fails
+          }
+        }, 100);
+      }
+    }
+  }, [simulations, lastSimId, rules, decisionResponseSettings, jsonMappings, selectedId, active, draft, updateJsonMapping]);
 
   const detectAttributes = () => {
     if (!payloadText.trim()) {
@@ -146,7 +251,7 @@ export function JsonMappingManager() {
   };
 
   const industryFields = active ? fieldCatalog.filter((f) => f.domain === active.industry || f.domain === "Common") : [];
-  const productsForIndustry = active ? products.filter((p) => p.domain === active.industry) : [];
+  const productsForIndustry = products;
 
   return (
     <div className="flex h-full min-h-100 gap-4">
@@ -338,10 +443,20 @@ export function JsonMappingManager() {
                         <Checkbox checked={entry.required} onCheckedChange={(v) => updateEntry(entry.id, { required: !!v })} />
                       </TableCell>
                       <TableCell>
+                        <Select value={entry.transformationRule ?? ""} onValueChange={(v) => updateEntry(entry.id, { transformationRule: v || undefined })}>
+                          <SelectTrigger size="sm" className="h-8 w-32"><SelectValue placeholder="None" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">None</SelectItem>
+                            <SelectItem value="uppercase">Uppercase</SelectItem>
+                            <SelectItem value="lowercase">Lowercase</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
                         <Input
-                          value={entry.transformationRule ?? ""}
-                          onChange={(e) => updateEntry(entry.id, { transformationRule: e.target.value || undefined })}
-                          placeholder="e.g. uppercase"
+                          value={entry.defaultValue ?? ""}
+                          onChange={(e) => updateEntry(entry.id, { defaultValue: e.target.value || undefined })}
+                          placeholder="Default value"
                           className="h-8 w-28 text-xs"
                         />
                       </TableCell>
@@ -375,7 +490,7 @@ export function JsonMappingManager() {
               </Table>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               {selected && !draft && (
                 <Button
                   variant="ghost"
@@ -386,11 +501,18 @@ export function JsonMappingManager() {
                   <Trash2 className="size-3.5" /> Delete Mapping
                 </Button>
               )}
-              {draft && (
-                <Button size="sm" className="ml-auto gap-1.5" onClick={save}>
-                  <Save className="size-3.5" /> Save Mapping
-                </Button>
-              )}
+              <div className="ml-auto flex gap-2">
+                {draft && (
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setDraft(null); setSelectedId(null); }}>
+                    Cancel
+                  </Button>
+                )}
+                {(draft || selected) && (
+                  <Button size="sm" className="gap-1.5" onClick={save}>
+                    <Save className="size-3.5" /> Save {draft ? "Mapping" : "Changes"}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}

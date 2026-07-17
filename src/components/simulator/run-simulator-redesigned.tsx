@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import React from "react";
 import { Download, RotateCcw, PlayCircle, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { UseRunSimulatorResult } from "./run-simulator-panel";
 import {
@@ -29,7 +31,32 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
   const [copiedResponse, setCopiedResponse] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>(product.id);
 
-  const handleProductChange = (productId: string) => {
+  // Auto-populate template JSON with empty template when product changes
+  React.useEffect(() => {
+    let jsonObj: Record<string, string | number | boolean> = {};
+
+    // Parse current JSON if it exists
+    try {
+      jsonObj = JSON.parse(sim.jsonText || "{}");
+    } catch {
+      jsonObj = {};
+    }
+
+    // For Home Loan, ensure all required fields are present
+    if (product.name === "Home Loan" || product.id === "prod-home-loan") {
+      jsonObj = {
+        monthly_income: jsonObj.monthly_income ?? "",
+        credit_score: jsonObj.credit_score ?? "",
+        applicant_age: jsonObj.applicant_age ?? "",
+        property_value: jsonObj.property_value ?? ""
+      };
+    }
+
+    sim.setJsonText(JSON.stringify(jsonObj, null, 2));
+  }, [product.id, sim]);
+
+  const handleProductChange = (productId: string | null) => {
+    if (!productId) return;
     setSelectedProduct(productId);
     const selected = products.find(p => p.id === productId);
     if (selected && onProductChange) {
@@ -58,19 +85,54 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
     toast.success("Copied to clipboard");
   };
 
-  const apiRequestJson = JSON.stringify({
+  const apiRequestJson = sim.jsonText || JSON.stringify({
     monthly_income: 50000,
     credit_score: 720,
     applicant_age: 35,
     smoker: false,
   }, null, 2);
 
-  const apiResponseJson = JSON.stringify({
-    decision: "APPROVED",
-    ltv_ratio: "75%",
-    eligible_loan_amount: 4500000,
-    currency: "INR"
-  }, null, 2);
+  // Parse input and generate response based on actual values
+  const parseInputData = () => {
+    try {
+      return JSON.parse(sim.jsonText || "{}");
+    } catch {
+      return {};
+    }
+  };
+
+  const inputData = parseInputData();
+  const credit_score = inputData.credit_score || 0;
+  const monthly_income = inputData.monthly_income || 0;
+  const property_value = inputData.property_value || 0;
+
+  // Generate decision based on input
+  const generateResponse = () => {
+    try {
+      const creditPass = credit_score >= 700;
+      const incomePass = monthly_income >= 30085;
+      const propertyPass = property_value >= 6000000;
+      const allPass = creditPass && incomePass && propertyPass;
+
+      return JSON.stringify({
+        decision: allPass ? "APPROVED" : creditPass && incomePass ? "CONDITIONAL" : "REJECTED",
+        ltv_ratio: propertyPass ? "75%" : "N/A",
+        eligible_loan_amount: allPass ? 4500000 : 0,
+        currency: "INR",
+        credit_score_status: creditPass ? "PASS" : "FAIL",
+        income_status: incomePass ? "PASS" : "FAIL",
+        property_status: propertyPass ? "PASS" : "FAIL"
+      }, null, 2);
+    } catch {
+      return JSON.stringify({
+        decision: "ERROR",
+        message: "Invalid JSON input",
+        currency: "INR"
+      }, null, 2);
+    }
+  };
+
+  const apiResponseJson = generateResponse();
 
   const availableProducts = products.length > 0 ? products : [product];
 
@@ -150,7 +212,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                 </div>
               </div>
 
-              {/* Template JSON Section */}
+              {/* Template JSON Section - Editable */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-900">Template JSON (Input)</h3>
@@ -178,9 +240,12 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                     </Button>
                   </div>
                 </div>
-                <div className="rounded-lg border border-gray-200 bg-gray-900 p-3 font-mono text-xs text-gray-100 max-h-40 overflow-y-auto">
-                  <pre className="whitespace-pre-wrap break-words">{sim.jsonText || "{}"}</pre>
-                </div>
+                <Textarea
+                  value={sim.jsonText || "{}"}
+                  onChange={(e) => sim.setJsonText(e.target.value)}
+                  placeholder='{"key": "value"}'
+                  className="font-mono text-xs max-h-40 overflow-y-auto bg-gray-900 text-gray-100 border-gray-200"
+                />
               </div>
 
               {/* Run Simulation Button */}
@@ -325,16 +390,37 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {[
-                          { id: "RL-NB-1", input: "monthly_income = 50000", condition: "monthly_income >= 30085", output: "income_eligible = true", time: "00:00.421" },
-                          { id: "RL-NB-2", input: "credit_score = 720", condition: "credit_score >= 700", output: "credit_approved = true", time: "00:00.398" },
-                          { id: "RL-NB-3", input: "property_value = 6500000", condition: "property_value >= 6000000", output: "ltv_ratio = 75%", time: "00:00.424" },
+                          {
+                            id: "RL-NB-1",
+                            input: `monthly_income = ${monthly_income}`,
+                            condition: "monthly_income >= 30085",
+                            output: monthly_income >= 30085 ? "income_eligible = true" : "income_eligible = false",
+                            status: monthly_income >= 30085 ? "PASSED" : "FAILED",
+                            time: "00:00.421"
+                          },
+                          {
+                            id: "RL-NB-2",
+                            input: `credit_score = ${credit_score}`,
+                            condition: "credit_score >= 700",
+                            output: credit_score >= 700 ? "credit_approved = true" : "credit_approved = false",
+                            status: credit_score >= 700 ? "PASSED" : "FAILED",
+                            time: "00:00.398"
+                          },
+                          {
+                            id: "RL-NB-3",
+                            input: `property_value = ${property_value}`,
+                            condition: "property_value >= 6000000",
+                            output: property_value >= 6000000 ? "ltv_ratio = 75%" : "ltv_ratio = N/A",
+                            status: property_value >= 6000000 ? "PASSED" : "FAILED",
+                            time: "00:00.424"
+                          },
                         ].map((row) => (
                           <tr key={row.id} className="hover:bg-gray-50">
                             <td className="px-3 py-2.5 font-medium text-gray-900">{row.id}</td>
                             <td className="px-3 py-2.5 text-gray-600">{row.input}</td>
                             <td className="px-3 py-2.5 text-gray-600">{row.condition}</td>
                             <td className="px-3 py-2.5 text-gray-600">{row.output}</td>
-                            <td className="px-3 py-2.5"><Badge className="bg-emerald-100 text-emerald-700 border-0">PASSED</Badge></td>
+                            <td className="px-3 py-2.5"><Badge className={`${row.status === "PASSED" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"} border-0`}>{row.status}</Badge></td>
                             <td className="px-3 py-2.5 text-gray-600">{row.time}</td>
                           </tr>
                         ))}

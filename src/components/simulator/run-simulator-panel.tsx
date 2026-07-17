@@ -291,12 +291,6 @@ export function RunSimulatorPanel({ product }: { product: Product }) {
     <div className="flex min-h-0 flex-1 flex-col">
       <WorkflowSteps product={product} jsonReady={jsonReady} running={sim.running} hasResult={!!sim.decisionResult} />
       <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 lg:flex-row">
-        <div className="flex w-full shrink-0 flex-col lg:h-full lg:w-100">
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="pb-4"><RunSimulatorInputs sim={sim} /></div>
-          </ScrollArea>
-          <RunSimulatorActions product={product} sim={sim} />
-        </div>
         <ScrollArea className="min-h-0 flex-1">
           <RunSimulatorResult product={product} sim={sim} />
         </ScrollArea>

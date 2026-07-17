@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Package, ChevronsUpDown, Clock, Globe, CalendarCheck2 } from "lucide-react";
+import { Package, ChevronsUpDown, Globe, CalendarCheck2 } from "lucide-react";
 import { Product, Industry, BusinessRule, ProductRuleMapping } from "@/lib/types";
 import { getMappedRules } from "@/lib/product-rule-engine";
 import { iconForIndustry } from "@/lib/industries";
@@ -44,12 +44,10 @@ export function ProductSelector({
   selectedProductId: string | undefined;
   onSelect: (product: Product) => void;
 }) {
-  const recentProductIds = useAppStore((s) => s.recentProductIds);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [industryFilter, setIndustryFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [recentOnly, setRecentOnly] = useState(false);
 
   // Only Active products are valid simulation targets — unchanged from the
   // KPI-card grid this replaces (execution-eligibility gate, not new).
@@ -67,13 +65,9 @@ export function ProductSelector({
   const filtered = active.filter((p) => {
     if (industryFilter.length > 0 && !industryFilter.includes(p.domain)) return false;
     if (statusFilter.length > 0 && !statusFilter.includes(p.publishStatus ?? "Draft")) return false;
-    if (recentOnly && !recentProductIds.includes(p.id)) return false;
     return true;
   });
   const capped = filtered.slice(0, RESULT_CAP);
-  const recentProducts = recentProductIds
-    .map((id) => active.find((p) => p.id === id))
-    .filter((p): p is Product => !!p && filtered.includes(p));
 
   const select = (product: Product) => {
     onSelect(product);
@@ -167,16 +161,6 @@ export function ProductSelector({
               onChange={setStatusFilter}
               className="h-8 flex-1 text-xs"
             />
-            <Button
-              variant={recentOnly ? "secondary" : "outline"}
-              size="sm"
-              className={cn("h-8 gap-1.5 px-2 text-xs", recentOnly && "border-primary/50 text-primary")}
-              disabled={recentProductIds.length === 0}
-              onClick={() => setRecentOnly((v) => !v)}
-              title="Recently simulated products"
-            >
-              <Clock className="size-3.5" />
-            </Button>
           </div>
 
           <Command shouldFilter={false}>
@@ -187,14 +171,6 @@ export function ProductSelector({
             />
             <CommandList className="max-h-80">
               <CommandEmpty>No matching products.</CommandEmpty>
-
-              {search.trim() === "" && recentProducts.length > 0 && (
-                <CommandGroup heading="Recently Used">
-                  {recentProducts.map((p) => (
-                    <ProductRow key={p.id} product={p} industries={industries} rules={rules} mappings={mappings} onSelect={select} />
-                  ))}
-                </CommandGroup>
-              )}
 
               <CommandGroup heading="All Products">
                 {capped
