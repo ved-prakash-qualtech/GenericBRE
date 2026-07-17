@@ -100,10 +100,10 @@ export function ConditionGroupEditor({ group, domain, onUpdate, onDelete, onAddC
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onAddChild(group.id, emptyCondition("if"))}>
-                IF — Main Rule Logic
+                IF
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onAddChild(group.id, emptyCondition("where"))}>
-                WHERE — Rule Scope Filter
+                WHERE
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

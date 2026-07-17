@@ -67,7 +67,6 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
           <div className="flex h-9 items-center">
             <StatusBadge status={data.status} />
           </div>
-          <p className="text-[10px] text-muted-foreground/70">Changed via the workflow actions (Save Draft / Submit for Review / Publish), not directly.</p>
         </div>
 
         <div className="space-y-1.5 sm:col-span-2 lg:col-span-5">

@@ -342,7 +342,23 @@ export const useAppStore = create<AppState>()(
       ruleCategories: DEFAULT_RULE_CATEGORIES,
       owners: DEFAULT_OWNERS,
       executionSettings: {},
-      jsonMappings: [],
+      jsonMappings: [
+        {
+          id: "loan-decision-response",
+          name: "Loan Decision Response",
+          industry: "Lending",
+          productId: undefined,
+          direction: "response",
+          entries: [
+            { id: "entry-1", externalAttribute: "decision", jsonPath: "decision", mappedField: "approval_status", dataType: "string", required: true, status: "Mapped", transformation: undefined },
+            { id: "entry-2", externalAttribute: "rate", jsonPath: "interest_rate", mappedField: "interest_rate", dataType: "number", required: false, status: "Mapped", transformation: undefined },
+            { id: "entry-3", externalAttribute: "tenure_years", jsonPath: "loan_tenure", mappedField: "loan_tenure", dataType: "number", required: false, status: "Mapped", transformation: undefined },
+            { id: "entry-4", externalAttribute: "risk_level", jsonPath: "risk_level", mappedField: "risk_classification", dataType: "string", required: false, status: "Mapped", transformation: undefined },
+          ],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+      ],
       // Execution Manager state removed
       decisionResponseSettings: { default: DEFAULT_DECISION_RESPONSE_CONFIG },
 

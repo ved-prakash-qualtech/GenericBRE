@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Upload, Wand2, FileJson, Save } from "lucide-react";
+import { Plus, Trash2, Upload, Wand2, FileJson, Save, ArrowDown, ArrowUp } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { JsonMapping, JsonMappingEntry, FieldDataType } from "@/lib/types";
 import { flattenJson } from "@/lib/json-mapping";
@@ -54,6 +54,7 @@ export function JsonMappingManager() {
   const [draft, setDraft] = useState<JsonMapping | null>(null);
   const [payloadText, setPayloadText] = useState("");
   const [pendingDelete, setPendingDelete] = useState<JsonMapping | null>(null);
+  const [directionFilter, setDirectionFilter] = useState<"request" | "response" | "all">("all");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const selected = selectedId ? jsonMappings.find((m) => m.id === selectedId) ?? null : null;
@@ -163,9 +164,18 @@ export function JsonMappingManager() {
               onClick={() => select(m)}
               className={`w-full rounded-lg border p-2.5 text-left transition-colors ${selectedId === m.id ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
             >
-              <p className="truncate text-xs font-semibold">{m.name}</p>
+              <div className="flex items-center gap-2">
+                {m.direction === "request" ? (
+                  <ArrowUp className="size-4 text-blue-500 shrink-0" />
+                ) : (
+                  <ArrowDown className="size-4 text-emerald-500 shrink-0" />
+                )}
+                <p className="truncate text-xs font-semibold">{m.name}</p>
+              </div>
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <Badge variant="secondary" className="text-[9px]">{m.direction}</Badge>
+                <Badge variant={m.direction === "request" ? "secondary" : "outline"} className="text-[9px]">
+                  {m.direction === "request" ? "📥 Request" : "📤 Response"}
+                </Badge>
                 <Badge variant="outline" className="text-[9px]">
                   {m.productId ? products.find((p) => p.id === m.productId)?.name ?? m.productId : "Domain-wide"}
                 </Badge>
@@ -217,21 +227,23 @@ export function JsonMappingManager() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="min-w-0 space-y-1.5">
-                <Label>Product</Label>
-                <Select
-                  value={active.productId ?? ANY_PRODUCT}
-                  onValueChange={(v) => updateActive({ productId: v === ANY_PRODUCT ? undefined : (v as string) })}
-                >
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ANY_PRODUCT}>Any Product (industry-wide)</SelectItem>
-                    {productsForIndustry.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {active.industry && (
+                <div className="min-w-0 space-y-1.5">
+                  <Label>Product</Label>
+                  <Select
+                    value={active.productId ?? ANY_PRODUCT}
+                    onValueChange={(v) => updateActive({ productId: v === ANY_PRODUCT ? undefined : (v as string) })}
+                  >
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ANY_PRODUCT}>Any Product (industry-wide)</SelectItem>
+                      {productsForIndustry.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="min-w-0 space-y-1.5">
                 <Label>Direction</Label>
                 <Select value={active.direction} onValueChange={(v) => updateActive({ direction: (v as "request" | "response") ?? "request" })}>
