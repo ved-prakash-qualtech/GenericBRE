@@ -17,14 +17,24 @@ export function EditableCell({
   value,
   onCommit,
   invalid,
+  readOnly,
 }: {
   column: MatrixColumn;
   value: string | number;
   onCommit: (value: string | number) => void;
   invalid?: boolean;
+  readOnly?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
+
+  if (readOnly) {
+    return (
+      <span className={cn("flex h-7 w-full items-center px-1.5 text-xs tabular-nums", invalid && "text-destructive font-medium")}>
+        {formatDisplay(column, value)}
+      </span>
+    );
+  }
 
   if (column.type === "select") {
     return (

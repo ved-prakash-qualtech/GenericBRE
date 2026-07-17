@@ -156,7 +156,7 @@ export const CORE_RULES: BusinessRule[] = [
       cond("loan_amount", ">", "2000000"),
     ]),
     actions: [
-      { id: cid(), type: "Show Message", reasonCode: "REVIEW_ADDITIONAL_DOCS", message: "Review required: self-employed applicant requesting high-value loan." },
+      { id: cid(), type: "Flag for Review", reasonCode: "REVIEW_ADDITIONAL_DOCS", message: "Review required: self-employed applicant requesting high-value loan." },
     ],
     createdDaysAgo: 95,
     updatedDaysAgo: 8,
@@ -172,7 +172,7 @@ export const CORE_RULES: BusinessRule[] = [
     owner: "Credit Risk Division",
     rootGroup: group("AND", [cond("loan_amount", ">", "5000000")]),
     actions: [
-      { id: cid(), type: "Show Message", reasonCode: "HIGH_VALUE_REVIEW", message: "Review required: loan amount exceeds ₹50,00,000 auto-approval ceiling." },
+      { id: cid(), type: "Flag for Review", reasonCode: "HIGH_VALUE_REVIEW", message: "Review required: loan amount exceeds ₹50,00,000 auto-approval ceiling." },
     ],
     createdDaysAgo: 80,
     updatedDaysAgo: 30,
@@ -267,7 +267,7 @@ export const CORE_RULES: BusinessRule[] = [
     description: "Refers applicants above standard age bands for senior medical underwriting review.",
     owner: "Actuarial Underwriting",
     rootGroup: group("AND", [cond("applicant_age", ">", "65")]),
-    actions: [{ id: cid(), type: "Show Message", reasonCode: "SENIOR_UNDERWRITING_REQUIRED", message: "Manual senior underwriting review required for applicants above 65." }],
+    actions: [{ id: cid(), type: "Flag for Review", reasonCode: "SENIOR_UNDERWRITING_REQUIRED", message: "Manual senior underwriting review required for applicants above 65." }],
     createdDaysAgo: 100, updatedDaysAgo: 12,
   }),
   makeRule({
@@ -369,7 +369,7 @@ export const CORE_RULES: BusinessRule[] = [
       group("AND", [cond("occupation_type", "=", "High Risk"), cond("sum_assured", ">", "3000000")]),
     ]),
     actions: [
-      { id: cid(), type: "Show Message", reasonCode: "COMPOSITE_UNDERWRITING_RISK", message: "Composite underwriting risk detected — route for manual review." },
+      { id: cid(), type: "Flag for Review", reasonCode: "COMPOSITE_UNDERWRITING_RISK", message: "Composite underwriting risk detected — route for manual review." },
     ],
     createdDaysAgo: 7, updatedDaysAgo: 1,
     groupId: "grp-risk-review",
@@ -428,7 +428,7 @@ export const CORE_RULES: BusinessRule[] = [
     description: "Flags loan-to-value requests that exceed the maximum permitted ceiling for manual review.",
     owner: "Credit Risk Division",
     rootGroup: group("AND", [cond("ltv_requested", ">", "75")]),
-    actions: [{ id: cid(), type: "Show Message", reasonCode: "LTV_EXCEEDS_CEILING", message: "Requested LTV exceeds the 75% policy ceiling; review required." }],
+    actions: [{ id: cid(), type: "Flag for Review", reasonCode: "LTV_EXCEEDS_CEILING", message: "Requested LTV exceeds the 75% policy ceiling; review required." }],
     createdDaysAgo: 88, updatedDaysAgo: 22,
   }),
   makeRule({
@@ -487,6 +487,117 @@ export const CORE_RULES: BusinessRule[] = [
     actions: [{ id: cid(), type: "Show Message", reasonCode: "BULK_PLEDGE_ESCALATION", message: "High-value pledge profile detected — route for manager escalation." }],
     createdDaysAgo: 5, updatedDaysAgo: 1,
     groupId: "grp-risk-review",
+  }),
+
+  // ---------------- CREDIT CARDS ----------------
+  // Mirrors the Home Loan rule shape (reject x2 + manager-review + baseline
+  // approval) so a newly-configured domain has the same demonstrable
+  // positive/negative outcomes as the established ones.
+  makeRule({
+    id: "RL-601",
+    name: "Minimum Income Eligibility",
+    domain: "CreditCards",
+    category: "Eligibility",
+    priority: 1,
+    status: "Active",
+    description: "Declines card applications below the minimum annual income threshold.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [cond("annual_income", "<", "300000")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "INSUFFICIENT_INCOME", message: "Annual income is below the minimum required for card issuance." }],
+    createdDaysAgo: 40, updatedDaysAgo: 12,
+  }),
+  makeRule({
+    id: "RL-602",
+    name: "Excessive Credit Utilization Exclusion",
+    domain: "CreditCards",
+    category: "Risk & Fraud",
+    priority: 2,
+    status: "Active",
+    description: "Declines applicants whose existing credit utilization ratio is already excessive.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [cond("credit_utilization_ratio", ">", "90")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "UTILIZATION_EXCEEDED", message: "Existing credit utilization ratio exceeds the acceptable limit." }],
+    createdDaysAgo: 35, updatedDaysAgo: 10,
+  }),
+  makeRule({
+    id: "RL-603",
+    name: "High Limit Request Manager Review",
+    domain: "CreditCards",
+    category: "Risk & Fraud",
+    priority: 3,
+    status: "Active",
+    description: "Routes unusually high credit limit requests to a manager before approval.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [cond("requested_credit_limit", ">", "500000")]),
+    actions: [{ id: cid(), type: "Flag for Review", reasonCode: "HIGH_LIMIT_REVIEW", message: "High credit limit requested — route to manager for review." }],
+    createdDaysAgo: 30, updatedDaysAgo: 8,
+  }),
+  makeRule({
+    id: "RL-604",
+    name: "Standard Card Approval",
+    domain: "CreditCards",
+    category: "Eligibility",
+    priority: 5,
+    status: "Active",
+    description: "Baseline approval action applied once all higher-priority eligibility and risk checks pass.",
+    owner: "Product Strategy Team",
+    rootGroup: group("AND", []),
+    actions: [{ id: cid(), type: "Approve", reasonCode: "ELIGIBLE_CUSTOMER", message: "Applicant meets all eligibility and risk criteria for card issuance." }],
+    createdDaysAgo: 40, updatedDaysAgo: 12,
+  }),
+
+  // ---------------- WEALTH MANAGEMENT ----------------
+  makeRule({
+    id: "RL-701",
+    name: "Minimum Investment Threshold",
+    domain: "Wealth",
+    category: "Eligibility",
+    priority: 1,
+    status: "Active",
+    description: "Declines onboarding when the proposed investment amount is below the plan's minimum.",
+    owner: "Asset Management Group",
+    rootGroup: group("AND", [cond("investment_amount", "<", "50000")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "BELOW_MIN_INVESTMENT", message: "Investment amount is below the minimum required for this plan." }],
+    createdDaysAgo: 25, updatedDaysAgo: 9,
+  }),
+  makeRule({
+    id: "RL-702",
+    name: "KYC Verification Gate",
+    domain: "Wealth",
+    category: "Compliance",
+    priority: 2,
+    status: "Active",
+    description: "Declines onboarding until KYC verification is complete.",
+    owner: "Compliance Office",
+    rootGroup: group("AND", [cond("kyc_verified", "=", "false")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "KYC_INCOMPLETE", message: "KYC verification must be completed before this account can be opened." }],
+    createdDaysAgo: 25, updatedDaysAgo: 9,
+  }),
+  makeRule({
+    id: "RL-703",
+    name: "Aggressive Risk Profile Advisory Review",
+    domain: "Wealth",
+    category: "Risk & Fraud",
+    priority: 3,
+    status: "Active",
+    description: "Routes applicants with an aggressive risk appetite to an advisor before onboarding.",
+    owner: "Asset Management Group",
+    rootGroup: group("AND", [cond("risk_appetite", "=", "Aggressive")]),
+    actions: [{ id: cid(), type: "Flag for Review", reasonCode: "AGGRESSIVE_PROFILE_REVIEW", message: "Aggressive risk appetite — advisor review recommended before onboarding." }],
+    createdDaysAgo: 20, updatedDaysAgo: 6,
+  }),
+  makeRule({
+    id: "RL-704",
+    name: "Standard Portfolio Approval",
+    domain: "Wealth",
+    category: "Eligibility",
+    priority: 5,
+    status: "Active",
+    description: "Baseline approval action applied once all higher-priority eligibility and compliance checks pass.",
+    owner: "Product Strategy Team",
+    rootGroup: group("AND", []),
+    actions: [{ id: cid(), type: "Approve", reasonCode: "ELIGIBLE_CUSTOMER", message: "Applicant meets all eligibility and compliance criteria for onboarding." }],
+    createdDaysAgo: 25, updatedDaysAgo: 9,
   }),
 ];
 
@@ -552,6 +663,7 @@ export const MATRICES: DecisionMatrix[] = [
   {
     id: "MTX-LEND-01",
     domain: "Lending",
+    lookupType: "interest-rate",
     name: "Bank Risk-Tiered Core Pricing Slabs",
     description: "Maps bureau credit score bands to interest rate multipliers and processing workflow.",
     columns: [
@@ -572,6 +684,7 @@ export const MATRICES: DecisionMatrix[] = [
   {
     id: "MTX-NBFC-01",
     domain: "NBFC",
+    lookupType: "haircut",
     name: "Asset Allocation Haircut & LTV Matrix",
     description: "Defines haircut margin and eligible LTV ceiling by collateral type and appraised value tier.",
     columns: [
@@ -592,6 +705,7 @@ export const MATRICES: DecisionMatrix[] = [
   {
     id: "MTX-INS-01",
     domain: "Insurance",
+    lookupType: "premium",
     name: "Insurance Premium Rate Slabs",
     description: "Determines base premium and smoker risk loading by applicant age band.",
     columns: [
@@ -666,6 +780,8 @@ export const DEFAULT_PRODUCTS: Product[] = [
   { id: "prod-auto-loan", name: "Auto Loan", code: "AUTO_LOAN", domain: "Lending", description: "New/used vehicle purchase financing.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
   { id: "prod-term-life", name: "Term Life Cover", code: "TERM_LIFE", domain: "Insurance", description: "Pure protection term life plan.", status: "Active", publishStatus: "Published", lastPublishedAt: PRODUCT_SEED_TIMESTAMP, createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
   { id: "prod-gold-loan", name: "Gold Loan", code: "GOLD_LOAN", domain: "NBFC", description: "Collateral-backed gold loan scheme.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+  { id: "prod-credit-card", name: "Rewards Credit Card", code: "REWARDS_CARD", domain: "CreditCards", description: "Unsecured revolving credit card with tiered rewards.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+  { id: "prod-wealth-plan", name: "Managed Portfolio Plan", code: "WEALTH_PLAN", domain: "Wealth", description: "Advisor-managed investment portfolio onboarding.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
 ];
 
 function mapping(id: string, productId: string, ruleId: string, order: number): ProductRuleMapping {
@@ -679,10 +795,27 @@ export const DEFAULT_PRODUCT_RULE_MAPPINGS: ProductRuleMapping[] = [
   mapping("prm-4", "prod-home-loan", "RL-106", 3),
   mapping("prm-5", "prod-auto-loan", "RL-103", 0),
   mapping("prm-6", "prod-auto-loan", "RL-107", 1),
+  // prm-11: baseline approval — Auto Loan had no rule that ever produced an
+  // explicit Approved outcome (only a reject + a review rule); reuses the
+  // same unconditional "Standard Lending Approval" already mapped to Home
+  // Loan so both Lending products have a real positive demo path.
+  mapping("prm-11", "prod-auto-loan", "RL-106", 2),
   mapping("prm-7", "prod-term-life", "RL-202", 0),
   mapping("prm-8", "prod-term-life", "RL-201", 1),
+  // prm-12: same gap/fix as prm-11, for Term Life Cover.
+  mapping("prm-12", "prod-term-life", "RL-207", 2),
   mapping("prm-9", "prod-gold-loan", "RL-301", 0),
   mapping("prm-10", "prod-gold-loan", "RL-302", 1),
+  // prm-13: same gap/fix as prm-11, for Gold Loan.
+  mapping("prm-13", "prod-gold-loan", "RL-306", 2),
+  mapping("prm-14", "prod-credit-card", "RL-601", 0),
+  mapping("prm-15", "prod-credit-card", "RL-602", 1),
+  mapping("prm-16", "prod-credit-card", "RL-603", 2),
+  mapping("prm-17", "prod-credit-card", "RL-604", 3),
+  mapping("prm-18", "prod-wealth-plan", "RL-701", 0),
+  mapping("prm-19", "prod-wealth-plan", "RL-702", 1),
+  mapping("prm-20", "prod-wealth-plan", "RL-703", 2),
+  mapping("prm-21", "prod-wealth-plan", "RL-704", 3),
 ];
 
 // ============================================================
@@ -809,6 +942,96 @@ export const DEFAULT_RULE_TEMPLATES: RuleTemplate[] = [
     categoryId: "collateral",
     rootGroup: group("AND", [cond("ltv_requested", ">", "75")]),
     actions: [{ id: cid(), type: "Reject", reasonCode: "LTV_CAP_BREACH", message: "Requested LTV exceeds the collateral policy cap." }],
+  },
+  {
+    id: "tmpl-lending-min-credit-score",
+    name: "Minimum Credit Score Gate",
+    description: "Decline lending applications whose bureau credit score falls below the policy floor.",
+    domain: "Lending",
+    categoryId: "eligibility",
+    rootGroup: group("AND", [cond("credit_score", "<", "650")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "LOW_CREDIT_SCORE", message: "Bureau credit score is below the minimum acceptable threshold." }],
+  },
+  {
+    id: "tmpl-lending-high-value-review",
+    name: "High Loan Amount Escalation",
+    description: "Flag unusually large loan requests for senior underwriter review before approval.",
+    domain: "Lending",
+    categoryId: "underwriting",
+    rootGroup: group("AND", [cond("loan_amount", ">", "2000000")]),
+    actions: [{ id: cid(), type: "Flag for Review", reasonCode: "HIGH_VALUE_REVIEW", message: "High loan amount requested — route to senior underwriter for review." }],
+  },
+  {
+    id: "tmpl-insurance-min-sum-assured",
+    name: "Minimum Sum Assured Gate",
+    description: "Decline policy applications whose requested sum assured is below the minimum coverage.",
+    domain: "Insurance",
+    categoryId: "eligibility",
+    rootGroup: group("AND", [cond("sum_assured", "<", "500000")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "INSUFFICIENT_COVERAGE", message: "Requested sum assured is below the minimum coverage amount." }],
+  },
+  {
+    id: "tmpl-insurance-high-bmi-review",
+    name: "High BMI Medical Review",
+    description: "Flag applicants with an elevated BMI for a medical underwriting review.",
+    domain: "Insurance",
+    categoryId: "underwriting",
+    rootGroup: group("AND", [cond("bmi", ">", "30")]),
+    actions: [{ id: cid(), type: "Flag for Review", reasonCode: "HIGH_BMI_REVIEW", message: "Elevated BMI — refer application for medical review." }],
+  },
+  {
+    id: "tmpl-nbfc-min-purity",
+    name: "Minimum Purity Grade Check",
+    description: "Reject gold-backed collateral whose purity grade falls below the policy floor.",
+    domain: "NBFC",
+    categoryId: "collateral",
+    rootGroup: group("AND", [cond("purity_grade", "<", "18")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "LOW_PURITY", message: "Collateral purity grade is below the minimum acceptable threshold." }],
+  },
+  {
+    id: "tmpl-nbfc-high-value-review",
+    name: "High Appraised Value Review",
+    description: "Flag unusually high-value collateral for manager review before approval.",
+    domain: "NBFC",
+    categoryId: "risk-fraud",
+    rootGroup: group("AND", [cond("appraised_value", ">", "1000000")]),
+    actions: [{ id: cid(), type: "Flag for Review", reasonCode: "HIGH_VALUE_COLLATERAL_REVIEW", message: "High-value collateral — route for manager review." }],
+  },
+  {
+    id: "tmpl-creditcards-min-income",
+    name: "Minimum Income Gate",
+    description: "Decline card applications whose annual income is below the policy floor.",
+    domain: "CreditCards",
+    categoryId: "eligibility",
+    rootGroup: group("AND", [cond("annual_income", "<", "300000")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "INSUFFICIENT_INCOME", message: "Annual income is below the minimum required for card issuance." }],
+  },
+  {
+    id: "tmpl-creditcards-high-utilization-review",
+    name: "High Utilization Review",
+    description: "Flag applicants with high existing credit utilization before any limit increase.",
+    domain: "CreditCards",
+    categoryId: "risk-fraud",
+    rootGroup: group("AND", [cond("credit_utilization_ratio", ">", "70")]),
+    actions: [{ id: cid(), type: "Flag for Review", reasonCode: "HIGH_UTILIZATION_REVIEW", message: "High credit utilization — review before any limit increase." }],
+  },
+  {
+    id: "tmpl-wealth-min-investment",
+    name: "Minimum Investment Gate",
+    description: "Decline onboarding when the proposed investment amount is below the plan's minimum.",
+    domain: "Wealth",
+    categoryId: "eligibility",
+    rootGroup: group("AND", [cond("investment_amount", "<", "50000")]),
+    actions: [{ id: cid(), type: "Reject", reasonCode: "BELOW_MIN_INVESTMENT", message: "Investment amount is below the minimum required for this plan." }],
+  },
+  {
+    id: "tmpl-wealth-aggressive-review",
+    name: "Aggressive Risk Advisory Review",
+    description: "Flag applicants with an aggressive risk appetite for advisor review before onboarding.",
+    domain: "Wealth",
+    categoryId: "risk-fraud",
+    rootGroup: group("AND", [cond("risk_appetite", "=", "Aggressive")]),
+    actions: [{ id: cid(), type: "Flag for Review", reasonCode: "AGGRESSIVE_PROFILE_REVIEW", message: "Aggressive risk appetite — advisor review recommended." }],
   },
 ];
 

@@ -59,7 +59,8 @@ export type ActionType =
   | "Reject"
   | "Calculate"
   | "Assign Value"
-  | "Show Message";
+  | "Show Message"
+  | "Flag for Review";
 
 export interface Condition {
   id: string;
@@ -268,6 +269,12 @@ export interface DecisionMatrix {
   rangeColumns?: [string, string]; // [minKey, maxKey] used for overlap detection
   rows: MatrixRow[];
   updatedAt: string;
+  /** Which lookup shape this matrix's rows follow — lets the engine resolve
+   *  a matrix generically by `domain` instead of a hardcoded matrix id, and
+   *  lets a new industry plug in matrix pricing via configuration alone (add
+   *  a DecisionMatrix with this domain + shape, no code change). Undefined
+   *  means "no automatic post-decision lookup for this matrix." */
+  lookupType?: "interest-rate" | "haircut" | "premium";
 }
 
 // "list" stays part of this shared union for JSON Mapping's own attribute
@@ -586,8 +593,9 @@ export interface AppUser {
   permissions: Capability[];
   /** RuleCategory.name values this user is authorized to approve as part of
    *  Maker-Checker approval. Zero, one, or many — a single approver can cover
-   *  multiple categories. Purely configuration; the workflow that reads this
-   *  (matching a rule's category to eligible approvers) isn't implemented yet. */
+   *  multiple categories. Enforced in store.ts's approveRule/rejectRule: an
+   *  empty list means unrestricted (e.g. a System Administrator persona), a
+   *  non-empty list is a strict whitelist. */
   approvalCategories: string[];
   createdAt: string;
   updatedAt: string;

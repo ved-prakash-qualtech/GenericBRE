@@ -1,5 +1,30 @@
 import { DecisionMatrix, MatrixRow } from "./types";
 
+// Resolves a domain's post-decision matrix lookup generically — by `domain` +
+// `lookupType`, not a hardcoded matrix id — so a new industry gets matrix
+// pricing by adding a DecisionMatrix row in configuration alone, and a
+// missing/renamed matrix degrades to "no calculated values" instead of a
+// crash. Shared by the Simulator and the /api/decision route so the two
+// surfaces can never drift out of sync.
+export function applyMatrixLookup(
+  matrices: DecisionMatrix[],
+  domain: string,
+  input: Record<string, string | number | boolean>
+): Record<string, string | number> {
+  const matrix = matrices.find((m) => m.domain === domain && m.lookupType);
+  if (!matrix) return {};
+  switch (matrix.lookupType) {
+    case "interest-rate":
+      return lookupInterestRate(matrix, Number(input.credit_score)).calculatedValues;
+    case "haircut":
+      return lookupHaircut(matrix, String(input.collateral_type), Number(input.appraised_value)).calculatedValues;
+    case "premium":
+      return lookupPremium(matrix, Number(input.applicant_age), Boolean(input.smoker)).calculatedValues;
+    default:
+      return {};
+  }
+}
+
 export interface MatrixLookupResult {
   row: MatrixRow | null;
   calculatedValues: Record<string, string | number>;

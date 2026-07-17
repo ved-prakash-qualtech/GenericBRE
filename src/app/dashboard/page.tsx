@@ -58,11 +58,17 @@ export default function DashboardPage() {
   const showInsights = useAppStore((s) => s.appearance.showInsights);
   const roleId = useAppStore((s) => s.currentUser.role);
   const dashboardConfigs = useAppStore((s) => s.dashboardConfigs);
-  const products = useAppStore((s) => s.products);
+  const allProducts = useAppStore((s) => s.products);
   const industries = useAppStore((s) => s.industries);
   const productRuleMappings = useAppStore((s) => s.productRuleMappings);
   const simulations = useAppStore((s) => s.simulations);
+  const domainFilter = useAppStore((s) => s.globalFilters.domains);
   const [editMode, setEditMode] = useState(false);
+
+  // Same "every widget scopes to the header's Industry filter" rule
+  // KpiCards/charts already follow (audit finding B16) — the Products panel
+  // was the one place that filter did nothing.
+  const products = domainFilter.length ? allProducts.filter((p) => domainFilter.includes(p.domain)) : allProducts;
 
   // The widget catalog for this page is scoped to the current role's
   // admin-configured defaults (Configuration Studio → Dashboard Management,
@@ -100,9 +106,12 @@ export default function DashboardPage() {
   const criticalDrafts = rules.filter((r) => r.status === "Draft" && r.priority === 1).length;
 
   const exportSummary = () => {
+    // Mirrors the same domain-scoped set the widgets above actually display
+    // (audit finding B17) rather than the full, unfiltered rule catalog.
+    const scopedRules = domainFilter.length ? rules.filter((r) => domainFilter.includes(r.domain)) : rules;
     downloadCsv(
       "bre_dashboard_summary",
-      rules.map((r) => ({
+      scopedRules.map((r) => ({
         RuleID: r.id,
         Name: r.name,
         Domain: r.domain,

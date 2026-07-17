@@ -32,6 +32,22 @@ export const DEFAULT_FIELD_CATALOG: BusinessField[] = [
   { key: "appraised_value", label: "Appraised Asset Value", domain: "NBFC", type: "currency", unit: "₹" },
   { key: "purity_grade", label: "Purity / Grade %", domain: "NBFC", type: "number", unit: "%" },
   { key: "ltv_requested", label: "LTV Requested", domain: "NBFC", type: "number", unit: "%" },
+
+  // Credit Cards
+  { key: "annual_income", label: "Annual Income", domain: "CreditCards", type: "currency", unit: "₹" },
+  { key: "requested_credit_limit", label: "Requested Credit Limit", domain: "CreditCards", type: "currency", unit: "₹" },
+  { key: "credit_utilization_ratio", label: "Credit Utilization Ratio", domain: "CreditCards", type: "number", unit: "%" },
+  { key: "existing_cards_count", label: "Existing Cards Held", domain: "CreditCards", type: "number" },
+  { key: "card_type_requested", label: "Card Type Requested", domain: "CreditCards", type: "enum", options: ["Standard", "Gold", "Platinum", "Signature"] },
+  { key: "late_payment_history", label: "Late Payment History", domain: "CreditCards", type: "boolean" },
+
+  // Wealth Management
+  { key: "investment_amount", label: "Investment Amount", domain: "Wealth", type: "currency", unit: "₹" },
+  { key: "risk_appetite", label: "Risk Appetite", domain: "Wealth", type: "enum", options: ["Conservative", "Moderate", "Aggressive"] },
+  { key: "portfolio_type", label: "Portfolio Type", domain: "Wealth", type: "enum", options: ["Equity", "Debt", "Hybrid", "Balanced"] },
+  { key: "kyc_verified", label: "KYC Verified", domain: "Wealth", type: "boolean" },
+  { key: "net_worth", label: "Net Worth", domain: "Wealth", type: "currency", unit: "₹" },
+  { key: "investment_horizon_years", label: "Investment Horizon", domain: "Wealth", type: "number", unit: "years" },
 ];
 
 export const OPERATORS: { value: Operator; label: string; types: string[] }[] = [
@@ -44,7 +60,7 @@ export const OPERATORS: { value: Operator; label: string; types: string[] }[] = 
   { value: "contains", label: "Contains", types: ["string"] },
   { value: "starts_with", label: "Starts with", types: ["string"] },
   { value: "in", label: "In (list)", types: ["enum", "string"] },
-  { value: "between", label: "Between", types: ["number", "currency"] },
+  { value: "between", label: "Between", types: ["number", "currency", "date"] },
 ];
 
 export function fieldsForDomain(catalog: BusinessField[], domain: Domain): BusinessField[] {

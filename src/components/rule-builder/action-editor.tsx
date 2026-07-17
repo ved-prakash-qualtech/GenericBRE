@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Plus, Trash2, CheckCircle2, XCircle, Calculator, Tag, MessageSquare, ChevronsUpDown, Check, Variable, Sparkles, Braces } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, XCircle, Calculator, Tag, MessageSquare, Flag, ChevronsUpDown, Check, Variable, Sparkles, Braces } from "lucide-react";
 import { ActionType, BusinessRule, Domain, FieldDataType, RuleAction } from "@/lib/types";
 import { fieldsForDomain, getField } from "@/lib/fields";
 import { getGeneratedVariables } from "@/lib/rule-chaining";
@@ -20,6 +20,7 @@ const ACTION_TYPES: { value: ActionType; label: string; icon: React.ElementType;
   { value: "Calculate", label: "Calculate", icon: Calculator, accent: "text-blue-600 dark:text-blue-400" },
   { value: "Assign Value", label: "Assign Value", icon: Tag, accent: "text-violet-600 dark:text-violet-400" },
   { value: "Show Message", label: "Show Message", icon: MessageSquare, accent: "text-amber-600 dark:text-amber-400" },
+  { value: "Flag for Review", label: "Flag for Review", icon: Flag, accent: "text-orange-600 dark:text-orange-400" },
 ];
 
 const OUTPUT_TYPES: { value: FieldDataType; label: string }[] = [
@@ -203,7 +204,7 @@ function ActionRow({
 }) {
   const meta = ACTION_TYPES.find((t) => t.value === action.type)!;
   const needsOutput = action.type === "Calculate" || action.type === "Assign Value";
-  const needsMessage = action.type === "Show Message" || action.type === "Approve" || action.type === "Reject";
+  const needsMessage = action.type === "Show Message" || action.type === "Flag for Review" || action.type === "Approve" || action.type === "Reject";
   const valueInputRef = useRef<HTMLInputElement>(null);
 
   // Inserts `{{key}}` at the current caret position (falls back to

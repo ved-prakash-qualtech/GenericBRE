@@ -124,6 +124,12 @@ function snapshotFromRule(
 
 const DEFAULT_USER: CurrentUser = { name: "Ananya Verma", role: "business-analyst", initials: "AV" };
 
+// Caps in-browser audit history so a long-running demo session can't grow
+// auditLog (persisted whole into one localStorage key) past the origin's
+// storage quota — see logAudit. A real deployment moves this to backend,
+// paginated storage instead of a client-side cap.
+const AUDIT_LOG_CAP = 500;
+
 export interface GlobalFilters {
   domains: Domain[];
   statuses: RuleStatus[];
@@ -226,12 +232,18 @@ interface AppState {
   products: Product[];
   addProduct: (product: Product) => void;
   updateProduct: (id: string, patch: Partial<Product>) => void;
-  /** Sets publishStatus="Published" + lastPublishedAt (see Product Workspace's guided Stepper). */
-  publishProduct: (id: string) => void;
+  /** Sets publishStatus="Published" + lastPublishedAt (see Product Workspace's guided Stepper). Maker-Checker parity with rules: blocks the same person who last edited the product's overview from being the one to publish it. */
+  publishProduct: (id: string) => { ok: boolean; reason?: string };
   productRuleMappings: ProductRuleMapping[];
   // Full-replace semantics for a given product — simplest correct behavior
   // for a checklist-style mapping UI (see product-rule-mapping-manager.tsx).
   saveProductRuleMapping: (productId: string, ruleIds: string[]) => void;
+
+  // Rule Simulator's "Recently Used" quick-access list — most-recent-first,
+  // capped at 5. Recorded on an actual simulation run (see useRunSimulator's
+  // runScenario), not just on selecting a product in the picker.
+  recentProductIds: string[];
+  recordRecentProduct: (id: string) => void;
 
   // NotifyX — trigger -> condition -> action workflow automation (config-only
   // prototype, no execution engine). Categories/Triggers are configurable
@@ -282,6 +294,8 @@ interface AppState {
   restoreRuleVersion: (ruleId: string, version: number) => { ok: boolean; reason?: string };
 
   // matrices
+  addMatrix: (matrix: DecisionMatrix) => void;
+  deleteMatrix: (matrixId: string) => void;
   updateMatrixRows: (matrixId: string, rows: MatrixRow[]) => void;
   addMatrixRow: (matrixId: string, row: MatrixRow) => void;
   updateMatrixRow: (matrixId: string, rowId: string, values: MatrixRow["values"]) => void;
@@ -413,8 +427,34 @@ export const useAppStore = create<AppState>()(
       updateRuleCategory: (id, patch) => {
         const { currentUser, roles } = get();
         if (!hasCapability(roles, currentUser.role, "config.manage")) return;
-        set((s) => ({ ruleCategories: s.ruleCategories.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
-        get().logAudit({ user: get().currentUser.name, action: "Updated Category", entity: "RuleCategory", entityId: id, details: `Category "${id}" updated.` });
+        const oldName = get().ruleCategories.find((c) => c.id === id)?.name;
+        const renamed = patch.name !== undefined && oldName !== undefined && patch.name !== oldName;
+        set((s) => ({
+          ruleCategories: s.ruleCategories.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+          // BusinessRule.category and AppUser.approvalCategories both store
+          // the category's display name, not its id (audit finding A12) — a
+          // rename would otherwise silently detach every rule and every
+          // user's Maker-Checker approval scope still pointing at the old
+          // name. Cascade the rename here instead of migrating the whole app
+          // to id-based references.
+          ...(renamed
+            ? {
+                rules: s.rules.map((r) => (r.category === oldName ? { ...r, category: patch.name! } : r)),
+                users: s.users.map((u) =>
+                  u.approvalCategories.includes(oldName)
+                    ? { ...u, approvalCategories: u.approvalCategories.map((c) => (c === oldName ? patch.name! : c)) }
+                    : u
+                ),
+              }
+            : {}),
+        }));
+        get().logAudit({
+          user: get().currentUser.name,
+          action: "Updated Category",
+          entity: "RuleCategory",
+          entityId: id,
+          details: renamed ? `Category renamed from "${oldName}" to "${patch.name}" — cascaded to all rules and user approval scopes.` : `Category "${id}" updated.`,
+        });
       },
       deleteRuleCategory: (id) => {
         const { currentUser, roles } = get();
@@ -522,21 +562,34 @@ export const useAppStore = create<AppState>()(
         const { currentUser, roles } = get();
         if (!hasCapability(roles, currentUser.role, "config.manage")) return;
         set((s) => ({
-          products: s.products.map((p) => (p.id === id ? { ...p, ...patch, updatedAt: new Date().toISOString() } : p)),
+          products: s.products.map((p) => (p.id === id ? { ...p, ...patch, updatedAt: new Date().toISOString(), updatedBy: currentUser.name } : p)),
         }));
         get().logAudit({ user: currentUser.name, action: "Updated Product", entity: "Product", entityId: id, details: `Product "${id}" updated.` });
       },
       publishProduct: (id) => {
         const { currentUser, roles, products } = get();
-        if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        if (!hasCapability(roles, currentUser.role, "config.manage")) {
+          return { ok: false, reason: `${currentUser.name} doesn't have permission to publish products.` };
+        }
         const product = products.find((p) => p.id === id);
+        if (!product) return { ok: false, reason: "Product not found." };
+        // Maker-Checker parity with rules — a product bundles many rules and
+        // is directly API-callable once live, arguably higher-risk than a
+        // single rule, but previously had no second-person review at all
+        // (audit finding B24). Block the same person who last edited the
+        // product's own overview from also being the one who publishes it.
+        if (product.updatedBy && product.updatedBy === currentUser.name) {
+          get().logAudit({ user: currentUser.name, action: "Publish Denied", entity: "Product", entityId: id, details: `${currentUser.name} cannot publish "${product.name}" — they also made the last edit to it (maker-checker).` });
+          return { ok: false, reason: "You made the last edit to this product — switch to a different reviewer role to publish it." };
+        }
         const now = new Date().toISOString();
         set((s) => ({
           products: s.products.map((p) =>
             p.id === id ? { ...p, publishStatus: "Published", lastPublishedAt: now, updatedAt: now } : p
           ),
         }));
-        get().logAudit({ user: currentUser.name, action: "Published Product", entity: "Product", entityId: id, details: `Product "${product?.name ?? id}" published — available via the Product API.` });
+        get().logAudit({ user: currentUser.name, action: "Published Product", entity: "Product", entityId: id, details: `Product "${product.name}" published — available via the Product API.` });
+        return { ok: true };
       },
 
       productRuleMappings: DEFAULT_PRODUCT_RULE_MAPPINGS,
@@ -560,6 +613,10 @@ export const useAppStore = create<AppState>()(
         }));
         get().logAudit({ user: currentUser.name, action: "Mapped Rules to Product", entity: "Product", entityId: productId, details: `${ruleIds.length} rule(s) mapped.` });
       },
+
+      recentProductIds: [],
+      recordRecentProduct: (id) =>
+        set((s) => ({ recentProductIds: [id, ...s.recentProductIds.filter((p) => p !== id)].slice(0, 5) })),
 
       notifyCategories: DEFAULT_NOTIFY_CATEGORIES,
       notifyTriggers: DEFAULT_NOTIFY_TRIGGERS,
@@ -707,11 +764,21 @@ export const useAppStore = create<AppState>()(
       approveRule: (ruleId) => {
         const rule = get().rules.find((r) => r.id === ruleId);
         if (!rule) return { ok: false, reason: "Rule not found." };
-        const { currentUser, roles, approvalRequests } = get();
+        const { currentUser, roles, approvalRequests, users } = get();
 
         if (!hasCapability(roles, currentUser.role, "rule.publish")) {
           get().logAudit({ user: currentUser.name, action: "Approval Denied", entity: "BusinessRule", entityId: ruleId, details: `${currentUser.name} attempted to approve ${rule.name} without the rule.publish capability.` });
           return { ok: false, reason: `${currentUser.name} doesn't have permission to publish rules.` };
+        }
+        // Maker-Checker category scoping — an empty approvalCategories list
+        // means "unrestricted" (e.g. a System Administrator persona), a
+        // non-empty list is a strict whitelist of the categories this person
+        // is authorized to approve, matching User Management's own framing
+        // ("Rule Approval Responsibilities").
+        const approver = users.find((u) => u.name === currentUser.name);
+        if (approver && approver.approvalCategories.length > 0 && !approver.approvalCategories.includes(rule.category)) {
+          get().logAudit({ user: currentUser.name, action: "Approval Denied", entity: "BusinessRule", entityId: ruleId, details: `${currentUser.name} attempted to approve ${rule.name} (category "${rule.category}") outside their approval responsibilities (${approver.approvalCategories.join(", ")}).` });
+          return { ok: false, reason: `Your approval responsibilities don't include the "${rule.category}" category.` };
         }
         const pending = approvalRequests.find((a) => a.ruleId === ruleId && a.stage === "Pending Review");
         if (pending && pending.requestedBy === currentUser.name) {
@@ -733,11 +800,16 @@ export const useAppStore = create<AppState>()(
       rejectRule: (ruleId, comment) => {
         const rule = get().rules.find((r) => r.id === ruleId);
         if (!rule) return { ok: false, reason: "Rule not found." };
-        const { currentUser, roles } = get();
+        const { currentUser, roles, users } = get();
 
         if (!hasCapability(roles, currentUser.role, "rule.publish")) {
           get().logAudit({ user: currentUser.name, action: "Approval Denied", entity: "BusinessRule", entityId: ruleId, details: `${currentUser.name} attempted to send back ${rule.name} without the rule.publish capability.` });
           return { ok: false, reason: `${currentUser.name} doesn't have permission to make review decisions.` };
+        }
+        const approver = users.find((u) => u.name === currentUser.name);
+        if (approver && approver.approvalCategories.length > 0 && !approver.approvalCategories.includes(rule.category)) {
+          get().logAudit({ user: currentUser.name, action: "Approval Denied", entity: "BusinessRule", entityId: ruleId, details: `${currentUser.name} attempted to send back ${rule.name} (category "${rule.category}") outside their approval responsibilities (${approver.approvalCategories.join(", ")}).` });
+          return { ok: false, reason: `Your approval responsibilities don't include the "${rule.category}" category.` };
         }
 
         set((s) => ({
@@ -900,23 +972,47 @@ export const useAppStore = create<AppState>()(
         return { ok: true };
       },
 
-      updateMatrixRows: (matrixId, rows) =>
+      // Matrix rows feed directly into live decision outcomes (interest
+      // rate/haircut/premium), the same execution-impact tier as a rule's own
+      // conditions/actions — gate every mutation on the same "rule.edit"
+      // capability rule editing itself requires, not left open to any role.
+      addMatrix: (matrix) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.edit")) return;
+        set((s) => ({ matrices: [...s.matrices, matrix] }));
+        get().logAudit({ user: currentUser.name, action: "Created Matrix", entity: "DecisionMatrix", entityId: matrix.id, details: `New matrix "${matrix.name}" created for ${matrix.domain}.` });
+      },
+      deleteMatrix: (matrixId) => {
+        const { currentUser, roles, matrices } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.edit")) return;
+        const matrix = matrices.find((m) => m.id === matrixId);
+        set((s) => ({ matrices: s.matrices.filter((m) => m.id !== matrixId) }));
+        get().logAudit({ user: currentUser.name, action: "Deleted Matrix", entity: "DecisionMatrix", entityId: matrixId, details: `Matrix "${matrix?.name ?? matrixId}" deleted.` });
+      },
+      updateMatrixRows: (matrixId, rows) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.edit")) return;
         set((s) => ({
           matrices: s.matrices.map((m) =>
             m.id === matrixId ? { ...m, rows, updatedAt: new Date().toISOString() } : m
           ),
-        })),
+        }));
+      },
 
       addMatrixRow: (matrixId, row) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.edit")) return;
         set((s) => ({
           matrices: s.matrices.map((m) =>
             m.id === matrixId ? { ...m, rows: [...m.rows, row], updatedAt: new Date().toISOString() } : m
           ),
         }));
-        get().logAudit({ user: get().currentUser.name, action: "Added Matrix Row", entity: "DecisionMatrix", entityId: matrixId, details: `Row ${row.id} added.` });
+        get().logAudit({ user: currentUser.name, action: "Added Matrix Row", entity: "DecisionMatrix", entityId: matrixId, details: `Row ${row.id} added.` });
       },
 
       updateMatrixRow: (matrixId, rowId, values) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.edit")) return;
         set((s) => ({
           matrices: s.matrices.map((m) =>
             m.id === matrixId
@@ -928,10 +1024,12 @@ export const useAppStore = create<AppState>()(
               : m
           ),
         }));
-        get().logAudit({ user: get().currentUser.name, action: "Edited Matrix Row", entity: "DecisionMatrix", entityId: matrixId, details: `Row ${rowId} values updated.` });
+        get().logAudit({ user: currentUser.name, action: "Edited Matrix Row", entity: "DecisionMatrix", entityId: matrixId, details: `Row ${rowId} values updated.` });
       },
 
       deleteMatrixRow: (matrixId, rowId) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.edit")) return;
         set((s) => ({
           matrices: s.matrices.map((m) =>
             m.id === matrixId
@@ -939,10 +1037,12 @@ export const useAppStore = create<AppState>()(
               : m
           ),
         }));
-        get().logAudit({ user: get().currentUser.name, action: "Deleted Matrix Row", entity: "DecisionMatrix", entityId: matrixId, details: `Row ${rowId} removed.` });
+        get().logAudit({ user: currentUser.name, action: "Deleted Matrix Row", entity: "DecisionMatrix", entityId: matrixId, details: `Row ${rowId} removed.` });
       },
 
       duplicateMatrixRow: (matrixId, rowId) => {
+        const { currentUser, roles } = get();
+        if (!hasCapability(roles, currentUser.role, "rule.edit")) return;
         const matrix = get().matrices.find((m) => m.id === matrixId);
         const row = matrix?.rows.find((r) => r.id === rowId);
         if (!matrix || !row) return;
@@ -953,7 +1053,7 @@ export const useAppStore = create<AppState>()(
             m.id === matrixId ? { ...m, rows: [...m.rows, newRow], updatedAt: new Date().toISOString() } : m
           ),
         }));
-        get().logAudit({ user: get().currentUser.name, action: "Duplicated Matrix Row", entity: "DecisionMatrix", entityId: matrixId, details: `Row ${rowId} duplicated as ${newRow.id}.` });
+        get().logAudit({ user: currentUser.name, action: "Duplicated Matrix Row", entity: "DecisionMatrix", entityId: matrixId, details: `Row ${rowId} duplicated as ${newRow.id}.` });
       },
 
       addSimulation: (result) => set((s) => ({ simulations: [result, ...s.simulations].slice(0, 50) })),
@@ -964,9 +1064,14 @@ export const useAppStore = create<AppState>()(
           const prevHash = s.auditLog[0]?.hash ?? "";
           const content = { ...entry, timestamp };
           const hash = hashAuditEntry(prevHash, content);
-          return {
-            auditLog: [{ ...content, id: `A-${Date.now()}`, prevHash, hash }, ...s.auditLog],
-          };
+          // Capped like addSimulation's history — unbounded growth persisted
+          // whole into a single localStorage key risks exceeding the origin's
+          // storage quota and silently corrupting/losing all app state, not
+          // just the log (audit finding A7). Trimming only ever drops the
+          // oldest entries off the tail, so the hash chain among everything
+          // that's kept stays fully valid.
+          const auditLog = [{ ...content, id: `A-${Date.now()}`, prevHash, hash }, ...s.auditLog].slice(0, AUDIT_LOG_CAP);
+          return { auditLog };
         }),
 
       setAppearance: (patch) => set((s) => ({ appearance: { ...s.appearance, ...patch } })),
@@ -1018,9 +1123,144 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 22,
+      version: 28,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v27 -> v28 capped auditLog going forward (see AUDIT_LOG_CAP /
+        // logAudit, audit finding A7) — trim an already-oversized persisted
+        // session once here too, since the cap in logAudit only applies on
+        // the next new entry, not to a session that's already over it.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.auditLog && s.auditLog.length > AUDIT_LOG_CAP) {
+            s.auditLog = s.auditLog.slice(0, AUDIT_LOG_CAP);
+          }
+        }
+        // v26 -> v27 replaced the "Review Required" outcome's old detection
+        // (a Show Message action whose free-text message happened to contain
+        // the word "review") with a first-class "Flag for Review" ActionType
+        // (audit finding A2 — that string-matching silently mis-fired on any
+        // unrelated message containing "review"). Upgrade every already-
+        // persisted rule/template's actions and elseActions in place so
+        // existing sessions keep behaving the same, now driven by the
+        // action's actual type instead of a text-sniffing heuristic.
+        {
+          const s = persistedState as Partial<AppState>;
+          const upgradeActions = (actions?: { type: string; message?: string }[]) => {
+            actions?.forEach((a) => {
+              if (a.type === "Show Message" && a.message?.toLowerCase().includes("review")) {
+                a.type = "Flag for Review";
+              }
+            });
+          };
+          s?.rules?.forEach((r) => {
+            upgradeActions(r.actions);
+            upgradeActions(r.elseActions);
+          });
+          s?.ruleTemplates?.forEach((t) => {
+            upgradeActions(t.actions);
+            upgradeActions(t.elseActions);
+          });
+        }
+        // v25 -> v26 added `lookupType` to DecisionMatrix so matrix lookups
+        // resolve generically by domain instead of a hardcoded matrix id
+        // (audit finding A3/A4) — backfill onto the 3 seeded matrices by id
+        // since a persisted session's `matrices` array won't pick up a new
+        // field on an existing row from the default shallow merge.
+        {
+          const s = persistedState as Partial<AppState>;
+          const lookupTypeById: Record<string, "interest-rate" | "haircut" | "premium"> = {
+            "MTX-LEND-01": "interest-rate",
+            "MTX-NBFC-01": "haircut",
+            "MTX-INS-01": "premium",
+          };
+          if (s?.matrices) {
+            s.matrices = s.matrices.map((m) => (m.lookupType || !lookupTypeById[m.id] ? m : { ...m, lookupType: lookupTypeById[m.id] }));
+          }
+        }
+        // v24 -> v25 built out Credit Cards and Wealth Management (previously
+        // fields/rules/products/templates existed for Lending, Insurance and
+        // NBFC only) plus 2 more demo Rule Templates per domain across the
+        // board. New rows for a persisted session's already-diverged arrays
+        // won't appear from the default shallow merge, so backfill each by id.
+        {
+          const s = persistedState as Partial<AppState>;
+          const newFieldKeys = new Set([
+            "annual_income", "requested_credit_limit", "credit_utilization_ratio",
+            "existing_cards_count", "card_type_requested", "late_payment_history",
+            "investment_amount", "risk_appetite", "portfolio_type", "kyc_verified",
+            "net_worth", "investment_horizon_years",
+          ]);
+          if (s?.fieldCatalog) {
+            const existingKeys = new Set(s.fieldCatalog.map((f) => f.key));
+            for (const field of DEFAULT_FIELD_CATALOG) {
+              if (newFieldKeys.has(field.key) && !existingKeys.has(field.key)) s.fieldCatalog.push(field);
+            }
+          }
+          const newRuleIds = new Set(["RL-601", "RL-602", "RL-603", "RL-604", "RL-701", "RL-702", "RL-703", "RL-704"]);
+          if (s?.rules) {
+            const existingRuleIds = new Set(s.rules.map((r) => r.id));
+            for (const rule of ALL_RULES) {
+              if (newRuleIds.has(rule.id) && !existingRuleIds.has(rule.id)) s.rules.push(rule);
+            }
+          }
+          if (s?.products) {
+            const existingProductIds = new Set(s.products.map((p) => p.id));
+            for (const product of DEFAULT_PRODUCTS) {
+              if (!existingProductIds.has(product.id) && (product.id === "prod-credit-card" || product.id === "prod-wealth-plan")) {
+                s.products.push(product);
+              }
+            }
+          }
+          if (s?.productRuleMappings) {
+            const existingPairs = new Set(s.productRuleMappings.map((m) => `${m.productId}:${m.ruleId}`));
+            for (const mapping of DEFAULT_PRODUCT_RULE_MAPPINGS) {
+              if (newRuleIds.has(mapping.ruleId) && !existingPairs.has(`${mapping.productId}:${mapping.ruleId}`)) {
+                s.productRuleMappings.push(mapping);
+              }
+            }
+          }
+          const newTemplateIds = new Set([
+            "tmpl-lending-min-credit-score", "tmpl-lending-high-value-review",
+            "tmpl-insurance-min-sum-assured", "tmpl-insurance-high-bmi-review",
+            "tmpl-nbfc-min-purity", "tmpl-nbfc-high-value-review",
+            "tmpl-creditcards-min-income", "tmpl-creditcards-high-utilization-review",
+            "tmpl-wealth-min-investment", "tmpl-wealth-aggressive-review",
+          ]);
+          if (s?.ruleTemplates) {
+            const existingTemplateIds = new Set(s.ruleTemplates.map((t) => t.id));
+            for (const template of DEFAULT_RULE_TEMPLATES) {
+              if (newTemplateIds.has(template.id) && !existingTemplateIds.has(template.id)) s.ruleTemplates.push(template);
+            }
+          }
+        }
+        // v23 -> v24 added a baseline "Standard ... Approval" mapping to Auto
+        // Loan, Term Life Cover and Gold Loan (Home Loan already had one) so
+        // every seed product has both a positive and a negative demo outcome
+        // — an existing session's `productRuleMappings` already diverged from
+        // the DEFAULT_PRODUCT_RULE_MAPPINGS constant, so the default shallow
+        // merge won't add these; backfill them explicitly, skipping any
+        // product where a mapping for that rule already exists.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.productRuleMappings) {
+            const additions: ProductRuleMapping[] = [
+              { id: "prm-11", productId: "prod-auto-loan", ruleId: "RL-106", order: 2 },
+              { id: "prm-12", productId: "prod-term-life", ruleId: "RL-207", order: 2 },
+              { id: "prm-13", productId: "prod-gold-loan", ruleId: "RL-306", order: 2 },
+            ].map((a) => ({ ...a, active: true, createdAt: new Date().toISOString() }));
+            for (const addition of additions) {
+              const alreadyMapped = s.productRuleMappings.some(
+                (m) => m.productId === addition.productId && m.ruleId === addition.ruleId
+              );
+              if (!alreadyMapped) s.productRuleMappings.push(addition);
+            }
+          }
+        }
+        // v22 -> v23 added `recentProductIds` (Rule Simulator's "Recently
+        // Used" list) — a brand-new key, the default shallow merge fills it
+        // in from initial state ([]) automatically, nothing to backfill.
+
         // v21 -> v22 removed 4 generic rule templates from selection list.
         {
           const s = persistedState as Partial<AppState>;

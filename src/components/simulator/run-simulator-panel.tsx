@@ -9,7 +9,7 @@ import { getMappedRules, executeRulesByProduct } from "@/lib/product-rule-engine
 import { collectFieldKeys } from "@/lib/condition-tree";
 import { buildSampleRequestJson } from "@/lib/sample-json";
 import { fromSimulation, resolveDecisionResponseConfig, buildApiResponsePayload } from "@/lib/decision-response";
-import { lookupInterestRate, lookupHaircut, lookupPremium } from "@/lib/matrix-lookup";
+import { applyMatrixLookup } from "@/lib/matrix-lookup";
 import { SampleJsonPanel } from "@/components/rule-builder/sample-json-panel";
 import { DecisionResultView } from "@/components/simulator/decision-result-view";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ export function useRunSimulator(product: Product | null, initialSandboxRuleId: s
   const addSimulation = useAppStore((s) => s.addSimulation);
   const logAudit = useAppStore((s) => s.logAudit);
   const currentUser = useAppStore((s) => s.currentUser);
+  const recordRecentProduct = useAppStore((s) => s.recordRecentProduct);
 
   const domain = product?.domain ?? "";
   const [jsonText, setJsonText] = useState<string>(() =>
@@ -110,25 +111,14 @@ export function useRunSimulator(product: Product | null, initialSandboxRuleId: s
       const sim = execution.result;
 
       if (sim.outcome !== "Rejected") {
-        if (domain === "Lending") {
-          const matrix = matrices.find((m) => m.id === "MTX-LEND-01")!;
-          const { calculatedValues } = lookupInterestRate(matrix, Number(input.credit_score));
-          Object.assign(sim.calculatedValues, calculatedValues);
-        } else if (domain === "NBFC") {
-          const matrix = matrices.find((m) => m.id === "MTX-NBFC-01")!;
-          const { calculatedValues } = lookupHaircut(matrix, String(input.collateral_type), Number(input.appraised_value));
-          Object.assign(sim.calculatedValues, calculatedValues);
-        } else if (domain === "Insurance") {
-          const matrix = matrices.find((m) => m.id === "MTX-INS-01")!;
-          const { calculatedValues } = lookupPremium(matrix, Number(input.applicant_age), Boolean(input.smoker));
-          Object.assign(sim.calculatedValues, calculatedValues);
-        }
+        Object.assign(sim.calculatedValues, applyMatrixLookup(matrices, domain, input));
       }
 
       const dr = fromSimulation(sim, rules);
       const responseConfig = resolveDecisionResponseConfig(decisionResponseSettings, { industry: domain });
       setDecisionResult(dr);
       setResponseMode(responseConfig.defaultMode);
+      recordRecentProduct(product.id);
       // Sandbox previews (a rule still in Testing) aren't production activity —
       // keep them out of the "Simulations Run" history/KPI, log them distinctly.
       if (!sim.sandbox) {

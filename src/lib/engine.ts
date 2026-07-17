@@ -288,7 +288,7 @@ export function runRulesForCase(
           reasonCode = action.reasonCode ?? "ELIGIBLE_CUSTOMER";
           summary = action.message ?? `${rule.name} confirmed approval eligibility.`;
           decidingRuleId = rule.id;
-        } else if (action.type === "Show Message" && action.message?.toLowerCase().includes("review")) {
+        } else if (action.type === "Flag for Review") {
           if (outcomeRank(outcome) <= 1) {
             outcome = "Review Required";
             reasonCode = action.reasonCode ?? "MANUAL_REVIEW";

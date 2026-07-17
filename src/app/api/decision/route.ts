@@ -7,7 +7,7 @@ import {
   buildApiResponsePayload,
   DEFAULT_DECISION_RESPONSE_CONFIG,
 } from "@/lib/decision-response";
-import { lookupInterestRate, lookupHaircut, lookupPremium } from "@/lib/matrix-lookup";
+import { applyMatrixLookup } from "@/lib/matrix-lookup";
 import { DecisionResponseConfig, ResponseMode } from "@/lib/types";
 
 // A stateless demo endpoint for the Decision Result module. This prototype
@@ -37,22 +37,6 @@ function parseInput(raw: Record<string, unknown>): InputMap {
     input[key] = value as string | number | boolean;
   }
   return input;
-}
-
-// Mirrors the post-simulation matrix lookups the Simulator UI applies
-// (src/app/simulator/page.tsx) so a dummy-API caller sees the same
-// calculatedValues (interest rate, haircut, premium) a real UI run would.
-function applyMatrixLookups(industry: string, input: InputMap, calculatedValues: Record<string, string | number>) {
-  if (industry === "Lending") {
-    const matrix = MATRICES.find((m) => m.id === "MTX-LEND-01");
-    if (matrix) Object.assign(calculatedValues, lookupInterestRate(matrix, Number(input.credit_score)).calculatedValues);
-  } else if (industry === "NBFC") {
-    const matrix = MATRICES.find((m) => m.id === "MTX-NBFC-01");
-    if (matrix) Object.assign(calculatedValues, lookupHaircut(matrix, String(input.collateral_type), Number(input.appraised_value)).calculatedValues);
-  } else if (industry === "Insurance") {
-    const matrix = MATRICES.find((m) => m.id === "MTX-INS-01");
-    if (matrix) Object.assign(calculatedValues, lookupPremium(matrix, Number(input.applicant_age), Boolean(input.smoker)).calculatedValues);
-  }
 }
 
 export async function POST(req: NextRequest) {
@@ -101,7 +85,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: execution.reason ?? "Unable to execute rules for this product." }, { status: 400 });
   }
   if (execution.result.outcome !== "Rejected") {
-    applyMatrixLookups(product.domain, input, execution.result.calculatedValues);
+    Object.assign(execution.result.calculatedValues, applyMatrixLookup(MATRICES, product.domain, input));
   }
   const decisionResult = fromSimulation(execution.result, ALL_RULES);
   return NextResponse.json(buildApiResponsePayload(decisionResult, responseMode, config), { status: 200 });

@@ -12,6 +12,7 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { downloadCsv } from "@/lib/csv";
 import { cn } from "@/lib/utils";
+import { RouteGuard } from "@/components/shell/route-guard";
 
 // Best-effort domain resolution — AuditEntry itself carries no `domain` field
 // (most actions, e.g. role/category edits, have no domain at all), so this
@@ -101,6 +102,7 @@ export default function AuditLogPage() {
   };
 
   return (
+    <RouteGuard requiredCapability="config.manage" moduleLabel="the Audit Log">
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center justify-between border-b bg-card/40 px-5 py-3.5 sm:px-6">
         <div>
@@ -261,6 +263,7 @@ export default function AuditLogPage() {
         </div>
       </ScrollArea>
     </div>
+    </RouteGuard>
   );
 }
 
