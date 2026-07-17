@@ -70,6 +70,20 @@ const BG_DISPLAY_MODES: BackgroundDisplayMode[] = ["cover", "contain", "fixed", 
 const DENSITY_MODES: DensityMode[] = ["compact", "comfortable", "spacious"];
 const FONT_SCALES: FontScale[] = ["sm", "md", "lg"];
 
+const LANGUAGES: { code: string; native: string; english: string }[] = [
+  { code: "en", native: "English", english: "English" },
+  { code: "hi", native: "हिन्दी", english: "Hindi" },
+  { code: "ta", native: "தமிழ்", english: "Tamil" },
+  { code: "te", native: "తెలుగు", english: "Telugu" },
+  { code: "ml", native: "മലയാളം", english: "Malayalam" },
+  { code: "fr", native: "Français", english: "French" },
+  { code: "es", native: "Español", english: "Spanish" },
+  { code: "de", native: "Deutsch", english: "German" },
+  { code: "ja", native: "日本語", english: "Japanese" },
+  { code: "zh", native: "中文", english: "Chinese" },
+  { code: "ar", native: "العربية", english: "Arabic" },
+];
+
 function SegmentedControl<T extends string>({
   value,
   options,
@@ -163,6 +177,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
   const [draft, setDraft] = useState<AppearanceSettings>(stored);
   const [wasOpen, setWasOpen] = useState(open);
   const [activeTab, setActiveTab] = useState("theme");
+  const [previewTab, setPreviewTab] = useState<"dashboard" | "signin">("dashboard");
   const bgInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
@@ -432,6 +447,31 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
 
                 <TabsContent value="display" className="space-y-5">
                   <section>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Language</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {LANGUAGES.map((l) => (
+                        <button
+                          key={l.code}
+                          type="button"
+                          onClick={() => patch({ language: l.code })}
+                          className={cn(
+                            "flex flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left transition-colors",
+                            draft.language === l.code ? "border-primary bg-primary/5" : "hover:border-foreground/20"
+                          )}
+                        >
+                          <span className="flex w-full items-center justify-between text-xs font-medium">
+                            {l.native}
+                            {draft.language === l.code && <Check className="size-3 text-primary" />}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">{l.english}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-[10.5px] text-muted-foreground/70">
+                      Sets the page locale (&lt;html lang&gt;) for assistive tech and locale-aware formatting. Interface copy itself isn&apos;t translated in this prototype.
+                    </p>
+                  </section>
+                  <section>
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Density</p>
                     <SegmentedControl
                       value={draft.density}
@@ -543,16 +583,52 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                   </span>
                 </div>
 
-                <div className="flex overflow-hidden rounded-2xl border shadow-xl">
+                {/* Preview Tabs */}
+                <div className="mb-3 flex gap-2 border-b">
+                  <button
+                    onClick={() => setPreviewTab("dashboard")}
+                    className={cn(
+                      "px-3 py-2 text-xs font-medium border-b-2 transition-colors",
+                      previewTab === "dashboard"
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Dashboard
+                  </button>
+                  {activeTab === "branding" && (
+                    <button
+                      onClick={() => setPreviewTab("signin")}
+                      className={cn(
+                        "px-3 py-2 text-xs font-medium border-b-2 transition-colors",
+                        previewTab === "signin"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Sign-in Page
+                    </button>
+                  )}
+                </div>
+
+                {/* Dashboard Preview */}
+                {(previewTab === "dashboard" || activeTab !== "branding") && (
+                  <div className="flex overflow-hidden rounded-2xl border shadow-xl">
                   <div
                     className="flex w-14 shrink-0 flex-col items-center gap-3 py-4"
                     style={{ background: "var(--sidebar)" }}
                   >
                     <div
-                      className="flex size-8 items-center justify-center rounded-lg"
+                      className="flex size-8 items-center justify-center overflow-hidden rounded-lg"
                       style={{ background: "var(--sidebar-primary)", color: "var(--sidebar-primary-foreground)" }}
+                      title={draft.appName}
                     >
-                      <Workflow className="size-4" />
+                      {draft.logo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={draft.logo} alt="" className="size-full object-contain p-1" />
+                      ) : (
+                        <Workflow className="size-4" />
+                      )}
                     </div>
                     {[0, 1, 2, 3, 4].map((i) => (
                       <div
@@ -568,6 +644,19 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                   </div>
 
                   <div className="flex-1 p-4" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+                    <div className="mb-3 flex items-center gap-2">
+                      {draft.logo && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={draft.logo} alt="" className="size-5 shrink-0 rounded object-contain" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-bold leading-tight">{draft.appName || "Business Rules Engine"}</p>
+                        <p className="truncate text-[9.5px] leading-tight" style={{ color: "var(--muted-foreground)" }}>
+                          {draft.tagline || "Decision Platform"}
+                        </p>
+                      </div>
+                    </div>
+
                     <div className="mb-4 flex items-center gap-2">
                       <div className="h-7 flex-1 rounded-md" style={{ background: "var(--muted)" }} />
                       {[0, 1, 2].map((i) => (
@@ -649,7 +738,116 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                       <div className="rounded-lg border px-3 py-1.5 text-[10px] font-medium">Export CSV</div>
                     </div>
                   </div>
-                </div>
+                  </div>
+                )}
+
+                {/* Sign-in Page Preview - Split Layout (Branding Tab Only) */}
+                {previewTab === "signin" && activeTab === "branding" && (
+                  <div className="flex overflow-hidden rounded-2xl border shadow-xl h-96">
+                    {/* Left Side - Dark Brand with Logo */}
+                    <div className="flex-1 p-4 flex flex-col justify-start items-start relative overflow-hidden" style={{ background: "#0f172a", color: "#e2e8f0" }}>
+                      {/* Logo at Top-Left */}
+                      <div className="relative z-10 flex items-center gap-2">
+                        <div
+                          className="flex size-10 items-center justify-center overflow-hidden rounded-lg shrink-0"
+                          style={{ background: "var(--primary)" }}
+                        >
+                          {draft.logo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={draft.logo} alt="" className="size-full object-contain p-1" />
+                          ) : (
+                            <Workflow className="size-6" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold leading-tight">{draft.appName || "Business Rules System"}</p>
+                          <p className="text-[8px] text-slate-400">{draft.tagline || "Decision Platform"}</p>
+                        </div>
+                      </div>
+
+                      {/* Blurred Background Content */}
+                      <div style={{ filter: "blur(5px)", opacity: 0.2, marginTop: "auto", marginBottom: "auto", textAlign: "center", width: "100%" }}>
+                        <p className="text-xs mb-2">Dashboard Overview</p>
+                        <p className="text-[10px]">Simulations • Rules • Workflows</p>
+                      </div>
+                    </div>
+
+                    {/* Right Side - Sign-in Form */}
+                    <div className="flex-1 p-6 flex flex-col items-center justify-center" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+                      <div className="w-full max-w-sm space-y-5">
+                        <div>
+                          <p className="text-lg font-bold">Welcome Back</p>
+                          <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                            Sign in to your {draft.appName || "Business Rules System"} account
+                          </p>
+                        </div>
+
+                        <div className="space-y-3">
+                          {/* Employee ID Input */}
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium">Employee ID</p>
+                            <div
+                              className="h-8 rounded-lg border px-2.5 flex items-center text-xs"
+                              style={{ borderColor: "var(--input)", background: "var(--background)" }}
+                            >
+                              <p style={{ color: "var(--muted-foreground)" }}>EMP-0001</p>
+                            </div>
+                          </div>
+
+                          {/* Password Input */}
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium">Password</p>
+                            <div
+                              className="h-8 rounded-lg border px-2.5 flex items-center justify-between text-xs"
+                              style={{ borderColor: "var(--input)", background: "var(--background)" }}
+                            >
+                              <p style={{ color: "var(--muted-foreground)" }}>••••••••</p>
+                            </div>
+                          </div>
+
+                          {/* Remember Me & Forgot Password */}
+                          <div className="flex items-center justify-between text-xs">
+                            <label className="flex items-center gap-1.5">
+                              <input type="checkbox" className="size-3.5" />
+                              Remember me
+                            </label>
+                            <a href="#" style={{ color: "var(--primary)" }} className="font-medium">
+                              Forgot password?
+                            </a>
+                          </div>
+
+                          {/* Sign-in Button */}
+                          <div
+                            className="h-8 rounded-lg flex items-center justify-center font-medium text-xs cursor-pointer"
+                            style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+                          >
+                            Sign In
+                          </div>
+
+                          {/* Demo Mode */}
+                          <p className="text-center text-xs">
+                            Need Demo Access?{" "}
+                            <span style={{ color: "var(--primary)" }} className="font-medium">
+                              Enter Demo Mode
+                            </span>
+                          </p>
+                        </div>
+
+                        {/* Features */}
+                        <div className="grid grid-cols-2 gap-2 border-t pt-3">
+                          <div className="text-[9px]">
+                            <p style={{ color: "var(--primary)" }} className="font-medium">✓ Secure Access</p>
+                            <p style={{ color: "var(--muted-foreground)" }} className="text-[8px]">Enterprise auth</p>
+                          </div>
+                          <div className="text-[9px]">
+                            <p style={{ color: "var(--primary)" }} className="font-medium">✓ Role-Based</p>
+                            <p style={{ color: "var(--muted-foreground)" }} className="text-[8px]">Permissions</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </Tabs>

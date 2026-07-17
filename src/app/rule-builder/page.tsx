@@ -420,7 +420,7 @@ function RuleBuilderContent() {
       />
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="mx-auto flex max-w-330 flex-col gap-4 px-5 py-5 sm:px-6">
+        <div className="flex w-full flex-col gap-4 px-5 py-5 sm:px-6">
           <MetadataForm data={rule} onChange={patchRule} errors={errors} />
           {(errors.condition || errors.outputField || errors.duplicateVariable || errors.variables || errors.chain) && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
@@ -451,7 +451,7 @@ function RuleBuilderContent() {
             <div className="flex flex-col gap-4 lg:col-span-2">
               <div>
                 <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  IF — Condition Builder
+                  Condition Builder
                 </h2>
                 <ConditionGroupEditor
                   group={rule.rootGroup}

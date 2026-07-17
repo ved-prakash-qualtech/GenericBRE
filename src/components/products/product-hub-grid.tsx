@@ -118,75 +118,113 @@ export function ProductHubGrid({
         <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">No products match this filter.</p>
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {filtered.map((p) => {
-        const industry = industries.find((i) => i.id === p.domain);
-        const Icon = iconForIndustry(industry?.icon) ?? Package;
-        const mappedCount = getMappedRules(p.id, rules, mappings).length;
-        const lastSim = simulations.find((s) => s.productId === p.id);
-        const published = p.publishStatus === "Published";
+        {filtered.map((p) => {
+          const industry = industries.find((i) => i.id === p.domain);
+          const Icon = iconForIndustry(industry?.icon) ?? Package;
+          const mappedRules = getMappedRules(p.id, rules, mappings);
+          const mappedCount = mappedRules.length;
+          const lastSim = simulations.find((s) => s.productId === p.id);
+          const published = p.publishStatus === "Published";
 
-        return (
-          <div
-            key={p.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => onConfigure(p)}
-            onKeyDown={(e) => e.key === "Enter" && onConfigure(p)}
-            className={cn(
-              "flex cursor-pointer flex-col gap-2.5 rounded-xl border bg-card p-3.5 text-left transition-colors hover:border-primary/40 hover:bg-accent/40",
-              p.status === "Inactive" && "opacity-60"
-            )}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Icon className="size-4.5" />
-              </span>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                {p.status === "Inactive" && <Badge variant="outline" className="text-[9px]">Inactive</Badge>}
-                <Badge variant={published ? "default" : "secondary"} className="text-[9px]">
+          // Priority mix (P1..P5) among this product's mapped rules — drives the
+          // sparkline. Real derived data, not decorative filler.
+          const priorityCounts = [1, 2, 3, 4, 5].map((pr) => mappedRules.filter((r) => r.priority === pr).length);
+          const maxPriorityCount = Math.max(1, ...priorityCounts);
+
+          // Status mix among mapped rules — drives the small heatmap row.
+          const statusMix: { status: BusinessRule["status"]; color: string }[] = [
+            { status: "Active", color: "bg-emerald-500" },
+            { status: "Draft", color: "bg-amber-500" },
+            { status: "Testing", color: "bg-sky-500" },
+            { status: "Inactive", color: "bg-muted-foreground/40" },
+            { status: "Archived", color: "bg-muted-foreground/20" },
+          ];
+          const statusDots = statusMix.flatMap(({ status, color }) =>
+            Array.from({ length: Math.min(4, mappedRules.filter((r) => r.status === status).length) }, (_, i) => (
+              <span key={`${status}-${i}`} className={cn("size-1.5 rounded-full", color)} />
+            ))
+          );
+
+          return (
+            <div
+              key={p.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onConfigure(p)}
+              onKeyDown={(e) => e.key === "Enter" && onConfigure(p)}
+              className={cn(
+                "flex cursor-pointer flex-col gap-2.5 rounded-xl border bg-card p-3.5 text-left transition-colors hover:border-primary/40 hover:bg-accent/40",
+                p.status === "Inactive" && "opacity-60"
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="size-4" />
+                </span>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {p.status === "Inactive" && <Badge variant="outline" className="text-[9px]">Inactive</Badge>}
+                  <Badge variant={published ? "default" : "secondary"} className="text-[9px]">
+                    {p.publishStatus ?? "Draft"}
+                  </Badge>
+                </div>
+                <div className="flex h-6 items-end gap-0.5" title="Mapped rules by priority (P1–P5)">
+                  {priorityCounts.map((c, i) => (
+                    <span
+                      key={i}
+                      className={cn("w-1 rounded-sm", c > 0 ? "bg-primary/60" : "bg-muted")}
+                      style={{ height: `${Math.max(15, (c / maxPriorityCount) * 100)}%` }}
+                    />
+                  ))}
+                </div>
+                <Badge variant={published ? "default" : "secondary"} className="shrink-0 text-[9px]">
                   {p.publishStatus ?? "Draft"}
                 </Badge>
               </div>
-            </div>
 
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{p.name}</p>
-              <p className="truncate font-mono text-[10px] text-muted-foreground">{p.code}</p>
-            </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{p.name}</p>
+                <p className="truncate font-mono text-[10px] text-muted-foreground">{p.code}</p>
+              </div>
 
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>
-                <span className="font-semibold text-foreground">{mappedCount}</span> mapped rule{mappedCount === 1 ? "" : "s"}
-              </span>
-              {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-1.5 py-0 text-[9px]" />}
-            </div>
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>
+                  <span className="font-semibold text-foreground">{mappedCount}</span> mapped rule{mappedCount === 1 ? "" : "s"}
+                </span>
+                {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-1.5 py-0 text-[9px]" />}
+              </div>
 
-            <p className="text-[10px] text-muted-foreground/70">
-              {published && p.lastPublishedAt
-                ? `Published ${new Date(p.lastPublishedAt).toLocaleDateString()}`
-                : `Last updated ${new Date(p.updatedAt).toLocaleDateString()}`}
-            </p>
+              {statusDots.length > 0 && (
+                <div className="flex items-center gap-1" title="Mapped rule status mix">
+                  {statusDots}
+                </div>
+              )}
 
-            <div className={cn("mt-1 grid grid-cols-2 gap-1.5")} onClick={(e) => e.stopPropagation()}>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 gap-1 text-[11px]"
-                onClick={() => onConfigure(p)}
-              >
-                <Settings2 className="size-3" /> Configure
-              </Button>
-              <Button
-                size="sm"
-                className="h-7 gap-1 text-[11px]"
-                onClick={() => onRunSimulation(p)}
-              >
-                <PlayCircle className="size-3" /> Simulate
-              </Button>
+              <p className="text-[10px] text-muted-foreground/70">
+                {published && p.lastPublishedAt
+                  ? `Published ${new Date(p.lastPublishedAt).toLocaleDateString()}`
+                  : `Last updated ${new Date(p.updatedAt).toLocaleDateString()}`}
+              </p>
+
+              <div className="grid grid-cols-2 gap-1.5" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1 text-[11px]"
+                  onClick={() => onConfigure(p)}
+                >
+                  <Settings2 className="size-3" /> Configure
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-7 gap-1 text-[11px]"
+                  onClick={() => onRunSimulation(p)}
+                >
+                  <PlayCircle className="size-3" /> Simulate
+                </Button>
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
       </div>
     </div>
   );

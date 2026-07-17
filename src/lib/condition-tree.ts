@@ -6,8 +6,8 @@ export function newId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}${seq}`;
 }
 
-export function emptyCondition(field = ""): Condition {
-  return { id: newId("cond"), type: "condition", field, operator: "=", value: "" };
+export function emptyCondition(conditionType: "where" | "if" = "if", field = ""): Condition {
+  return { id: newId("cond"), type: "condition", field, operator: "=", value: "", conditionType };
 }
 
 export function emptyGroup(logic: "AND" | "OR" = "AND"): ConditionGroup {

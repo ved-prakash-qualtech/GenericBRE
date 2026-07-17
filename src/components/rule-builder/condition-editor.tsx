@@ -7,6 +7,12 @@ import { fieldsForDomain, getField, OPERATORS } from "@/lib/fields";
 import { useAppStore } from "@/lib/store";
 import { getGeneratedVariables } from "@/lib/rule-chaining";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -118,6 +124,22 @@ export function ConditionEditor({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 rounded-lg border bg-background px-2 py-1.5">
+      <DropdownMenu>
+        <DropdownMenuTrigger>
+          <Button variant="outline" size="sm" className="h-8 w-16 text-xs font-medium">
+            {condition.conditionType === "where" ? "WHERE" : "IF"}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem onClick={() => onChange({ conditionType: "if" })}>
+            IF
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onChange({ conditionType: "where" })}>
+            WHERE
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <Popover open={fieldPickerOpen} onOpenChange={setFieldPickerOpen}>
         <PopoverTrigger
           render={<Button variant="outline" size="sm" className="h-8 w-48 justify-between gap-1.5 font-normal" />}

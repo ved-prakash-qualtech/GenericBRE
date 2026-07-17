@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { ProductRuleCoverageChart, ProductRuleNetworkDiagram } from "@/components/studio/product-rule-mapping-viz";
 
 // The Rule Sequencer for product execution — reorders the rules already
 // mapped to this product (ProductRuleMapping.order). Same established
@@ -294,6 +295,15 @@ export function MappedRulesChecklist({
 // Product-Rule Mapping — the many-to-many wiring that replaces Execution
 // Manager's group/step routing. Category here is filter-only (narrows the
 // picker), never part of execution.
+const productColors = [
+  "bg-blue-50 border-blue-200 hover:bg-blue-100",
+  "bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
+  "bg-purple-50 border-purple-200 hover:bg-purple-100",
+  "bg-amber-50 border-amber-200 hover:bg-amber-100",
+  "bg-rose-50 border-rose-200 hover:bg-rose-100",
+  "bg-cyan-50 border-cyan-200 hover:bg-cyan-100",
+];
+
 export function ProductRuleMappingManager() {
   const products = useAppStore((s) => s.products);
   const rules = useAppStore((s) => s.rules);
@@ -370,39 +380,100 @@ export function ProductRuleMappingManager() {
           )}
         </div>
       </div>
+    <div className="flex h-full flex-col gap-4">
+      {/* Products Horizontal Layout */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between px-0.5">
+          <p className="text-xs font-semibold text-muted-foreground">Select Product</p>
+          <Badge variant="secondary" className="text-[9px]">{products.length} product{products.length === 1 ? "" : "s"}</Badge>
+        </div>
 
-      <div className="min-w-0 flex-1">
-        {!selectedProduct ? (
-          <div className="flex h-full flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-center">
-            <Package className="size-6 text-muted-foreground/40" />
-            <p className="text-xs text-muted-foreground">Select a product to map rules to it.</p>
+        {products.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <Package className="mx-auto mb-2 size-6 text-muted-foreground/40" />
+            <p className="text-[11px] text-muted-foreground">No products yet — add one in Product Master first.</p>
           </div>
         ) : (
-          <div className="flex h-full flex-col gap-3">
-            <div className="flex items-center gap-2.5 border-b pb-2.5">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                <Package className="size-4" />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{selectedProduct.name}</p>
-                <p className="text-[10.5px] text-muted-foreground">Configure which rules execute for this product, and in what order.</p>
-              </div>
-            </div>
-            <MappedRulesReorder
-              product={selectedProduct}
-              rules={rules}
-              mappings={productRuleMappings}
-              onReorder={reorderMapped}
-            />
-            <MappedRulesChecklist
-              product={selectedProduct}
-              rules={rules}
-              ruleCategories={ruleCategories}
-              mappings={productRuleMappings}
-            />
+          <div className="flex flex-wrap gap-2.5 overflow-x-auto pb-1">
+            {products.map((p, idx) => {
+              const mappedCount = getMappedRules(p.id, rules, productRuleMappings).length;
+              const isSelected = selectedProduct?.id === p.id;
+              const colorClass = productColors[idx % productColors.length];
+
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => selectProduct(p)}
+                  className={cn(
+                    "flex shrink-0 items-center gap-2.5 rounded-lg border-2 px-3.5 py-2.5 text-left transition-all",
+                    isSelected
+                      ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary/20"
+                      : `border ${colorClass}`
+                  )}
+                >
+                  <span className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-md text-sm font-semibold",
+                    isSelected ? "bg-primary/20 text-primary" : "bg-white/40 text-muted-foreground"
+                  )}>
+                    <Package className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold whitespace-nowrap">{p.name}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {mappedCount} rule{mappedCount === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Main Content */}
+      {!selectedProduct ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-center">
+          <Package className="size-8 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">Select a product to configure its rules.</p>
+        </div>
+      ) : (
+        <div className="flex flex-1 flex-col gap-4 min-h-0">
+          {/* Header */}
+          <div className="flex items-center gap-2.5 border-b pb-3">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <Package className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">{selectedProduct.name}</p>
+              <p className="text-[10.5px] text-muted-foreground">Configure which rules execute and their sequence.</p>
+            </div>
+          </div>
+
+          {/* Two-Column Layout: Available Rules + Selected Sequence */}
+          <div className="flex flex-1 gap-4 min-h-0">
+            {/* Left: Available Rules */}
+            <div className="flex-1 min-w-0">
+              <MappedRulesChecklist
+                product={selectedProduct}
+                rules={rules}
+                ruleCategories={ruleCategories}
+                mappings={productRuleMappings}
+              />
+            </div>
+
+            {/* Right: Execution Sequence */}
+            <div className="w-80 shrink-0 flex flex-col gap-3">
+              <MappedRulesReorder
+                product={selectedProduct}
+                rules={rules}
+                mappings={productRuleMappings}
+                onReorder={reorderMapped}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  </div>
   );
 }

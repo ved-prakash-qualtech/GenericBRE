@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { FlaskConical, PlayCircle, RotateCcw } from "lucide-react";
+import { FlaskConical, PlayCircle, RotateCcw, CheckCircle2, Clock, Zap } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { Product, BusinessField, BusinessRule, DecisionResult, ResponseMode } from "@/lib/types";
 import { getMappedRules, executeRulesByProduct } from "@/lib/product-rule-engine";
@@ -256,22 +256,51 @@ export function RunSimulatorResult({ product, sim }: { product: Product | null; 
   );
 }
 
+// Workflow step indicator
+function WorkflowSteps({ product, jsonReady, running, hasResult }: { product: Product; jsonReady: boolean; running: boolean; hasResult: boolean }) {
+  return (
+    <div className="flex items-center gap-2 border-b bg-card px-6 py-3 overflow-x-auto">
+      {[
+        { icon: CheckCircle2, label: "Product Selected", done: true },
+        { icon: Zap, label: "Configure JSON", done: jsonReady },
+        { icon: Clock, label: "Running...", done: hasResult, active: running },
+        { icon: CheckCircle2, label: "View Results", done: hasResult },
+      ].map((step, idx) => (
+        <div key={idx} className="flex items-center gap-2 shrink-0">
+          <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+            step.done ? "bg-emerald-500 text-white" : step.active ? "bg-primary text-white animate-pulse" : "bg-muted text-muted-foreground"
+          }`}>
+            <step.icon className="size-3.5" />
+          </div>
+          <span className="text-xs whitespace-nowrap text-muted-foreground">{step.label}</span>
+          {idx < 3 && <div className="h-px w-4 bg-muted" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Composed, self-contained two-pane panel for a fixed product — used by the
 // Product Workspace's Run Simulator tab (no product picker needed, the
 // product is already fixed by the route).
 export function RunSimulatorPanel({ product }: { product: Product }) {
   const sim = useRunSimulator(product);
+  const jsonReady = sim.jsonText.trim().length > 0;
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-      <div className="flex w-full shrink-0 flex-col lg:h-full lg:w-100">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <WorkflowSteps product={product} jsonReady={jsonReady} running={sim.running} hasResult={!!sim.decisionResult} />
+      <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 lg:flex-row">
+        <div className="flex w-full shrink-0 flex-col lg:h-full lg:w-100">
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="pb-4"><RunSimulatorInputs sim={sim} /></div>
+          </ScrollArea>
+          <RunSimulatorActions product={product} sim={sim} />
+        </div>
         <ScrollArea className="min-h-0 flex-1">
-          <div className="pb-4"><RunSimulatorInputs sim={sim} /></div>
+          <RunSimulatorResult product={product} sim={sim} />
         </ScrollArea>
-        <RunSimulatorActions product={product} sim={sim} />
       </div>
-      <ScrollArea className="min-h-0 flex-1">
-        <RunSimulatorResult product={product} sim={sim} />
-      </ScrollArea>
     </div>
   );
 }

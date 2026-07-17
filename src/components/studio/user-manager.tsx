@@ -50,6 +50,7 @@ function blankUser(): AppUser {
 
 export function UserManager() {
   const users = useAppStore((s) => s.users);
+  const products = useAppStore((s) => s.products);
   const ruleCategories = useAppStore((s) => s.ruleCategories);
   const addUser = useAppStore((s) => s.addUser);
   const updateUser = useAppStore((s) => s.updateUser);
@@ -59,6 +60,7 @@ export function UserManager() {
   const [draft, setDraft] = useState<AppUser>(blankUser());
   const [open, setOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<AppUser | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
 
   const startCreate = () => {
     setEditing(null);
@@ -274,8 +276,45 @@ export function UserManager() {
               </div>
             </div>
 
+            <div className="space-y-1.5">
+              <Label>Products</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Select products this user manages. Click a product to configure category approvals for it.
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {products.map((product) => (
+                  <button
+                    key={product.id}
+                    onClick={() => setSelectedProduct(selectedProduct === product.id ? null : product.id)}
+                    className={cn(
+                      "rounded-lg border-2 p-2.5 text-left transition-all",
+                      selectedProduct === product.id
+                        ? "border-primary bg-primary/5"
+                        : "border-muted hover:border-primary/50"
+                    )}
+                  >
+                    <p className="text-xs font-semibold truncate">{product.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{product.domain}</p>
+                  </button>
+                ))}
+              </div>
+              {selectedProduct && (
+                <div className="rounded-lg border bg-muted/20 p-3 mt-3">
+                  <p className="text-xs font-semibold mb-2">{products.find((p) => p.id === selectedProduct)?.name} — Approval Categories</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {ruleCategories.map((cat) => (
+                      <label key={cat.id} className="flex items-center gap-2 text-xs">
+                        <Checkbox checked={draft.approvalCategories.includes(cat.name)} onCheckedChange={() => toggleApprovalCategory(cat.name)} />
+                        {cat.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="rounded-lg border bg-muted/20 p-3">
-              <Label className="text-sm">Rule Approval Responsibilities</Label>
+              <Label className="text-sm">Category</Label>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
                 Select the business rule categories this user is authorized to approve. A single user may approve multiple rule categories.
               </p>

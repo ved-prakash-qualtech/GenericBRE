@@ -58,6 +58,7 @@ export function applyAppearance(appearance: ReturnType<typeof useAppStore.getSta
   root.setAttribute("data-font-scale", appearance.fontScale);
   root.setAttribute("data-high-contrast", String(appearance.highContrast));
   root.setAttribute("data-large-targets", String(appearance.largeClickTargets));
+  root.lang = appearance.language || "en";
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
