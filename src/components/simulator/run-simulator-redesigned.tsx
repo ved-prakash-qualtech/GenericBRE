@@ -29,7 +29,8 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
   const [copiedResponse, setCopiedResponse] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>(product.id);
 
-  const handleProductChange = (productId: string) => {
+  const handleProductChange = (productId: string | null) => {
+    if (!productId) return;
     setSelectedProduct(productId);
     const selected = products.find(p => p.id === productId);
     if (selected && onProductChange) {

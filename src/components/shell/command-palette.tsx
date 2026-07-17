@@ -29,6 +29,8 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     if (!open) setQuery("");
   }, [open]);
 
+  if (!open) return null;
+
   const matchedRules = query.length > 0
     ? rules.filter((r) => r.name.toLowerCase().includes(query.toLowerCase()) || r.id.toLowerCase().includes(query.toLowerCase())).slice(0, 6)
     : [];

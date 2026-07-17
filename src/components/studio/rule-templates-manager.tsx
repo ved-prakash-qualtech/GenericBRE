@@ -5,8 +5,21 @@ import { toast } from "sonner";
 import { Plus, Trash2, Save } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { RuleTemplate, Condition, ConditionGroup, RuleAction } from "@/lib/types";
-import { emptyGroup, updateNode, removeNode, addChildToGroup, countConditions } from "@/lib/condition-tree";
-import { ConditionGroupEditor } from "@/components/rule-builder/condition-group-editor";
+import {
+  emptyGroup,
+  emptyCondition,
+  updateNode,
+  removeNode,
+  addChildToGroup,
+  countConditions,
+  duplicateNode,
+  moveNode,
+  insertChildAt,
+  findParent,
+  findNode,
+} from "@/lib/condition-tree";
+import { copyToClipboard, pasteFromClipboard, useConditionClipboard } from "@/lib/condition-clipboard";
+import { ConditionGroupEditor, TreeHandlers } from "@/components/rule-builder/condition-group-editor";
 import { ActionListEditor } from "@/components/rule-builder/action-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,20 +82,46 @@ export function RuleTemplatesManager() {
     else if (selected) updateRuleTemplate(selected.id, patch);
   };
 
-  const updateTreeNode = (id: string, patch: Partial<Condition | ConditionGroup>) => {
+  const patchRoot = (fn: (root: ConditionGroup) => ConditionGroup) => {
     if (!active) return;
-    updateActive({ rootGroup: updateNode(active.rootGroup, id, patch) });
-  };
-  const deleteTreeNode = (id: string) => {
-    if (!active) return;
-    updateActive({ rootGroup: removeNode(active.rootGroup, id) });
-  };
-  const addTreeChild = (groupId: string, child: Condition | ConditionGroup) => {
-    if (!active) return;
-    updateActive({ rootGroup: addChildToGroup(active.rootGroup, groupId, child) });
+    updateActive({ rootGroup: fn(active.rootGroup) });
   };
   const setActions = (actionsList: RuleAction[]) => updateActive({ actions: actionsList });
   const setElseActions = (elseActionsList: RuleAction[]) => updateActive({ elseActions: elseActionsList });
+
+  const clipboardCount = useConditionClipboard();
+  // Same handler contract as Rule Builder's editor — templates get the full
+  // SQL-style tree (drag, duplicate, copy/paste) minus multi-select
+  // (`selection` omitted below), since there's no bulk bar here.
+  const treeHandlers: TreeHandlers = {
+    onUpdate: (id, patch) => patchRoot((root) => updateNode(root, id, patch)),
+    onDelete: (id) => patchRoot((root) => removeNode(root, id)),
+    onAddChild: (groupId, child) => patchRoot((root) => addChildToGroup(root, groupId, child)),
+    onDuplicate: (id) => patchRoot((root) => duplicateNode(root, id)),
+    onCopy: (id) => {
+      if (!active) return;
+      const nodes = id === active.rootGroup.id ? active.rootGroup.children : [findNode(active.rootGroup, id)].filter((n): n is Condition | ConditionGroup => !!n);
+      if (nodes.length === 0) return;
+      copyToClipboard(nodes);
+      toast.success(`Copied ${nodes.length} item${nodes.length === 1 ? "" : "s"}.`);
+    },
+    onPaste: (groupId) => {
+      const nodes = pasteFromClipboard();
+      if (nodes.length === 0) return;
+      patchRoot((root) => nodes.reduce<ConditionGroup>((r, n) => addChildToGroup(r, groupId, n), root));
+    },
+    onMoveNode: (nodeId, targetGroupId, index) => patchRoot((root) => moveNode(root, nodeId, targetGroupId, index)),
+    onMoveUpDown: (id, delta) =>
+      patchRoot((root) => {
+        const parent = findParent(root, id);
+        if (!parent) return root;
+        const idx = parent.children.findIndex((c) => c.id === id);
+        if (idx === -1 || (delta === -1 && idx === 0) || (delta === 1 && idx === parent.children.length - 1)) return root;
+        return moveNode(root, id, parent.id, delta === 1 ? idx + 2 : idx - 1);
+      }),
+    onInsertField: (groupId, index, fieldKey) => patchRoot((root) => insertChildAt(root, groupId, emptyCondition(fieldKey), index)),
+    onToggleSelect: () => {},
+  };
 
   const save = () => {
     if (!draft) return;
@@ -220,9 +259,8 @@ export function RuleTemplatesManager() {
               <ConditionGroupEditor
                 group={active.rootGroup}
                 domain={editorDomain}
-                onUpdate={updateTreeNode}
-                onDelete={deleteTreeNode}
-                onAddChild={addTreeChild}
+                handlers={treeHandlers}
+                clipboardCount={clipboardCount}
                 isRoot
               />
             </div>
@@ -231,7 +269,7 @@ export function RuleTemplatesManager() {
               <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 THEN — Action Builder
               </h2>
-              <ActionListEditor actions={active.actions} domain={editorDomain} rules={[]} onChange={setActions} />
+              <ActionListEditor actions={active.actions} domain={editorDomain} rules={[]} rootGroup={active.rootGroup} onChange={setActions} />
             </div>
 
             <div>
@@ -245,7 +283,7 @@ export function RuleTemplatesManager() {
               </div>
               {showElseBranch ? (
                 <>
-                  <ActionListEditor actions={active.elseActions ?? []} domain={editorDomain} rules={[]} onChange={setElseActions} />
+                  <ActionListEditor actions={active.elseActions ?? []} domain={editorDomain} rules={[]} rootGroup={active.rootGroup} onChange={setElseActions} />
                   <Button
                     variant="ghost"
                     size="sm"

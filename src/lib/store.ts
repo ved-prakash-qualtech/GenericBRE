@@ -1140,9 +1140,109 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 28,
+      version: 31,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v30 -> v31 added RL-113 demo rule (Composite Personal Loan Risk Gate) and its mapping
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.rules) {
+            const existingIds = new Set(s.rules.map((r) => r.id));
+            if (!existingIds.has("RL-113")) {
+              const rule = ALL_RULES.find((r) => r.id === "RL-113");
+              if (rule) s.rules.push(rule);
+            }
+          }
+          if (s?.productRuleMappings) {
+            const existingMapping = s.productRuleMappings.find(
+              (m) => m.productId === "prod-auto-loan" && m.ruleId === "RL-113"
+            );
+            if (!existingMapping) {
+              const mappingDef = DEFAULT_PRODUCT_RULE_MAPPINGS.find(
+                (m) => m.productId === "prod-auto-loan" && m.ruleId === "RL-113"
+              );
+              if (mappingDef) s.productRuleMappings.push(mappingDef);
+            }
+          }
+        }
+
+        // v29 -> v30 added 5 new rules (RL-112, RL-209, RL-308, RL-605, RL-705) and mappings
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.rules) {
+            const existingIds = new Set(s.rules.map((r) => r.id));
+            const newRuleIds = ["RL-112", "RL-209", "RL-308", "RL-605", "RL-705"];
+            for (const id of newRuleIds) {
+              if (!existingIds.has(id)) {
+                const rule = ALL_RULES.find((r) => r.id === id);
+                if (rule) s.rules.push(rule);
+              }
+            }
+          }
+          if (s?.productRuleMappings) {
+            const existingPairs = new Set(s.productRuleMappings.map((m) => `${m.productId}:${m.ruleId}`));
+            const targetMappings = [
+              { productId: "prod-auto-loan", ruleId: "RL-112" },
+              { productId: "prod-term-life", ruleId: "RL-209" },
+              { productId: "prod-gold-loan", ruleId: "RL-308" },
+              { productId: "prod-credit-card", ruleId: "RL-605" },
+              { productId: "prod-wealth-plan", ruleId: "RL-705" },
+            ];
+            for (const target of targetMappings) {
+              if (!existingPairs.has(`${target.productId}:${target.ruleId}`)) {
+                const mappingDef = DEFAULT_PRODUCT_RULE_MAPPINGS.find(
+                  (m) => m.productId === target.productId && m.ruleId === target.ruleId
+                );
+                if (mappingDef) s.productRuleMappings.push(mappingDef);
+              }
+            }
+          }
+        }
+
+        // v28 -> v29 added 'RL-110' demo rule (Home Loan Eligibility – Standard Approval),
+        // updated its product rule mapping for Home Loan, and added 'Government' option
+        // to employment_type and 'Ahmedabad' option to city in fieldCatalog.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.fieldCatalog) {
+            s.fieldCatalog = s.fieldCatalog.map((field) => {
+              if (field.key === "employment_type" && !field.options?.includes("Government")) {
+                return { ...field, options: [...(field.options || []), "Government"] };
+              }
+              if (field.key === "city" && !field.options?.includes("Ahmedabad")) {
+                const opts = field.options || [];
+                const otherIdx = opts.indexOf("Other");
+                const newOpts = [...opts];
+                if (otherIdx !== -1) {
+                  newOpts.splice(otherIdx, 0, "Ahmedabad");
+                } else {
+                  newOpts.push("Ahmedabad");
+                }
+                return { ...field, options: newOpts };
+              }
+              return field;
+            });
+          }
+          if (s?.rules) {
+            const existingIds = new Set(s.rules.map((r) => r.id));
+            if (!existingIds.has("RL-110")) {
+              const rule = ALL_RULES.find((r) => r.id === "RL-110");
+              if (rule) s.rules.push(rule);
+            }
+          }
+          if (s?.productRuleMappings) {
+            const existingMapping = s.productRuleMappings.find(
+              (m) => m.productId === "prod-home-loan" && m.ruleId === "RL-110"
+            );
+            if (!existingMapping) {
+              const mappingDef = DEFAULT_PRODUCT_RULE_MAPPINGS.find(
+                (m) => m.productId === "prod-home-loan" && m.ruleId === "RL-110"
+              );
+              if (mappingDef) s.productRuleMappings.push(mappingDef);
+            }
+          }
+        }
+
         // v27 -> v28 capped auditLog going forward (see AUDIT_LOG_CAP /
         // logAudit, audit finding A7) — trim an already-oversized persisted
         // session once here too, since the cap in logAudit only applies on

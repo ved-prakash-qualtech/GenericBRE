@@ -15,23 +15,48 @@ import {
   Undo2,
   Redo2,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
+  CheckCircle2,
+  FolderPlus,
+  Trash2,
 } from "lucide-react";
 import { useAppStore, useHasCapability } from "@/lib/store";
 import { BusinessField, BusinessRule, Condition, ConditionGroup, RuleAction, RuleTemplate } from "@/lib/types";
-import { emptyGroup, updateNode, removeNode, addChildToGroup, validateTree, cloneGroupWithFreshIds, collectFieldKeys, countConditions } from "@/lib/condition-tree";
-import { getField } from "@/lib/fields";
+import {
+  emptyGroup,
+  emptyCondition,
+  updateNode,
+  removeNode,
+  addChildToGroup,
+  validateTree,
+  cloneGroupWithFreshIds,
+  collectFieldKeys,
+  countConditions,
+  duplicateNode,
+  moveNode,
+  insertChildAt,
+  findParent,
+  findNode,
+  wrapInGroup,
+} from "@/lib/condition-tree";
+import { getField, fieldsForDomain } from "@/lib/fields";
+import { copyToClipboard, pasteFromClipboard, useConditionClipboard } from "@/lib/condition-clipboard";
+import { recordRecentField } from "@/components/rule-builder/builder-shared";
 import { getGeneratedVariables, detectCircularDependency } from "@/lib/rule-chaining";
 import { buildSampleRequestJson } from "@/lib/sample-json";
 import { MetadataForm } from "@/components/rule-builder/metadata-form";
-import { ConditionGroupEditor } from "@/components/rule-builder/condition-group-editor";
+import { ConditionGroupEditor, TreeHandlers } from "@/components/rule-builder/condition-group-editor";
+import { AttributePanel } from "@/components/rule-builder/attribute-panel";
+// import { ExpressionPreview } from "@/components/rule-builder/expression-preview";
 import { ActionListEditor } from "@/components/rule-builder/action-editor";
-import { RuleSummary } from "@/components/rule-builder/rule-summary";
 import { RulePreviewPanel } from "@/components/rule-builder/rule-preview-panel";
 import { InlineTestPanel } from "@/components/rule-builder/inline-test-panel";
 import { TemplatePicker } from "@/components/rule-builder/template-picker";
 import { SampleJsonPanel } from "@/components/rule-builder/sample-json-panel";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 function nextRuleId(existing: BusinessRule[]) {
   const nums = existing.map((r) => parseInt(r.id.replace(/\D/g, ""), 10)).filter((n) => !Number.isNaN(n));
@@ -224,6 +249,113 @@ function RuleBuilderContent() {
   const setActions = (actions: RuleAction[]) => commitRule((r) => ({ ...r, actions }));
   const setElseActions = (elseActions: RuleAction[]) => commitRule((r) => ({ ...r, elseActions }));
 
+  // ---- SQL-style builder: attribute panel, selection, clipboard, DnD ----
+  const entities = useAppStore((s) => s.entities);
+  const clipboardCount = useConditionClipboard();
+  const [attrPanelOpen, setAttrPanelOpen] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Selection can go stale after deletes/undo — prune against the live tree
+  // instead of trying to keep every mutation path in sync with it.
+  const activeSelection = useMemo(() => {
+    const pruned = new Set<string>();
+    selectedIds.forEach((id) => {
+      if (findNode(rule.rootGroup, id)) pruned.add(id);
+    });
+    return pruned;
+  }, [selectedIds, rule.rootGroup]);
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // Selected nodes whose ancestors aren't ALSO selected — copying/deleting a
+  // group must not double-process children that were individually ticked too.
+  const topMostSelected = (): (Condition | ConditionGroup)[] => {
+    const out: (Condition | ConditionGroup)[] = [];
+    const walk = (g: ConditionGroup) => {
+      for (const c of g.children) {
+        if (activeSelection.has(c.id)) out.push(c);
+        else if (c.type === "group") walk(c);
+      }
+    };
+    walk(rule.rootGroup);
+    return out;
+  };
+
+  const bulkCopy = () => {
+    const nodes = topMostSelected();
+    if (nodes.length === 0) return;
+    copyToClipboard(nodes);
+    toast.success(`Copied ${nodes.length} item${nodes.length === 1 ? "" : "s"} — paste into any group, even in another rule.`);
+  };
+  const bulkDelete = () => {
+    const nodes = topMostSelected();
+    if (nodes.length === 0) return;
+    commitRule((r) => ({ ...r, rootGroup: nodes.reduce<ConditionGroup>((root, n) => removeNode(root, n.id), r.rootGroup) }));
+    setSelectedIds(new Set());
+  };
+  const selectionSharesParent = useMemo(() => {
+    const ids = [...activeSelection];
+    if (ids.length < 2) return false;
+    const first = findParent(rule.rootGroup, ids[0]);
+    return !!first && ids.every((id) => findParent(rule.rootGroup, id) === first);
+  }, [activeSelection, rule.rootGroup]);
+  const bulkGroup = () => {
+    commitRule((r) => ({ ...r, rootGroup: wrapInGroup(r.rootGroup, [...activeSelection]) }));
+    setSelectedIds(new Set());
+    toast.success("Selection wrapped in a new group.");
+  };
+
+  const pasteInto = (groupId: string) => {
+    const nodes = pasteFromClipboard();
+    if (nodes.length === 0) return;
+    commitRule((r) => ({ ...r, rootGroup: nodes.reduce<ConditionGroup>((root, n) => addChildToGroup(root, groupId, n), r.rootGroup) }));
+    toast.success(`Pasted ${nodes.length} item${nodes.length === 1 ? "" : "s"}.`);
+  };
+
+  const treeHandlers: TreeHandlers = {
+    onUpdate: updateTreeNode,
+    onDelete: deleteTreeNode,
+    onAddChild: addTreeChild,
+    onDuplicate: (id) => commitRule((r) => ({ ...r, rootGroup: duplicateNode(r.rootGroup, id) })),
+    onCopy: (id) => {
+      // Copying the root means "copy all conditions", not a nested clone of
+      // the whole WHERE — pasting should merge into a group, not double-wrap.
+      const nodes = id === rule.rootGroup.id ? rule.rootGroup.children : [findNode(rule.rootGroup, id)].filter((n): n is Condition | ConditionGroup => !!n);
+      if (nodes.length === 0) return;
+      copyToClipboard(nodes);
+      toast.success(`Copied ${nodes.length} item${nodes.length === 1 ? "" : "s"} — paste into any group, even in another rule.`);
+    },
+    onPaste: pasteInto,
+    onMoveNode: (nodeId, targetGroupId, index) =>
+      commitRule((r) => ({ ...r, rootGroup: moveNode(r.rootGroup, nodeId, targetGroupId, index) })),
+    onMoveUpDown: (id, delta) =>
+      commitRule((r) => {
+        const parent = findParent(r.rootGroup, id);
+        if (!parent) return r;
+        const idx = parent.children.findIndex((c) => c.id === id);
+        if (idx === -1 || (delta === -1 && idx === 0) || (delta === 1 && idx === parent.children.length - 1)) return r;
+        // moveNode's index is the visual slot BEFORE removal — down means
+        // "after the next sibling" (idx+2), up means "before the previous" (idx-1).
+        return { ...r, rootGroup: moveNode(r.rootGroup, id, parent.id, delta === 1 ? idx + 2 : idx - 1) };
+      }),
+    onInsertField: (groupId, index, fieldKey) => {
+      recordRecentField(fieldKey);
+      commitRule((r) => ({ ...r, rootGroup: insertChildAt(r.rootGroup, groupId, emptyCondition(fieldKey), index) }));
+    },
+    onToggleSelect: toggleSelect,
+  };
+
+  const addFieldToRoot = (fieldKey: string) =>
+    commitRule((r) => ({ ...r, rootGroup: addChildToGroup(r.rootGroup, r.rootGroup.id, emptyCondition(fieldKey)) }));
+
+  const liveIssueCount = validateTree(rule.rootGroup).length;
+
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!rule.name.trim()) errs.name = "Rule Name is a mandatory field. Please provide a distinct identifier.";
@@ -327,8 +459,28 @@ function RuleBuilderContent() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (!mod) return;
       const key = e.key.toLowerCase();
+      // Selection/clipboard keys must never hijack normal typing or native
+      // copy of selected text inside the builder's inputs.
+      const typing = !!(e.target as HTMLElement | null)?.closest("input, textarea, select, [contenteditable=true], [role=combobox]");
+      if (!typing) {
+        if (e.key === "Delete" && activeSelection.size > 0) {
+          e.preventDefault();
+          bulkDelete();
+          return;
+        }
+        if (mod && key === "c" && activeSelection.size > 0 && !window.getSelection()?.toString()) {
+          e.preventDefault();
+          bulkCopy();
+          return;
+        }
+        if (mod && key === "v" && clipboardCount > 0) {
+          e.preventDefault();
+          pasteInto(rule.rootGroup.id);
+          return;
+        }
+      }
+      if (!mod) return;
       if (key === "s") {
         e.preventDefault();
         handleSaveDraft();
@@ -343,7 +495,7 @@ function RuleBuilderContent() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rule, existingRule]);
+  }, [rule, existingRule, selectedIds, clipboardCount]);
 
   const sampleJson = useMemo(
     () => buildSampleRequestJson(fieldCatalog, Array.from(collectFieldKeys(rule.rootGroup))),
@@ -447,27 +599,83 @@ function RuleBuilderContent() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="flex flex-col gap-4 lg:col-span-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+            {attrPanelOpen && (
+              <div className="lg:col-span-3">
+                <div className="h-80 lg:sticky lg:top-4 lg:h-[calc(100dvh-230px)]">
+                  <AttributePanel
+                    fields={fieldsForDomain(fieldCatalog, rule.domain)}
+                    entities={entities}
+                    onAddField={addFieldToRoot}
+                  />
+                </div>
+              </div>
+            )}
+            <div className={cn("flex flex-col gap-4", attrPanelOpen ? "lg:col-span-6" : "lg:col-span-9")}>
               <div>
-                <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Condition Builder
-                </h2>
+                <div className="mb-2 flex items-center gap-2 px-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground"
+                    title={attrPanelOpen ? "Hide Available Attributes" : "Show Available Attributes"}
+                    onClick={() => setAttrPanelOpen((v) => !v)}
+                  >
+                    {attrPanelOpen ? <PanelLeftClose className="size-3.5" /> : <PanelLeftOpen className="size-3.5" />}
+                  </Button>
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Condition Builder
+                  </h2>
+                  {countConditions(rule.rootGroup) > 0 &&
+                    (liveIssueCount > 0 ? (
+                      <span className="flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                        <AlertTriangle className="size-3" /> {liveIssueCount} issue{liveIssueCount === 1 ? "" : "s"}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="size-3" /> Valid
+                      </span>
+                    ))}
+                </div>
                 <ConditionGroupEditor
                   group={rule.rootGroup}
                   domain={rule.domain}
-                  onUpdate={updateTreeNode}
-                  onDelete={deleteTreeNode}
-                  onAddChild={addTreeChild}
+                  handlers={treeHandlers}
+                  selection={activeSelection}
+                  clipboardCount={clipboardCount}
                   currentRuleId={rule.id}
                   isRoot
                 />
+                {activeSelection.size > 0 && (
+                  <div className="sticky bottom-3 z-10 mx-auto mt-3 flex w-fit items-center gap-2 rounded-xl border bg-card px-3 py-2 shadow-lg">
+                    <span className="text-xs font-medium">{activeSelection.size} selected</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 text-xs"
+                      disabled={!selectionSharesParent}
+                      title={selectionSharesParent ? "Wrap the selection in a new nested group" : "Select 2+ items in the same group to wrap them"}
+                      onClick={bulkGroup}
+                    >
+                      <FolderPlus className="size-3" /> Group
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={bulkCopy}>
+                      <Copy className="size-3" /> Copy
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 gap-1 text-xs text-destructive" onClick={bulkDelete}>
+                      <Trash2 className="size-3" /> Delete
+                    </Button>
+                    <Button size="icon-sm" variant="ghost" title="Clear selection" onClick={() => setSelectedIds(new Set())}>
+                      <X className="size-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
               <div>
                 <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   THEN — Action Builder
                 </h2>
-                <ActionListEditor actions={rule.actions} domain={rule.domain} rules={rules} currentRuleId={rule.id} onChange={setActions} />
+                <ActionListEditor actions={rule.actions} domain={rule.domain} rules={rules} currentRuleId={rule.id} rootGroup={rule.rootGroup} onChange={setActions} />
                 {errors.actions && <p className="mt-1.5 px-1 text-[11px] text-destructive">{errors.actions}</p>}
               </div>
               <div>
@@ -492,7 +700,7 @@ function RuleBuilderContent() {
                       Runs instead of THEN when the IF conditions don&apos;t match. Leave empty and this rule simply
                       does nothing on a non-match, same as before.
                     </p>
-                    <ActionListEditor actions={rule.elseActions ?? []} domain={rule.domain} rules={rules} currentRuleId={rule.id} onChange={setElseActions} />
+                    <ActionListEditor actions={rule.elseActions ?? []} domain={rule.domain} rules={rules} currentRuleId={rule.id} rootGroup={rule.rootGroup} onChange={setElseActions} />
                     <Button
                       variant="ghost"
                       size="sm"
@@ -513,8 +721,10 @@ function RuleBuilderContent() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <RuleSummary rule={rule} />
+            <div className="flex flex-col gap-4 lg:col-span-3">
+              {/* FUTURE: Re-enable ExpressionPreview if needed
+              <ExpressionPreview rootGroup={rule.rootGroup} catalog={fieldCatalog} />
+              */}
               <RulePreviewPanel rule={rule} fieldCatalog={fieldCatalog} />
               <SampleJsonPanel data={sampleJson} />
               <InlineTestPanel

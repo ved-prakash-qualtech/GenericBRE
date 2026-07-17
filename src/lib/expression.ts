@@ -13,6 +13,54 @@ export interface ExpressionResult {
 
 const VAR_PATTERN = /\{\{\s*([\w.]+)\s*\}\}/g;
 
+/** Every `{{field_key}}` token referenced in an expression, in source order. */
+export function extractVariableKeys(expr: string): string[] {
+  const keys: string[] = [];
+  const re = new RegExp(VAR_PATTERN.source, "g");
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(expr)) !== null) {
+    keys.push(match[1]);
+  }
+  return keys;
+}
+
+/** Keys in `expr` that are not present in `availableKeys`. */
+export function findUnknownVariableKeys(expr: string, availableKeys: Set<string>): string[] {
+  const unknown: string[] = [];
+  for (const key of extractVariableKeys(expr)) {
+    if (!availableKeys.has(key) && !unknown.includes(key)) unknown.push(key);
+  }
+  return unknown;
+}
+
+export interface ExpressionPreview {
+  /** Human-readable substituted form, e.g. `500,000 × 0.05`. */
+  substituted: string;
+  result: ExpressionResult;
+}
+
+/** Builds a live preview by substituting context values into the expression. */
+export function previewExpression(expr: string, context: ExpressionContext): ExpressionPreview {
+  const trimmed = expr.trim();
+  if (!trimmed) return { substituted: "", result: { value: "" } };
+
+  const substituted = trimmed.replace(VAR_PATTERN, (_match, key: string) => {
+    const raw = context[key];
+    if (raw === undefined || Array.isArray(raw)) return `{{${key}}}`;
+    const n = typeof raw === "number" ? raw : parseFloat(String(raw));
+    if (Number.isNaN(n)) return String(raw);
+    return formatPreviewNumber(n);
+  });
+
+  const result = evaluateExpression(trimmed, context);
+  return { substituted: substituted.replace(/\*/g, "×").replace(/\//g, "÷"), result };
+}
+
+function formatPreviewNumber(n: number): string {
+  if (Number.isInteger(n)) return n.toLocaleString();
+  return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+}
+
 export function evaluateExpression(expr: string, context: ExpressionContext): ExpressionResult {
   const trimmed = expr.trim();
   if (!trimmed) return { value: "" };

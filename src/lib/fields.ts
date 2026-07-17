@@ -7,7 +7,7 @@ export const DEFAULT_FIELD_CATALOG: BusinessField[] = [
   // Common
   { key: "applicant_age", label: "Applicant Age", domain: "Common", type: "number", unit: "years" },
   { key: "gender", label: "Gender", domain: "Common", type: "enum", options: ["Male", "Female", "Other"] },
-  { key: "city", label: "Current City", domain: "Common", type: "enum", options: ["Mumbai", "Delhi", "Bengaluru", "Chennai", "Pune", "Other"] },
+  { key: "city", label: "Current City", domain: "Common", type: "enum", options: ["Mumbai", "Delhi", "Bengaluru", "Chennai", "Pune", "Ahmedabad", "Other"] },
   { key: "segment", label: "Segment Tier", domain: "Common", type: "enum", options: ["Mass", "Affluent", "Premium"] },
 
   // Lending
@@ -17,7 +17,7 @@ export const DEFAULT_FIELD_CATALOG: BusinessField[] = [
   { key: "loan_amount", label: "Loan Amount Requested", domain: "Lending", type: "currency", unit: "₹" },
   { key: "loan_type", label: "Loan Type", domain: "Lending", type: "enum", options: ["Personal Loan", "Home Loan", "Vehicle Loan", "Business Loan"] },
   { key: "dti_ratio", label: "Debt-to-Income Ratio", domain: "Lending", type: "number", unit: "%", computed: true },
-  { key: "employment_type", label: "Employment Type", domain: "Lending", type: "enum", options: ["Salaried", "Self-Employed", "Business Owner"] },
+  { key: "employment_type", label: "Employment Type", domain: "Lending", type: "enum", options: ["Salaried", "Self-Employed", "Business Owner", "Government"] },
 
   // Insurance
   { key: "smoker", label: "Smoker Status", domain: "Insurance", type: "boolean" },

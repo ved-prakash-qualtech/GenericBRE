@@ -63,6 +63,7 @@ function makeRule(partial: {
   owner: string;
   rootGroup: ConditionGroup;
   actions: BusinessRule["actions"];
+  elseActions?: BusinessRule["elseActions"];
   createdDaysAgo: number;
   updatedDaysAgo: number;
   simulatable?: boolean;
@@ -81,6 +82,7 @@ function makeRule(partial: {
     owner: partial.owner,
     rootGroup: partial.rootGroup,
     actions: partial.actions,
+    elseActions: partial.elseActions,
     simulatable: partial.simulatable ?? true,
     createdAt: daysAgo(partial.createdDaysAgo),
     updatedAt: daysAgo(partial.updatedDaysAgo),
@@ -242,6 +244,92 @@ export const CORE_RULES: BusinessRule[] = [
     updatedDaysAgo: 3,
     groupId: "grp-risk-review",
   }),
+  makeRule({
+    id: "RL-110",
+    name: "Home Loan Eligibility – Standard Approval",
+    domain: "Lending",
+    category: "Eligibility",
+    priority: 3,
+    status: "Active",
+    description: "Automatically evaluate a home loan application based on customer eligibility criteria and approve eligible applications while routing ineligible applications for manual review.",
+    owner: "Product Strategy Team",
+    rootGroup: group("AND", [
+      cond("loan_amount", "<=", "500000"),
+      group("OR", [
+        cond("employment_type", "=", "Salaried"),
+        cond("employment_type", "=", "Government"),
+      ]),
+      group("OR", [
+        cond("credit_score", ">=", "750"),
+        cond("monthly_income", ">=", "60000"),
+      ]),
+      cond("applicant_age", "between", "21", "58"),
+      cond("monthly_liabilities", "<=", "15000"),
+      cond("city", "in", "Mumbai, Pune, Ahmedabad"),
+    ]),
+    actions: [
+      { id: cid(), type: "Approve", reasonCode: "ELIGIBLE_CUSTOMER", message: "Approve the Home Loan application." },
+      { id: cid(), type: "Assign Value", outputField: "interest_rate", outputValue: "8.25", outputType: "number" },
+      { id: cid(), type: "Assign Value", outputField: "processing_fee", outputValue: "0.50", outputType: "number" },
+      { id: cid(), type: "Assign Value", outputField: "loan_type", outputValue: "Priority Customer", outputType: "string" },
+      { id: cid(), type: "Assign Value", outputField: "assigned_to", outputValue: "Branch Manager", outputType: "string" },
+      { id: cid(), type: "Show Message", message: "Send Approval SMS" },
+      { id: cid(), type: "Show Message", message: "Send Approval Email" },
+      { id: cid(), type: "Show Message", message: "Generate Eligibility Certificate" },
+      { id: cid(), type: "Show Message", message: "Create Audit Log Entry" },
+      { id: cid(), type: "Show Message", message: "Display Success Message" },
+    ],
+    elseActions: [
+      { id: cid(), type: "Flag for Review", reasonCode: "MANUAL_REVIEW", message: "Mark the application for Manual Review." },
+      { id: cid(), type: "Assign Value", outputField: "assigned_to", outputValue: "Credit Officer", outputType: "string" },
+      { id: cid(), type: "Show Message", message: "Display Failure Reason" },
+      { id: cid(), type: "Show Message", message: "Generate Audit Log Entry" },
+      { id: cid(), type: "Show Message", message: "Notify Relationship Manager" },
+    ],
+    createdDaysAgo: 5,
+    updatedDaysAgo: 1,
+  }),
+  makeRule({
+    id: "RL-112",
+    name: "Auto Loan High DTI Validation",
+    domain: "Lending",
+    category: "Risk & Fraud",
+    priority: 2,
+    status: "Active",
+    description: "Flags or rejects auto loan requests where debt-to-income ratio exceeds safe thresholds for self-employed/business owners.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [
+      cond("dti_ratio", ">", "45"),
+      cond("employment_type", "=", "Business Owner"),
+    ]),
+    actions: [
+      { id: cid(), type: "Flag for Review", reasonCode: "HIGH_DTI_BUSINESS_OWNER", message: "Manual review required: DTI ratio of 45% or higher for Business Owner applicant." },
+    ],
+    createdDaysAgo: 8,
+    updatedDaysAgo: 2,
+  }),
+  makeRule({
+    id: "RL-113",
+    name: "Composite Personal Loan Risk Gate",
+    domain: "Lending",
+    category: "Risk & Fraud",
+    priority: 2,
+    status: "Active",
+    description: "Applies additional check for personal loans, flagging applicants who have low credit score OR low monthly income.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [
+      cond("loan_type", "=", "Personal Loan"),
+      group("OR", [
+        cond("credit_score", "<", "600"),
+        cond("monthly_income", "<", "25000"),
+      ]),
+    ]),
+    actions: [
+      { id: cid(), type: "Flag for Review", reasonCode: "PERSONAL_LOAN_RISK", message: "Personal loan request flagged: applicant exhibits marginal credit or income profile." },
+    ],
+    createdDaysAgo: 3,
+    updatedDaysAgo: 1,
+  }),
 
   // ---------------- INSURANCE ----------------
   makeRule({
@@ -374,6 +462,25 @@ export const CORE_RULES: BusinessRule[] = [
     createdDaysAgo: 7, updatedDaysAgo: 1,
     groupId: "grp-risk-review",
   }),
+  makeRule({
+    id: "RL-209",
+    name: "Insurance High Risk Occupation Check",
+    domain: "Insurance",
+    category: "Underwriting",
+    priority: 2,
+    status: "Active",
+    description: "Refers term life applications to actuarial review if applicant smokes and is in a high-risk occupation.",
+    owner: "Actuarial Underwriting",
+    rootGroup: group("AND", [
+      cond("smoker", "=", "true"),
+      cond("occupation_type", "=", "High Risk"),
+    ]),
+    actions: [
+      { id: cid(), type: "Flag for Review", reasonCode: "HIGH_OCCUPATION_RISK", message: "Actuarial health underwriting referral required for high-risk smokers." },
+    ],
+    createdDaysAgo: 12,
+    updatedDaysAgo: 3,
+  }),
 
   // ---------------- NBFC / GOLD LOAN ----------------
   makeRule({
@@ -488,6 +595,25 @@ export const CORE_RULES: BusinessRule[] = [
     createdDaysAgo: 5, updatedDaysAgo: 1,
     groupId: "grp-risk-review",
   }),
+  makeRule({
+    id: "RL-308",
+    name: "Gold Loan High LTV Review",
+    domain: "NBFC",
+    category: "Collateral",
+    priority: 2,
+    status: "Active",
+    description: "Requires manager sign-off if the requested Loan-to-Value (LTV) exceeds 80% while gold purity is below 90%.",
+    owner: "Asset Management Group",
+    rootGroup: group("AND", [
+      cond("ltv_requested", ">", "80"),
+      cond("purity_grade", "<", "90"),
+    ]),
+    actions: [
+      { id: cid(), type: "Flag for Review", reasonCode: "HIGH_LTV_MARGINAL_PURITY", message: "Manager approval required for LTV > 80% with gold purity under 90%." },
+    ],
+    createdDaysAgo: 14,
+    updatedDaysAgo: 4,
+  }),
 
   // ---------------- CREDIT CARDS ----------------
   // Mirrors the Home Loan rule shape (reject x2 + manager-review + baseline
@@ -545,6 +671,26 @@ export const CORE_RULES: BusinessRule[] = [
     actions: [{ id: cid(), type: "Approve", reasonCode: "ELIGIBLE_CUSTOMER", message: "Applicant meets all eligibility and risk criteria for card issuance." }],
     createdDaysAgo: 40, updatedDaysAgo: 12,
   }),
+  makeRule({
+    id: "RL-605",
+    name: "Credit Card Platinum Eligibility",
+    domain: "CreditCards",
+    category: "Eligibility",
+    priority: 3,
+    status: "Active",
+    description: "Determines platinum credit limit tiers based on applicant's annual income and positive utilization patterns.",
+    owner: "Product Strategy Team",
+    rootGroup: group("AND", [
+      cond("annual_income", ">=", "1200000"),
+      cond("credit_utilization_ratio", "<", "30"),
+    ]),
+    actions: [
+      { id: cid(), type: "Approve", reasonCode: "PLATINUM_ELIGIBLE", message: "Approved for Premium Platinum Card tier." },
+      { id: cid(), type: "Assign Value", outputField: "card_tier", outputValue: "Premium Platinum", outputType: "string" },
+    ],
+    createdDaysAgo: 15,
+    updatedDaysAgo: 5,
+  }),
 
   // ---------------- WEALTH MANAGEMENT ----------------
   makeRule({
@@ -598,6 +744,26 @@ export const CORE_RULES: BusinessRule[] = [
     rootGroup: group("AND", []),
     actions: [{ id: cid(), type: "Approve", reasonCode: "ELIGIBLE_CUSTOMER", message: "Applicant meets all eligibility and compliance criteria for onboarding." }],
     createdDaysAgo: 25, updatedDaysAgo: 9,
+  }),
+  makeRule({
+    id: "RL-705",
+    name: "Wealth Moderate Risk Fitment",
+    domain: "Wealth",
+    category: "Eligibility",
+    priority: 3,
+    status: "Active",
+    description: "Recommends a hybrid portfolio balance for moderate risk appetite and medium-to-long investment horizons.",
+    owner: "Asset Management Group",
+    rootGroup: group("AND", [
+      cond("risk_appetite", "=", "Moderate"),
+      cond("investment_horizon_years", ">=", "5"),
+    ]),
+    actions: [
+      { id: cid(), type: "Approve", reasonCode: "HYBRID_SUITABLE", message: "Onboarding suitable for moderate hybrid growth strategy." },
+      { id: cid(), type: "Assign Value", outputField: "suggested_portfolio", outputValue: "Hybrid Balanced Growth", outputType: "string" },
+    ],
+    createdDaysAgo: 18,
+    updatedDaysAgo: 6,
   }),
 ];
 
@@ -793,6 +959,7 @@ export const DEFAULT_PRODUCT_RULE_MAPPINGS: ProductRuleMapping[] = [
   mapping("prm-2", "prod-home-loan", "RL-103", 1),
   mapping("prm-3", "prod-home-loan", "RL-104", 2),
   mapping("prm-4", "prod-home-loan", "RL-106", 3),
+  mapping("prm-home-loan-demo", "prod-home-loan", "RL-110", 4),
   mapping("prm-5", "prod-auto-loan", "RL-103", 0),
   mapping("prm-6", "prod-auto-loan", "RL-107", 1),
   // prm-11: baseline approval — Auto Loan had no rule that ever produced an
@@ -800,22 +967,28 @@ export const DEFAULT_PRODUCT_RULE_MAPPINGS: ProductRuleMapping[] = [
   // same unconditional "Standard Lending Approval" already mapped to Home
   // Loan so both Lending products have a real positive demo path.
   mapping("prm-11", "prod-auto-loan", "RL-106", 2),
+  mapping("prm-auto-loan-dti", "prod-auto-loan", "RL-112", 3),
   mapping("prm-7", "prod-term-life", "RL-202", 0),
   mapping("prm-8", "prod-term-life", "RL-201", 1),
   // prm-12: same gap/fix as prm-11, for Term Life Cover.
   mapping("prm-12", "prod-term-life", "RL-207", 2),
+  mapping("prm-term-life-hazardous-occ", "prod-term-life", "RL-209", 3),
   mapping("prm-9", "prod-gold-loan", "RL-301", 0),
   mapping("prm-10", "prod-gold-loan", "RL-302", 1),
   // prm-13: same gap/fix as prm-11, for Gold Loan.
   mapping("prm-13", "prod-gold-loan", "RL-306", 2),
+  mapping("prm-gold-loan-ltv", "prod-gold-loan", "RL-308", 3),
   mapping("prm-14", "prod-credit-card", "RL-601", 0),
   mapping("prm-15", "prod-credit-card", "RL-602", 1),
   mapping("prm-16", "prod-credit-card", "RL-603", 2),
   mapping("prm-17", "prod-credit-card", "RL-604", 3),
+  mapping("prm-credit-card-platinum", "prod-credit-card", "RL-605", 4),
   mapping("prm-18", "prod-wealth-plan", "RL-701", 0),
   mapping("prm-19", "prod-wealth-plan", "RL-702", 1),
   mapping("prm-20", "prod-wealth-plan", "RL-703", 2),
   mapping("prm-21", "prod-wealth-plan", "RL-704", 3),
+  mapping("prm-wealth-plan-mod-risk", "prod-wealth-plan", "RL-705", 4),
+  mapping("prm-auto-loan-risk-gate", "prod-auto-loan", "RL-113", 4),
 ];
 
 // ============================================================

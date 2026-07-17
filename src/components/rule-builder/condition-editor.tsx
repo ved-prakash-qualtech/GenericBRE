@@ -1,18 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronsUpDown, Trash2, Variable } from "lucide-react";
+import { Check, ChevronsUpDown, Trash2, Variable, Copy, CopyPlus, AlertCircle } from "lucide-react";
 import { Condition, Domain, Operator } from "@/lib/types";
 import { fieldsForDomain, getField, OPERATORS } from "@/lib/fields";
 import { useAppStore } from "@/lib/store";
 import { getGeneratedVariables } from "@/lib/rule-chaining";
+import { recordRecentField } from "./builder-shared";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -28,6 +23,8 @@ export function ConditionEditor({
   currentRuleId,
   onChange,
   onDelete,
+  onDuplicate,
+  onCopy,
 }: {
   condition: Condition;
   domain: Domain;
@@ -37,6 +34,8 @@ export function ConditionEditor({
   currentRuleId?: string;
   onChange: (patch: Partial<Condition>) => void;
   onDelete: () => void;
+  onDuplicate?: () => void;
+  onCopy?: () => void;
 }) {
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   const rules = useAppStore((s) => s.rules);
@@ -49,14 +48,32 @@ export function ConditionEditor({
   const fieldLabel = field?.label ?? variable?.key ?? "";
 
   const selectField = (key: string) => {
+    recordRecentField(key);
     onChange({ field: key, value: "", value2: undefined });
     setFieldPickerOpen(false);
   };
 
+  // Live, per-row validation while building — same checks validateTree runs
+  // on Save, surfaced immediately so problems are visible as they're typed.
+  // A row with no field yet stays neutral (it's just not configured, not
+  // wrong); red only appears once configuration has started and is invalid.
+  const isNumeric = field?.type === "number" || field?.type === "currency";
+  const issue = !condition.field
+    ? null
+    : condition.value === ""
+      ? "Enter a value"
+      : isNumeric && Number.isNaN(Number(condition.value))
+        ? "Value must be a number"
+        : condition.operator === "between" && (!condition.value2 || condition.value2 === "")
+          ? 'Enter both values for "Between"'
+          : condition.operator === "between" && isNumeric && Number.isNaN(Number(condition.value2))
+            ? "Second value must be a number"
+            : null;
+
   const renderValueInput = () => {
     if (field?.type === "boolean") {
       return (
-        <Select items={BOOLEAN_ITEMS} value={condition.value || undefined} onValueChange={(v) => onChange({ value: v ?? "" })}>
+        <Select items={BOOLEAN_ITEMS} value={condition.value || null} onValueChange={(v) => onChange({ value: v ?? "" })}>
           <SelectTrigger size="sm" className="h-8 w-28"><SelectValue placeholder="Value" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="true">Yes</SelectItem>
@@ -79,7 +96,7 @@ export function ConditionEditor({
     }
     if (field?.type === "enum" && field.options && condition.operator !== "in") {
       return (
-        <Select value={condition.value || undefined} onValueChange={(v) => onChange({ value: v ?? "" })}>
+        <Select value={condition.value || null} onValueChange={(v) => onChange({ value: v ?? "" })}>
           <SelectTrigger size="sm" className="h-8 w-40"><SelectValue placeholder="Value" /></SelectTrigger>
           <SelectContent>
             {field.options.map((o) => (
@@ -123,23 +140,8 @@ export function ConditionEditor({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border bg-background px-2 py-1.5">
-      <DropdownMenu>
-        <DropdownMenuTrigger>
-          <Button variant="outline" size="sm" className="h-8 w-16 text-xs font-medium">
-            {condition.conditionType === "where" ? "WHERE" : "IF"}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={() => onChange({ conditionType: "if" })}>
-            IF
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onChange({ conditionType: "where" })}>
-            WHERE
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
+    <div className={cn("rounded-lg border bg-background px-2 py-1.5", issue && "border-destructive/50 ring-1 ring-destructive/20")}>
+    <div className="flex flex-wrap items-center gap-1.5">
       <Popover open={fieldPickerOpen} onOpenChange={setFieldPickerOpen}>
         <PopoverTrigger
           render={<Button variant="outline" size="sm" className="h-8 w-48 justify-between gap-1.5 font-normal" />}
@@ -198,9 +200,27 @@ export function ConditionEditor({
       {renderValueInput()}
       {field?.unit && <span className="text-xs text-muted-foreground">{field.unit}</span>}
 
-      <Button variant="ghost" size="icon-sm" onClick={onDelete} className="ml-auto text-muted-foreground hover:text-destructive">
-        <Trash2 className="size-3.5" />
-      </Button>
+      <div className="ml-auto flex items-center">
+        {onCopy && (
+          <Button variant="ghost" size="icon-sm" title="Copy condition" onClick={onCopy} className="text-muted-foreground">
+            <Copy className="size-3.5" />
+          </Button>
+        )}
+        {onDuplicate && (
+          <Button variant="ghost" size="icon-sm" title="Duplicate condition" onClick={onDuplicate} className="text-muted-foreground">
+            <CopyPlus className="size-3.5" />
+          </Button>
+        )}
+        <Button variant="ghost" size="icon-sm" title="Delete condition" onClick={onDelete} className="text-muted-foreground hover:text-destructive">
+          <Trash2 className="size-3.5" />
+        </Button>
+      </div>
+    </div>
+    {issue && (
+      <p className="mt-1 flex items-center gap-1 px-0.5 text-[10.5px] text-destructive">
+        <AlertCircle className="size-3 shrink-0" /> {issue}
+      </p>
+    )}
     </div>
   );
 }

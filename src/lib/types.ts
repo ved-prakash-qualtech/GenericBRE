@@ -69,8 +69,6 @@ export interface Condition {
   operator: Operator;
   value: string;
   value2?: string; // used for "between"
-  /** "where" for Rule Scope (evaluated before IF), "if" for main rule logic (default). */
-  conditionType?: "where" | "if";
 }
 
 export interface ConditionGroup {
