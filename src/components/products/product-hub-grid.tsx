@@ -42,13 +42,33 @@ export function ProductHubGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {active.map((p) => {
         const industry = industries.find((i) => i.id === p.domain);
         const Icon = iconForIndustry(industry?.icon) ?? Package;
-        const mappedCount = getMappedRules(p.id, rules, mappings).length;
+        const mappedRules = getMappedRules(p.id, rules, mappings);
+        const mappedCount = mappedRules.length;
         const lastSim = simulations.find((s) => s.productId === p.id);
         const published = p.publishStatus === "Published";
+
+        // Priority mix (P1..P5) among this product's mapped rules — drives the
+        // sparkline. Real derived data, not decorative filler.
+        const priorityCounts = [1, 2, 3, 4, 5].map((pr) => mappedRules.filter((r) => r.priority === pr).length);
+        const maxPriorityCount = Math.max(1, ...priorityCounts);
+
+        // Status mix among mapped rules — drives the small heatmap row.
+        const statusMix: { status: BusinessRule["status"]; color: string }[] = [
+          { status: "Active", color: "bg-emerald-500" },
+          { status: "Draft", color: "bg-amber-500" },
+          { status: "Testing", color: "bg-sky-500" },
+          { status: "Inactive", color: "bg-muted-foreground/40" },
+          { status: "Archived", color: "bg-muted-foreground/20" },
+        ];
+        const statusDots = statusMix.flatMap(({ status, color }) =>
+          Array.from({ length: Math.min(4, mappedRules.filter((r) => r.status === status).length) }, (_, i) => (
+            <span key={`${status}-${i}`} className={cn("size-1.5 rounded-full", color)} />
+          ))
+        );
 
         return (
           <div
@@ -57,12 +77,21 @@ export function ProductHubGrid({
             tabIndex={0}
             onClick={() => onConfigure(p)}
             onKeyDown={(e) => e.key === "Enter" && onConfigure(p)}
-            className="flex cursor-pointer flex-col gap-2.5 rounded-xl border bg-card p-3.5 text-left transition-colors hover:border-primary/40 hover:bg-accent/40"
+            className="flex cursor-pointer flex-col gap-1.5 rounded-xl border bg-card p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/40"
           >
             <div className="flex items-start justify-between gap-2">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Icon className="size-4.5" />
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Icon className="size-4" />
               </span>
+              <div className="flex h-6 items-end gap-0.5" title="Mapped rules by priority (P1–P5)">
+                {priorityCounts.map((c, i) => (
+                  <span
+                    key={i}
+                    className={cn("w-1 rounded-sm", c > 0 ? "bg-primary/60" : "bg-muted")}
+                    style={{ height: `${Math.max(15, (c / maxPriorityCount) * 100)}%` }}
+                  />
+                ))}
+              </div>
               <Badge variant={published ? "default" : "secondary"} className="shrink-0 text-[9px]">
                 {p.publishStatus ?? "Draft"}
               </Badge>
@@ -80,13 +109,19 @@ export function ProductHubGrid({
               {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-1.5 py-0 text-[9px]" />}
             </div>
 
+            {statusDots.length > 0 && (
+              <div className="flex items-center gap-1" title="Mapped rule status mix">
+                {statusDots}
+              </div>
+            )}
+
             <p className="text-[10px] text-muted-foreground/70">
               {published && p.lastPublishedAt
                 ? `Published ${new Date(p.lastPublishedAt).toLocaleDateString()}`
                 : `Last updated ${new Date(p.updatedAt).toLocaleDateString()}`}
             </p>
 
-            <div className={cn("mt-1 grid grid-cols-2 gap-1.5")} onClick={(e) => e.stopPropagation()}>
+            <div className="grid grid-cols-2 gap-1.5" onClick={(e) => e.stopPropagation()}>
               <Button
                 variant="outline"
                 size="sm"

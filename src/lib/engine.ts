@@ -135,6 +135,26 @@ function evaluateConditionLeaf(
   return passed;
 }
 
+function separateWhereAndIf(
+  group: ConditionGroup
+): { where: ConditionGroup; if: ConditionGroup } {
+  const whereChildren: (Condition | ConditionGroup)[] = [];
+  const ifChildren: (Condition | ConditionGroup)[] = [];
+
+  for (const child of group.children) {
+    if (child.type === "condition" && child.conditionType === "where") {
+      whereChildren.push(child);
+    } else {
+      ifChildren.push(child);
+    }
+  }
+
+  return {
+    where: { ...group, children: whereChildren },
+    if: { ...group, children: ifChildren },
+  };
+}
+
 export function evaluateRule(
   rule: BusinessRule,
   input: InputMap,
@@ -156,7 +176,29 @@ export function evaluateRule(
     };
   }
 
-  const passed = evaluateGroup(rule.rootGroup, input, details, catalog);
+  // Separate WHERE (scope) conditions from IF (main logic) conditions
+  const { where: whereGroup, if: ifGroup } = separateWhereAndIf(rule.rootGroup);
+
+  // Rule Scope (WHERE) — check first, skip rule if not applicable
+  if (whereGroup.children.length > 0) {
+    const scopeDetails: ConditionEvalDetail[] = [];
+    const scopePassed = evaluateGroup(whereGroup, input, scopeDetails, catalog);
+    if (!scopePassed) {
+      const durationMs = Math.max(0.1, performance.now() - start);
+      return {
+        ruleId: rule.id,
+        ruleName: rule.name,
+        priority: rule.priority,
+        status: "Skipped",
+        conditionSummaries: [],
+        actionsApplied: [],
+        durationMs,
+      };
+    }
+  }
+
+  // Main rule logic (IF conditions)
+  const passed = evaluateGroup(ifGroup, input, details, catalog);
   const durationMs = Math.max(0.1, performance.now() - start);
   const hasElse = !!rule.elseActions?.length;
 

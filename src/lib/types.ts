@@ -68,6 +68,8 @@ export interface Condition {
   operator: Operator;
   value: string;
   value2?: string; // used for "between"
+  /** "where" for Rule Scope (evaluated before IF), "if" for main rule logic (default). */
+  conditionType?: "where" | "if";
 }
 
 export interface ConditionGroup {
@@ -689,6 +691,8 @@ export interface AppearanceSettings {
   appName: string;
   /** Short tagline shown under appName in the sidebar lockup and login screen. Admin-only. */
   tagline: string;
+  /** Display language code (e.g. "en", "hi") — sets <html lang>. UI copy itself isn't translated in this prototype; this drives locale-aware formatting hooks and signals intent for a future i18n layer. */
+  language: string;
 }
 
 export interface CurrentUser {

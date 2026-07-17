@@ -1,11 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { Plus, FolderPlus, Trash2, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Condition, ConditionGroup, Domain } from "@/lib/types";
 import { emptyCondition, emptyGroup } from "@/lib/condition-tree";
 import { ConditionEditor } from "./condition-editor";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 type TreeNode = Condition | ConditionGroup;
@@ -45,7 +52,7 @@ export function ConditionGroupEditor({ group, domain, onUpdate, onDelete, onAddC
             {collapsed ? <ChevronRight className="size-3.5" /> : <ChevronDown className="size-3.5" />}
           </button>
         )}
-        <span className="text-xs font-medium text-muted-foreground">{isRoot ? "IF" : "Group"}</span>
+        <span className="text-xs font-medium text-muted-foreground">{!isRoot && "Group"}</span>
         <div className="flex overflow-hidden rounded-md border">
           <button
             onClick={() => onUpdate(group.id, { logic: "AND" })}
@@ -85,9 +92,21 @@ export function ConditionGroupEditor({ group, domain, onUpdate, onDelete, onAddC
               </Button>
             </>
           )}
-          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => onAddChild(group.id, emptyCondition())}>
-            <Plus className="size-3" /> Condition
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs">
+                <Plus className="size-3" /> Condition
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onAddChild(group.id, emptyCondition("if"))}>
+                IF — Main Rule Logic
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAddChild(group.id, emptyCondition("where"))}>
+                WHERE — Rule Scope Filter
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => onAddChild(group.id, emptyGroup())}>
             <FolderPlus className="size-3" /> Group
           </Button>

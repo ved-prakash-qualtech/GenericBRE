@@ -93,6 +93,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   logo: null,
   appName: "Business Rules Engine",
   tagline: "Decision Platform",
+  language: "en",
 };
 
 function snapshotFromRule(
@@ -1018,9 +1019,18 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 22,
+      version: 23,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v22 -> v23 added `language` to AppearanceSettings (the Display tab's
+        // language selector) — backfill "en" onto any persisted appearance
+        // missing it, so nothing changes visibly until a user picks another.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.appearance && s.appearance.language === undefined) {
+            s.appearance = { ...s.appearance, language: "en" };
+          }
+        }
         // v21 -> v22 removed 4 generic rule templates from selection list.
         {
           const s = persistedState as Partial<AppState>;
@@ -1239,6 +1249,7 @@ export const useAppStore = create<AppState>()(
             logo: old.logo ?? null,
             appName: old.appName ?? DEFAULT_APPEARANCE.appName,
             tagline: old.tagline ?? DEFAULT_APPEARANCE.tagline,
+            language: old.language ?? DEFAULT_APPEARANCE.language,
           };
         }
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FileJson, ChevronDown, ShieldCheck, Gauge } from "lucide-react";
+import { FileJson, ChevronDown, ShieldCheck, Gauge, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import { DecisionResult, DecisionResponseConfig, ResponseMode, BusinessRule } from "@/lib/types";
 import { buildApiResponsePayload } from "@/lib/decision-response";
 import { DecisionBanner } from "./decision-banner";
@@ -9,6 +10,7 @@ import { DecisionCallout } from "./decision-callout";
 import { ExecutionTimeline } from "./execution-timeline";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { MODE_LABELS, MODE_COLORS } from "@/lib/execution-mode";
 import { cn } from "@/lib/utils";
@@ -209,14 +211,36 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
 }
 
 function JsonPanel({ title, data, open, onToggle }: { title: string; data: unknown; open: boolean; onToggle: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const json = JSON.stringify(data, null, 2);
+    navigator.clipboard.writeText(json);
+    setCopied(true);
+    toast.success("Copied to clipboard");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="rounded-xl border bg-card p-4">
-      <button onClick={onToggle} className="flex w-full items-center justify-between gap-2 text-left">
-        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <FileJson className="size-3.5" /> {title}
-        </span>
-        <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
-      </button>
+      <div className="flex items-center justify-between gap-2">
+        <button onClick={onToggle} className="flex flex-1 items-center justify-between gap-2 text-left">
+          <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <FileJson className="size-3.5" /> {title}
+          </span>
+          <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+        </button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleCopy}
+          title="Copy to clipboard"
+          className="shrink-0"
+        >
+          {copied ? <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="size-3.5" />}
+        </Button>
+      </div>
       {open && <pre className="mt-2.5 max-h-80 overflow-auto rounded-lg bg-muted/40 p-3 text-[11px] leading-relaxed">{JSON.stringify(data, null, 2)}</pre>}
     </div>
   );
