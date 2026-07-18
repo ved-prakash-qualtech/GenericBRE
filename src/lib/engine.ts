@@ -1,5 +1,6 @@
 import { getField } from "./fields";
 import { evaluateExpression, ExpressionResult } from "./expression";
+import { effectiveConnector } from "./condition-tree";
 import {
   BusinessField,
   BusinessRule,
@@ -92,6 +93,13 @@ export interface ConditionEvalDetail {
   passed: boolean;
 }
 
+// Each child joins the accumulated result of its earlier siblings via its own
+// `effectiveConnector` (per-child AND/OR/N.A, falling back to the group's
+// legacy `logic` when unset) — a strict left-to-right fold, no AND-before-OR
+// precedence. N.A. children are still evaluated (so their trace/preview
+// details are accurate) but excluded from the fold entirely. When every
+// child in a group shares one connector (every rule saved before per-child
+// connectors existed), this reduces to exactly the old every()/some() result.
 export function evaluateGroup(
   group: ConditionGroup,
   input: InputMap,
@@ -99,13 +107,17 @@ export function evaluateGroup(
   catalog: BusinessField[] = []
 ): boolean {
   if (group.children.length === 0) return true;
-  const results = group.children.map((child) => {
-    if (child.type === "condition") {
-      return evaluateConditionLeaf(child, input, details, catalog);
-    }
-    return evaluateGroup(child, input, details, catalog);
+  let acc: boolean | null = null;
+  group.children.forEach((child, i) => {
+    const value =
+      child.type === "condition"
+        ? evaluateConditionLeaf(child, input, details, catalog)
+        : evaluateGroup(child, input, details, catalog);
+    const connector = effectiveConnector(group, i);
+    if (connector === "N.A.") return;
+    acc = acc === null ? value : connector === "OR" ? acc || value : acc && value;
   });
-  return group.logic === "AND" ? results.every(Boolean) : results.some(Boolean);
+  return acc ?? true;
 }
 
 function evaluateConditionLeaf(

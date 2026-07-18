@@ -4,7 +4,8 @@ import { Fragment } from "react";
 import { Code2 } from "lucide-react";
 import { BusinessField, Condition, ConditionGroup } from "@/lib/types";
 import { getField } from "@/lib/fields";
-import { treeStats } from "@/lib/condition-tree";
+import { treeStats, effectiveConnector } from "@/lib/condition-tree";
+import { cn } from "@/lib/utils";
 
 // Read-only SQL-ish rendering of the condition tree (PRD: "preview only, do
 // not require users to edit SQL") — the same tree the engine evaluates,
@@ -81,23 +82,32 @@ function GroupInline({ group, catalog }: { group: ConditionGroup; catalog: Busin
   if (group.children.length === 0) return <span className="text-muted-foreground">TRUE</span>;
   return (
     <>
-      {group.children.map((child, i) => (
-        <Fragment key={child.id}>
-          {i > 0 && (
-            <>
-              {" "}
-              <Keyword>{group.logic}</Keyword>{" "}
-            </>
-          )}
-          {child.type === "condition" ? (
-            <ConditionText condition={child} catalog={catalog} />
-          ) : (
-            <>
-              (<GroupInline group={child} catalog={catalog} />)
-            </>
-          )}
-        </Fragment>
-      ))}
+      {group.children.map((child, i) => {
+        const connector = effectiveConnector(group, i);
+        const excluded = connector === "N.A.";
+        return (
+          <Fragment key={child.id}>
+            {i > 0 &&
+              (excluded ? (
+                <span className="text-muted-foreground/70 italic"> N.A. </span>
+              ) : (
+                <>
+                  {" "}
+                  <Keyword>{connector}</Keyword>{" "}
+                </>
+              ))}
+            <span className={cn(excluded && "text-muted-foreground/50 line-through decoration-1")}>
+              {child.type === "condition" ? (
+                <ConditionText condition={child} catalog={catalog} />
+              ) : (
+                <>
+                  (<GroupInline group={child} catalog={catalog} />)
+                </>
+              )}
+            </span>
+          </Fragment>
+        );
+      })}
     </>
   );
 }
@@ -114,35 +124,42 @@ export function ExpressionPreview({ rootGroup, catalog }: { rootGroup: Condition
         {rootGroup.children.length === 0 ? (
           <span className="text-muted-foreground">— no conditions, matches every case</span>
         ) : (
-          rootGroup.children.map((child, i) => (
-            <Fragment key={child.id}>
-              {i > 0 && (
-                <>
-                  {"\n"}
-                  {"  "}
-                  <Keyword>{rootGroup.logic}</Keyword>{" "}
-                </>
-              )}
-              {child.type === "condition" ? (
-                <>
-                  (<ConditionText condition={child} catalog={catalog} />)
-                </>
-              ) : (
-                <>
-                  (<GroupInline group={child} catalog={catalog} />)
-                </>
-              )}
-            </Fragment>
-          ))
+          rootGroup.children.map((child, i) => {
+            const connector = effectiveConnector(rootGroup, i);
+            const excluded = connector === "N.A.";
+            return (
+              <Fragment key={child.id}>
+                {i > 0 && (
+                  <>
+                    {"\n"}
+                    {"  "}
+                    {excluded ? <span className="text-muted-foreground/70 italic">N.A.</span> : <Keyword>{connector}</Keyword>}{" "}
+                  </>
+                )}
+                <span className={cn(excluded && "text-muted-foreground/50 line-through decoration-1")}>
+                  {child.type === "condition" ? (
+                    <>
+                      (<ConditionText condition={child} catalog={catalog} />)
+                    </>
+                  ) : (
+                    <>
+                      (<GroupInline group={child} catalog={catalog} />)
+                    </>
+                  )}
+                </span>
+              </Fragment>
+            );
+          })
         )}
       </div>
-      <div className="grid grid-cols-5 divide-x border-t text-center">
+      <div className="grid grid-cols-6 divide-x border-t text-center">
         {(
           [
             ["Conditions", stats.conditions],
             ["Groups", stats.groups],
             ["AND", stats.andCount],
             ["OR", stats.orCount],
+            ["N.A.", stats.naCount],
             ["Depth", stats.maxDepth],
           ] as const
         ).map(([label, value]) => (

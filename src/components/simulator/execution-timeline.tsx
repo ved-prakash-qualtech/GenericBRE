@@ -46,8 +46,12 @@ function TimelineStep({ step, index }: { step: TraceStep; index: number }) {
       </div>
       <div className="min-w-0 flex-1 pb-1">
         <button
+          disabled={!hasDetails}
           onClick={() => hasDetails && setOpen((o) => !o)}
-          className={cn("flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left", hasDetails && "hover:bg-accent/50")}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left disabled:cursor-default",
+            hasDetails && "hover:bg-accent/50"
+          )}
         >
           <span className="font-mono text-xs text-muted-foreground">{step.ruleId}</span>
           <span className="truncate text-[13px] font-medium">{step.ruleName}</span>

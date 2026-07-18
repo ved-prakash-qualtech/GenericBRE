@@ -22,6 +22,7 @@ import { StatusBadge, PriorityBadge } from "@/components/status-badge";
 import { BusinessField, BusinessRule, Condition, ConditionGroup, RuleAction, RuleVersion } from "@/lib/types";
 import { getField } from "@/lib/fields";
 import { flattenConditions } from "@/lib/conflict-detection";
+import { effectiveConnector } from "@/lib/condition-tree";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -72,22 +73,28 @@ function GroupView({ group, depth = 0, catalog }: { group: ConditionGroup; depth
   }
   return (
     <div className={cn("space-y-1.5", depth > 0 && "border-l-2 pl-3")}>
-      {group.children.map((child, i) => (
-        <div key={child.id}>
-          {i > 0 && (
-            <p className="my-1 text-[10px] font-bold uppercase tracking-wide text-primary/70">{group.logic}</p>
-          )}
-          {child.type === "condition" ? (
-            <div className="rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs">
-              <span className="font-medium">{getField(catalog, child.field)?.label ?? child.field}</span>{" "}
-              <span className="text-muted-foreground">{child.operator}</span>{" "}
-              <span className="font-mono">{child.value}{child.value2 ? ` – ${child.value2}` : ""}</span>
-            </div>
-          ) : (
-            <GroupView group={child} depth={depth + 1} catalog={catalog} />
-          )}
-        </div>
-      ))}
+      {group.children.map((child, i) => {
+        const connector = effectiveConnector(group, i);
+        const excluded = connector === "N.A.";
+        return (
+          <div key={child.id} className={cn(excluded && "opacity-50")}>
+            {i > 0 && (
+              <p className="my-1 text-[10px] font-bold uppercase tracking-wide text-primary/70">
+                {excluded ? "N.A. (excluded)" : connector}
+              </p>
+            )}
+            {child.type === "condition" ? (
+              <div className={cn("rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs", excluded && "line-through decoration-1")}>
+                <span className="font-medium">{getField(catalog, child.field)?.label ?? child.field}</span>{" "}
+                <span className="text-muted-foreground">{child.operator}</span>{" "}
+                <span className="font-mono">{child.value}{child.value2 ? ` – ${child.value2}` : ""}</span>
+              </div>
+            ) : (
+              <GroupView group={child} depth={depth + 1} catalog={catalog} />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

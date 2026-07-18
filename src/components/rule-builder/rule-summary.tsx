@@ -2,6 +2,7 @@
 
 import { BusinessField, BusinessRule, ConditionGroup, RuleAction } from "@/lib/types";
 import { getField } from "@/lib/fields";
+import { effectiveConnector } from "@/lib/condition-tree";
 import { useAppStore } from "@/lib/store";
 import { Sparkles } from "lucide-react";
 
@@ -24,15 +25,22 @@ function operatorText(op: string) {
 export function groupToText(group: ConditionGroup, catalog: BusinessField[]): string {
   if (group.children.length === 0) return "always";
   return group.children
-    .map((c) => {
-      if (c.type === "condition") {
-        const field = getField(catalog, c.field)?.label ?? c.field ?? "…";
-        const val = c.operator === "between" ? `${c.value} and ${c.value2}` : c.value || "…";
-        return `${field} ${operatorText(c.operator)} ${val}`;
-      }
-      return `(${groupToText(c, catalog)})`;
+    .map((c, i) => {
+      const text =
+        c.type === "condition"
+          ? (() => {
+              const field = getField(catalog, c.field)?.label ?? c.field ?? "…";
+              const val = c.operator === "between" ? `${c.value} and ${c.value2}` : c.value || "…";
+              return `${field} ${operatorText(c.operator)} ${val}`;
+            })()
+          : `(${groupToText(c, catalog)})`;
+      if (i === 0) return text;
+      // Per-child connector — falls back to the legacy uniform `group.logic`
+      // for any child saved before this existed, so old rules read unchanged.
+      const connector = effectiveConnector(group, i);
+      return connector === "N.A." ? `[excluded] ${text}` : `${connector} ${text}`;
     })
-    .join(` ${group.logic} `);
+    .join(" ");
 }
 
 export function actionsToText(actions: RuleAction[]): string {

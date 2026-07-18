@@ -120,8 +120,12 @@ export function AttributePanel({
       <div key={name}>
         <button
           type="button"
+          disabled={!collapsible}
           onClick={() => collapsible && toggleSection(name)}
-          className="flex w-full items-center gap-1.5 px-1 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+          className={cn(
+            "flex w-full items-center gap-1.5 px-1 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors disabled:cursor-default",
+            collapsible && "hover:text-foreground"
+          )}
         >
           {collapsible && (collapsed ? <ChevronRight className="size-3" /> : <ChevronDown className="size-3" />)}
           {icon}

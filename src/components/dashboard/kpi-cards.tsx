@@ -157,7 +157,7 @@ export function KpiCards() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.03, duration: 0.2 }}
           whileHover={{ y: -1 }}
-          className="group flex flex-col gap-1 rounded-lg border bg-card px-2.5 py-2 text-left shadow-sm transition-shadow hover:shadow-md"
+          className="group flex h-18 flex-col justify-between gap-1 rounded-lg border bg-card px-2.5 py-2 text-left shadow-sm transition-shadow hover:shadow-md"
         >
           <div className="flex items-center justify-between gap-1.5">
             <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{k.label}</span>
@@ -165,8 +165,10 @@ export function KpiCards() {
               <k.icon className="size-3" />
             </span>
           </div>
-          <p className="text-lg font-bold tabular-nums leading-none">{k.value}</p>
-          {k.suffix && <p className="truncate text-[10px] text-muted-foreground/70">{k.suffix}</p>}
+          <div>
+            <p className="text-xl font-bold tabular-nums leading-none">{k.value}</p>
+            {k.suffix && <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70">{k.suffix}</p>}
+          </div>
         </motion.button>
       ))}
     </div>

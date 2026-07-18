@@ -25,7 +25,7 @@ function SimulatorContent() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col">
         {selectedProduct && (
           <RunSimulatorRedesigned
             product={selectedProduct}

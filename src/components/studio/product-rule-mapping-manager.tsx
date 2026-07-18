@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Search, Save, Package, CheckSquare, Square, GripVertical, ListOrdered, ShieldAlert } from "lucide-react";
+import { Search, Save, Package, CheckSquare, Square, GripVertical, ListOrdered, ShieldAlert, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAppStore, useHasCapability } from "@/lib/store";
 import { getMappedRules } from "@/lib/product-rule-engine";
 import { BusinessRule, Product, ProductRuleMapping } from "@/lib/types";
@@ -54,8 +54,8 @@ export function MappedRulesReorder({
   if (ordered.length === 0) return null;
 
   return (
-    <div className="rounded-xl border bg-card shadow-sm">
-      <div className="flex items-center gap-2 border-b bg-muted/30 px-3.5 py-2.5">
+    <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
+      <div className="flex shrink-0 items-center gap-2 border-b bg-muted/30 px-3.5 py-2.5">
         <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
           <ListOrdered className="size-3.5" />
         </span>
@@ -65,7 +65,7 @@ export function MappedRulesReorder({
         </div>
         <Badge variant="secondary" className="ml-auto shrink-0 text-[9px]">{ordered.length} rule{ordered.length === 1 ? "" : "s"}</Badge>
       </div>
-      <div className="max-h-48 space-y-1.5 overflow-y-auto p-2.5">
+      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5">
         {ordered.map((r, i) => (
           <div
             key={r.id}
@@ -179,8 +179,8 @@ export function MappedRulesChecklist({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="rounded-xl border bg-card shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-3.5 py-2.5">
+      <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-card shadow-sm">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-muted/30 px-3.5 py-2.5">
           <div className="relative flex-1 min-w-48">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -214,7 +214,7 @@ export function MappedRulesChecklist({
           </Button>
         </div>
 
-        <div className="flex items-center justify-between px-3.5 py-2 text-[11px] text-muted-foreground">
+        <div className="flex shrink-0 items-center justify-between px-3.5 py-2 text-[11px] text-muted-foreground">
           <span>
             <span className="font-semibold text-foreground">{activeSelection.size}</span> rule{activeSelection.size === 1 ? "" : "s"} mapped to{" "}
             <span className="font-semibold text-foreground">{product.name}</span>
@@ -223,7 +223,7 @@ export function MappedRulesChecklist({
         </div>
 
         {crossDomainMappedCount > 0 && (
-          <div className="mx-3.5 mb-3 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+          <div className="mx-3.5 mb-3 flex shrink-0 items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
             <ShieldAlert className="size-3.5 shrink-0" />
             <span>
               <span className="font-semibold">{crossDomainMappedCount}</span> mapped rule{crossDomainMappedCount === 1 ? "" : "s"} outside this
@@ -233,8 +233,8 @@ export function MappedRulesChecklist({
           </div>
         )}
 
-        <div className="mx-3.5 mb-3.5 rounded-lg border overflow-hidden">
-          <div className="flex items-center gap-3 bg-muted/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b select-none">
+        <div className="mx-3.5 mb-3.5 flex min-h-0 flex-1 flex-col rounded-lg border overflow-hidden">
+          <div className="flex shrink-0 items-center gap-3 bg-muted/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b select-none">
             <div className="flex items-center">
               <Checkbox checked={allFilteredSelected} onCheckedChange={toggleSelectAllFiltered} />
             </div>
@@ -244,7 +244,7 @@ export function MappedRulesChecklist({
             <span className="w-20 shrink-0 text-center">Domain</span>
           </div>
 
-          <ScrollArea className="h-[260px]">
+          <ScrollArea className="min-h-0 flex-1">
             <div className="divide-y">
               {filteredRules.map((r, i) => (
                 <label
@@ -295,15 +295,6 @@ export function MappedRulesChecklist({
 // Product-Rule Mapping — the many-to-many wiring that replaces Execution
 // Manager's group/step routing. Category here is filter-only (narrows the
 // picker), never part of execution.
-const productColors = [
-  "bg-blue-50 border-blue-200 hover:bg-blue-100",
-  "bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
-  "bg-purple-50 border-purple-200 hover:bg-purple-100",
-  "bg-amber-50 border-amber-200 hover:bg-amber-100",
-  "bg-rose-50 border-rose-200 hover:bg-rose-100",
-  "bg-cyan-50 border-cyan-200 hover:bg-cyan-100",
-];
-
 export function ProductRuleMappingManager() {
   const products = useAppStore((s) => s.products);
   const rules = useAppStore((s) => s.rules);
@@ -313,6 +304,7 @@ export function ProductRuleMappingManager() {
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(products[0] ?? null);
   const [productSearch, setProductSearch] = useState("");
+  const [productsPanelOpen, setProductsPanelOpen] = useState(true);
 
   const selectProduct = (p: Product) => {
     setSelectedProduct(p);
@@ -329,22 +321,41 @@ export function ProductRuleMappingManager() {
   };
 
   return (
-    <div className="flex h-full min-h-100 flex-col gap-4 sm:flex-row">
-      <div className="w-full shrink-0 space-y-2.5 sm:w-64">
-        <div className="flex items-center justify-between px-0.5">
-          <p className="text-xs font-semibold text-muted-foreground">Products</p>
-          <Badge variant="secondary" className="text-[9px]">{filteredProducts.length} of {products.length}</Badge>
-        </div>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-            placeholder="Search products..."
-            className="h-8 pl-8 text-xs"
-          />
-        </div>
-        <div className="max-h-125 space-y-1.5 overflow-y-auto pr-0.5 sm:max-h-none">
+    // A fixed, real height on the whole component (rather than h-full, which
+    // has no bounded ancestor here — Configuration Studio's content area is
+    // one page-level ScrollArea, see the note below) — every column below
+    // stretches to genuinely share this same height instead of each growing
+    // to its own natural content size. Only applied at xl+, where all 3
+    // columns fit side by side; narrower than that they stack (see below)
+    // and the page's own scroll takes over instead of an internal cap.
+    <div className="flex min-h-100 flex-col gap-4 sm:flex-row xl:h-125">
+      {productsPanelOpen ? (
+        <div className="flex h-full w-full shrink-0 flex-col gap-2.5 sm:w-52">
+          <div className="flex shrink-0 items-center justify-between px-0.5">
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-6 text-muted-foreground"
+                title="Hide Products panel"
+                onClick={() => setProductsPanelOpen(false)}
+              >
+                <PanelLeftClose className="size-3.5" />
+              </Button>
+              <p className="text-xs font-semibold text-muted-foreground">Products</p>
+            </div>
+            <Badge variant="secondary" className="text-[9px]">{filteredProducts.length} of {products.length}</Badge>
+          </div>
+          <div className="relative shrink-0">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Search products..."
+              className="h-8 pl-8 text-xs"
+            />
+          </div>
+          <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
           {filteredProducts.map((p) => {
             const mappedCount = getMappedRules(p.id, rules, productRuleMappings).length;
             const selected = selectedProduct?.id === p.id;
@@ -378,58 +389,19 @@ export function ProductRuleMappingManager() {
               {products.length === 0 ? "No products yet — add one in Product Master first." : "No products match this search."}
             </p>
           )}
-        </div>
-      </div>
-    <div className="flex h-full flex-col gap-4">
-      {/* Products Horizontal Layout */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between px-0.5">
-          <p className="text-xs font-semibold text-muted-foreground">Select Product</p>
-          <Badge variant="secondary" className="text-[9px]">{products.length} product{products.length === 1 ? "" : "s"}</Badge>
-        </div>
-
-        {products.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <Package className="mx-auto mb-2 size-6 text-muted-foreground/40" />
-            <p className="text-[11px] text-muted-foreground">No products yet — add one in Product Master first.</p>
           </div>
-        ) : (
-          <div className="flex flex-wrap gap-2.5 overflow-x-auto pb-1">
-            {products.map((p, idx) => {
-              const mappedCount = getMappedRules(p.id, rules, productRuleMappings).length;
-              const isSelected = selectedProduct?.id === p.id;
-              const colorClass = productColors[idx % productColors.length];
-
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => selectProduct(p)}
-                  className={cn(
-                    "flex shrink-0 items-center gap-2.5 rounded-lg border-2 px-3.5 py-2.5 text-left transition-all",
-                    isSelected
-                      ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary/20"
-                      : `border ${colorClass}`
-                  )}
-                >
-                  <span className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-md text-sm font-semibold",
-                    isSelected ? "bg-primary/20 text-primary" : "bg-white/40 text-muted-foreground"
-                  )}>
-                    <Package className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold whitespace-nowrap">{p.name}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {mappedCount} rule{mappedCount === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
+        </div>
+      ) : (
+        <button
+          onClick={() => setProductsPanelOpen(true)}
+          title="Show Products panel"
+          className="flex shrink-0 items-center gap-1.5 self-start rounded-lg border px-2 py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:h-full sm:flex-col sm:justify-start sm:py-2.5"
+        >
+          <PanelLeftOpen className="size-3.5" />
+          <span className="sm:[writing-mode:vertical-rl]">Products</span>
+        </button>
+      )}
+    <div className="flex h-full min-w-0 flex-1 flex-col gap-4">
       {/* Main Content */}
       {!selectedProduct ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed text-center">
@@ -449,10 +421,19 @@ export function ProductRuleMappingManager() {
             </div>
           </div>
 
-          {/* Two-Column Layout: Available Rules + Selected Sequence */}
-          <div className="flex flex-1 gap-4 min-h-0">
+          {/* Two-Column Layout: Available Rules + Selected Sequence. Side by
+              side only at xl+ (1280px) — below that, 3 fixed-width columns
+              (Products + this row) don't reliably fit, and Execution
+              Sequence being shrink-0 meant it could get pushed past the
+              visible area instead of shrinking. Stacking avoids that
+              entirely: each column takes the full width on its own row, so
+              nothing can be squeezed off-screen. Side by side, both stretch
+              to the same height (the root's xl:h-125 provides a real bound)
+              and scroll their own content internally; stacked, they size to
+              content and the page's own scroll takes over instead. */}
+          <div className="flex min-h-0 flex-1 flex-col gap-4 xl:flex-row">
             {/* Left: Available Rules */}
-            <div className="flex-1 min-w-0">
+            <div className="flex min-h-0 flex-1 flex-col min-w-0">
               <MappedRulesChecklist
                 product={selectedProduct}
                 rules={rules}
@@ -462,7 +443,7 @@ export function ProductRuleMappingManager() {
             </div>
 
             {/* Right: Execution Sequence */}
-            <div className="w-80 shrink-0 flex flex-col gap-3">
+            <div className="flex min-h-0 w-full flex-col xl:w-80 xl:shrink-0">
               <MappedRulesReorder
                 product={selectedProduct}
                 rules={rules}

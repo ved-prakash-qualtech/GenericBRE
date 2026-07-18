@@ -18,8 +18,8 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Condition, ConditionGroup, Domain } from "@/lib/types";
-import { emptyCondition, emptyGroup, countConditions } from "@/lib/condition-tree";
+import { Condition, ConditionGroup, Connector, Domain } from "@/lib/types";
+import { emptyCondition, emptyGroup, countConditions, effectiveConnector } from "@/lib/condition-tree";
 import { getDragPayload, clearDragPayload, setDragPayload } from "./builder-shared";
 import { ConditionEditor } from "./condition-editor";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+
+// Chip color per connector — blue=AND, amber=OR (mirrors the rest of the
+// builder), muted/neutral=N.A. since it's an exclusion, not a boolean join.
+const CONNECTOR_STYLES: Record<Connector, string> = {
+  AND: "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  OR: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  "N.A.": "border-dashed border-muted-foreground/30 bg-muted/40 text-muted-foreground",
+};
 
 type TreeNode = Condition | ConditionGroup;
 
@@ -73,9 +82,10 @@ function collectGroupIds(group: ConditionGroup, out: string[] = []): string[] {
   return out;
 }
 
-// The connector rail between sibling rows — shows the group's AND/OR (click
-// to toggle, same `logic` patch as the header buttons) and doubles as the
-// drop target for inserting a dragged node/field at exactly this position.
+// The connector rail between sibling rows — for the 2nd+ child in a group,
+// shows THAT CHILD's own AND/OR/N.A connector (a dropdown, not a toggle —
+// each item's choice only ever affects itself), and doubles as the drop
+// target for inserting a dragged node/field at exactly this position.
 function ConnectorDropRow({
   group,
   index,
@@ -88,6 +98,8 @@ function ConnectorDropRow({
   showChip: boolean;
 }) {
   const [active, setActive] = useState(false);
+  const child = showChip ? group.children[index] : undefined;
+  const connector = child ? effectiveConnector(group, index) : null;
   return (
     <div
       onDragOver={(e) => {
@@ -112,21 +124,22 @@ function ConnectorDropRow({
         active && "h-8 border-2 border-dashed border-primary/60 bg-primary/10"
       )}
     >
-      {showChip && !active && (
+      {child && connector && !active && (
         <>
-          <button
-            type="button"
-            onClick={() => handlers.onUpdate(group.id, { logic: group.logic === "AND" ? "OR" : "AND" })}
-            title="Click to toggle this group between AND and OR"
-            className={cn(
-              "rounded-md border px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider transition-colors",
-              group.logic === "AND"
-                ? "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                : "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-            )}
-          >
-            {group.logic}
-          </button>
+          <Select value={connector} onValueChange={(v) => handlers.onUpdate(child.id, { connector: v as Connector })}>
+            <SelectTrigger
+              size="sm"
+              title="How this condition/group joins the ones before it — applies only to this item"
+              className={cn("h-6 gap-1 rounded-md border px-2 py-0 font-mono text-[10px] font-bold tracking-wider", CONNECTOR_STYLES[connector])}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start">
+              <SelectItem value="AND" className="font-mono text-[11px] font-bold">AND</SelectItem>
+              <SelectItem value="OR" className="font-mono text-[11px] font-bold">OR</SelectItem>
+              <SelectItem value="N.A." className="font-mono text-[11px] font-bold text-muted-foreground">N.A.</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="h-px flex-1 bg-border/60" />
         </>
       )}
@@ -220,26 +233,6 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
             (
           </span>
         )}
-        <div className="flex overflow-hidden rounded-md border">
-          <button
-            onClick={() => handlers.onUpdate(group.id, { logic: "AND" })}
-            className={cn(
-              "px-2.5 py-1 text-[11px] font-semibold transition-colors",
-              group.logic === "AND" ? "bg-blue-600 text-white" : "hover:bg-accent"
-            )}
-          >
-            AND
-          </button>
-          <button
-            onClick={() => handlers.onUpdate(group.id, { logic: "OR" })}
-            className={cn(
-              "px-2.5 py-1 text-[11px] font-semibold transition-colors",
-              group.logic === "OR" ? "bg-amber-500 text-white" : "hover:bg-accent"
-            )}
-          >
-            OR
-          </button>
-        </div>
         <span className="text-[11px] text-muted-foreground">
           {collapsed
             ? `( ${countConditions(group)} condition${countConditions(group) === 1 ? "" : "s"} )`
@@ -338,8 +331,10 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
                   field here from Available Attributes.
                 </div>
               )}
-              {group.children.map((child, i) => (
-                <div key={child.id}>
+              {group.children.map((child, i) => {
+                const excluded = effectiveConnector(group, i) === "N.A.";
+                return (
+                <div key={child.id} className={cn(excluded && "opacity-50 grayscale-[0.4]")} title={excluded ? "N.A. — excluded from evaluation" : undefined}>
                   <ConnectorDropRow group={group} index={i} handlers={handlers} showChip={i > 0} />
                   {child.type === "condition" ? (
                     <div className="group/row flex items-start gap-1.5">
@@ -390,7 +385,8 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
                     />
                   )}
                 </div>
-              ))}
+                );
+              })}
               {group.children.length > 0 && <ConnectorDropRow group={group} index={group.children.length} handlers={handlers} showChip={false} />}
             </div>
             {!isRoot && (

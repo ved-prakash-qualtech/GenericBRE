@@ -85,7 +85,7 @@ export function RecentActivityPanel() {
 
   const logs = useMemo(() => {
     const isRuleEvent = (entityId: string) => allRules.some((r) => r.id === entityId);
-    return auditLog.filter((a) => !domainFilter.length || !isRuleEvent(a.entityId) || scopedRuleIds.has(a.entityId)).slice(0, 10);
+    return auditLog.filter((a) => !domainFilter.length || !isRuleEvent(a.entityId) || scopedRuleIds.has(a.entityId)).slice(0, 5);
   }, [auditLog, allRules, domainFilter, scopedRuleIds]);
 
   return (
