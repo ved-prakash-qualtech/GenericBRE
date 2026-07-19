@@ -60,7 +60,8 @@ export type ActionType =
   | "Calculate"
   | "Assign Value"
   | "Show Message"
-  | "Flag for Review";
+  | "Flag for Review"
+  | "Bracket Lookup";
 
 export interface Condition {
   id: string;
@@ -69,7 +70,12 @@ export interface Condition {
   operator: Operator;
   value: string;
   value2?: string; // used for "between"
-  prefix?: "IF" | "WHERE"; // condition prefix
+  prefix?: "IF" | "WHERE" | "CASE"; // condition prefix
+  /** How this node combines with the accumulated result of its earlier
+   *  siblings (left-to-right fold). Undefined on the first child of a group
+   *  (nothing precedes it) or on legacy trees predating per-connector
+   *  operators, in which case the parent group's `logic` is the fallback. */
+  connector?: "AND" | "OR";
 }
 
 export interface ConditionGroup {
@@ -78,6 +84,17 @@ export interface ConditionGroup {
   logic: "AND" | "OR";
   collapsed?: boolean;
   children: (Condition | ConditionGroup)[];
+  /** Same meaning as Condition.connector — lets a nested group have its own
+   *  relation to the sibling before it, independent of its own children's logic. */
+  connector?: "AND" | "OR";
+}
+
+/** One range in a "Bracket Lookup" action — e.g. credit score 750-799 → 8.75. */
+export interface RuleBracket {
+  id: string;
+  min: number;
+  max: number; // inclusive
+  outputValue: string; // resolved value for this bracket, coerced same as Assign Value
 }
 
 export interface RuleAction {
@@ -89,12 +106,25 @@ export interface RuleAction {
   outputType?: FieldDataType;
   reasonCode?: string;
   message?: string;
+  /** Bracket Lookup only — the field whose value is tested against each
+   *  bracket's [min,max] to resolve outputField. Lets a single rule resolve
+   *  one of several range-based outputs (e.g. credit score → interest rate)
+   *  without unsafe eval — Calculate's expression language is deliberately
+   *  arithmetic-only and can't branch. */
+  bracketField?: string;
+  brackets?: RuleBracket[];
 }
 
 // FUTURE: Environment promotion (Dev → UAT → Prod) is intentionally removed
 // for the demo. When reintroducing, restore the type below and re-add the
 // `environment` field to BusinessRule, engine eligibility checks, and UI.
 // export type RuleEnvironment = "Dev" | "UAT" | "Prod";
+
+/** Cosmetic classification for display (Rule Repository badge, Execution Plan
+ *  chips, Simulator ruleExecution.ruleType) — NOT consumed by the engine,
+ *  which always evaluates rootGroup as one AND/OR tree regardless of this tag
+ *  (same precedent as the existing Condition.prefix). */
+export type RuleType = "IF" | "WHERE" | "CASE" | "GROUP";
 
 export interface BusinessRule {
   id: string; // e.g. RL-101
@@ -115,6 +145,8 @@ export interface BusinessRule {
    *  the next rule's input within the same group (see src/lib/rule-chaining.ts).
    *  Enforced unique/required by Rule Builder's validation, not a DB constraint. */
   sequence?: number;
+  /** Optional display-only classification (IF/WHERE/CASE/GROUP) — see RuleType. */
+  ruleType?: RuleType;
   priority: Priority;
   status: RuleStatus;
   // environment: RuleEnvironment; // FUTURE: restore when environment promotion is reintroduced

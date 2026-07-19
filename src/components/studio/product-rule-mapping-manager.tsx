@@ -329,63 +329,23 @@ export function ProductRuleMappingManager() {
   };
 
   return (
-    <div className="flex h-full min-h-100 flex-col gap-4 sm:flex-row">
-      <div className="w-full shrink-0 space-y-2.5 sm:w-64">
-        <div className="flex items-center justify-between px-0.5">
-          <p className="text-xs font-semibold text-muted-foreground">Products</p>
-          <Badge variant="secondary" className="text-[9px]">{filteredProducts.length} of {products.length}</Badge>
-        </div>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-            placeholder="Search products..."
-            className="h-8 pl-8 text-xs"
-          />
-        </div>
-        <div className="max-h-125 space-y-1.5 overflow-y-auto pr-0.5 sm:max-h-none">
-          {filteredProducts.map((p) => {
-            const mappedCount = getMappedRules(p.id, rules, productRuleMappings).length;
-            const selected = selectedProduct?.id === p.id;
-            return (
-              <button
-                key={p.id}
-                onClick={() => selectProduct(p)}
-                className={cn(
-                  "relative flex w-full items-center gap-2.5 overflow-hidden rounded-xl border p-2.5 text-left transition-all",
-                  selected ? "border-primary/40 bg-primary/5 shadow-sm" : "hover:border-primary/20 hover:bg-muted/60"
-                )}
-              >
-                {selected && <span className="absolute inset-y-0 left-0 w-1 bg-primary" />}
-                <span className={cn(
-                  "flex size-8 shrink-0 items-center justify-center rounded-lg",
-                  selected ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
-                )}>
-                  <Package className="size-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold">{p.name}</p>
-                  <p className="truncate text-[10px] text-muted-foreground">
-                    {mappedCount} rule{mappedCount === 1 ? "" : "s"} mapped
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-          {filteredProducts.length === 0 && (
-            <p className="rounded-lg border border-dashed p-4 text-center text-[11px] text-muted-foreground">
-              {products.length === 0 ? "No products yet — add one in Product Master first." : "No products match this search."}
-            </p>
-          )}
-        </div>
-      </div>
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex h-full min-h-100 flex-col gap-4">
       {/* Products Horizontal Layout */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-0.5">
           <p className="text-xs font-semibold text-muted-foreground">Select Product</p>
-          <Badge variant="secondary" className="text-[9px]">{products.length} product{products.length === 1 ? "" : "s"}</Badge>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Search products..."
+                className="h-7 w-44 pl-8 text-xs"
+              />
+            </div>
+            <Badge variant="secondary" className="text-[9px]">{filteredProducts.length} of {products.length}</Badge>
+          </div>
         </div>
 
         {products.length === 0 ? (
@@ -393,9 +353,14 @@ export function ProductRuleMappingManager() {
             <Package className="mx-auto mb-2 size-6 text-muted-foreground/40" />
             <p className="text-[11px] text-muted-foreground">No products yet — add one in Product Master first.</p>
           </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <Search className="mx-auto mb-2 size-6 text-muted-foreground/40" />
+            <p className="text-[11px] text-muted-foreground">No products match this search.</p>
+          </div>
         ) : (
           <div className="flex flex-wrap gap-2.5 overflow-x-auto pb-1">
-            {products.map((p, idx) => {
+            {filteredProducts.map((p, idx) => {
               const mappedCount = getMappedRules(p.id, rules, productRuleMappings).length;
               const isSelected = selectedProduct?.id === p.id;
               const colorClass = productColors[idx % productColors.length];
@@ -474,6 +439,5 @@ export function ProductRuleMappingManager() {
         </div>
       )}
     </div>
-  </div>
   );
 }

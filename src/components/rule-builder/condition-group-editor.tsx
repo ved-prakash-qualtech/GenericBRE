@@ -40,6 +40,10 @@ type TreeNode = Condition | ConditionGroup;
 // autosave cover drag/paste/duplicate for free.
 export interface TreeHandlers {
   onUpdate: (id: string, patch: Partial<TreeNode>) => void;
+  /** Sets a group's default logic and cascades it onto every existing
+   *  child's connector — the header AND/OR acting as "make them all X",
+   *  while each connector chip stays individually overridable after. */
+  onSetGroupLogic: (groupId: string, logic: "AND" | "OR") => void;
   onDelete: (id: string) => void;
   onAddChild: (groupId: string, child: TreeNode) => void;
   onDuplicate: (id: string) => void;
@@ -73,21 +77,28 @@ function collectGroupIds(group: ConditionGroup, out: string[] = []): string[] {
   return out;
 }
 
-// The connector rail between sibling rows — shows the group's AND/OR (click
-// to toggle, same `logic` patch as the header buttons) and doubles as the
-// drop target for inserting a dragged node/field at exactly this position.
+// The connector rail between sibling rows — shows THIS specific connection's
+// AND/OR (bound to the following child's own `connector` field, not the
+// group's shared `logic`, so different gaps in the same group can each be
+// AND or OR independently) and doubles as the drop target for inserting a
+// dragged node/field at exactly this position.
 function ConnectorDropRow({
   group,
   index,
   handlers,
   showChip,
+  connectorNode,
 }: {
   group: ConditionGroup;
   index: number;
   handlers: TreeHandlers;
   showChip: boolean;
+  /** The child immediately after this connector — its `.connector` field is
+   *  what this row reads/writes. Required whenever showChip is true. */
+  connectorNode?: Condition | ConditionGroup;
 }) {
   const [active, setActive] = useState(false);
+  const currentOp = connectorNode?.connector ?? group.logic;
   return (
     <div
       onDragOver={(e) => {
@@ -112,21 +123,32 @@ function ConnectorDropRow({
         active && "h-8 border-2 border-dashed border-primary/60 bg-primary/10"
       )}
     >
-      {showChip && !active && (
+      {showChip && !active && connectorNode && (
         <>
-          <button
-            type="button"
-            onClick={() => handlers.onUpdate(group.id, { logic: group.logic === "AND" ? "OR" : "AND" })}
-            title="Click to toggle this group between AND and OR"
-            className={cn(
-              "rounded-md border px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider transition-colors",
-              group.logic === "AND"
-                ? "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                : "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-            )}
-          >
-            {group.logic}
-          </button>
+          <div className="flex overflow-hidden rounded-md border">
+            <button
+              type="button"
+              onClick={() => handlers.onUpdate(connectorNode.id, { connector: "AND" })}
+              title="Join with AND"
+              className={cn(
+                "px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider transition-colors",
+                currentOp === "AND" ? "bg-blue-600 text-white" : "text-muted-foreground hover:bg-accent"
+              )}
+            >
+              AND
+            </button>
+            <button
+              type="button"
+              onClick={() => handlers.onUpdate(connectorNode.id, { connector: "OR" })}
+              title="Join with OR"
+              className={cn(
+                "px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider transition-colors",
+                currentOp === "OR" ? "bg-amber-500 text-white" : "text-muted-foreground hover:bg-accent"
+              )}
+            >
+              OR
+            </button>
+          </div>
           <div className="h-px flex-1 bg-border/60" />
         </>
       )}
@@ -220,26 +242,28 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
             (
           </span>
         )}
-        <div className="flex overflow-hidden rounded-md border">
-          <button
-            onClick={() => handlers.onUpdate(group.id, { logic: "AND" })}
-            className={cn(
-              "px-2.5 py-1 text-[11px] font-semibold transition-colors",
-              group.logic === "AND" ? "bg-blue-600 text-white" : "hover:bg-accent"
-            )}
-          >
-            AND
-          </button>
-          <button
-            onClick={() => handlers.onUpdate(group.id, { logic: "OR" })}
-            className={cn(
-              "px-2.5 py-1 text-[11px] font-semibold transition-colors",
-              group.logic === "OR" ? "bg-amber-500 text-white" : "hover:bg-accent"
-            )}
-          >
-            OR
-          </button>
-        </div>
+        {!isRoot && (
+          <div className="flex overflow-hidden rounded-md border" title="Sets the default for this group's conditions — each connector below can still be overridden individually">
+            <button
+              onClick={() => handlers.onSetGroupLogic(group.id, "AND")}
+              className={cn(
+                "px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                group.logic === "AND" ? "bg-blue-600 text-white" : "hover:bg-accent"
+              )}
+            >
+              AND
+            </button>
+            <button
+              onClick={() => handlers.onSetGroupLogic(group.id, "OR")}
+              className={cn(
+                "px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                group.logic === "OR" ? "bg-amber-500 text-white" : "hover:bg-accent"
+              )}
+            >
+              OR
+            </button>
+          </div>
+        )}
         <span className="text-[11px] text-muted-foreground">
           {collapsed
             ? `( ${countConditions(group)} condition${countConditions(group) === 1 ? "" : "s"} )`
@@ -340,7 +364,7 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
               )}
               {group.children.map((child, i) => (
                 <div key={child.id}>
-                  <ConnectorDropRow group={group} index={i} handlers={handlers} showChip={i > 0} />
+                  <ConnectorDropRow group={group} index={i} handlers={handlers} showChip={i > 0} connectorNode={child} />
                   {child.type === "condition" ? (
                     <div className="group/row flex items-start gap-1.5">
                       <div className="flex shrink-0 items-center gap-1 pt-2.5">

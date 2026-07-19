@@ -18,6 +18,15 @@ export const DEFAULT_FIELD_CATALOG: BusinessField[] = [
   { key: "loan_type", label: "Loan Type", domain: "Lending", type: "enum", options: ["Personal Loan", "Home Loan", "Vehicle Loan", "Business Loan"] },
   { key: "dti_ratio", label: "Debt-to-Income Ratio", domain: "Lending", type: "number", unit: "%", computed: true },
   { key: "employment_type", label: "Employment Type", domain: "Lending", type: "enum", options: ["Salaried", "Self-Employed", "Business Owner", "Government"] },
+  { key: "ltv_ratio", label: "LTV Ratio", domain: "Lending", type: "string", computed: true },
+  { key: "eligible_loan_amount", label: "Eligible Loan Amount", domain: "Lending", type: "number", unit: "₹", computed: true },
+  { key: "currency", label: "Currency", domain: "Lending", type: "string", computed: true },
+  { key: "property_value", label: "Property Value", domain: "Lending", type: "currency", unit: "₹" },
+  { key: "interest_rate", label: "Interest Rate", domain: "Lending", type: "number", unit: "%", computed: true },
+  { key: "applicant_eligible", label: "Applicant Eligible", domain: "Lending", type: "boolean", computed: true },
+  { key: "income_eligible", label: "Income Eligible", domain: "Lending", type: "boolean", computed: true },
+  { key: "loan_decision", label: "Loan Decision", domain: "Lending", type: "string", computed: true },
+  { key: "approved_amount", label: "Approved Amount", domain: "Lending", type: "currency", unit: "₹", computed: true },
 
   // Insurance
   { key: "smoker", label: "Smoker Status", domain: "Insurance", type: "boolean" },

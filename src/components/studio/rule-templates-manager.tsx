@@ -17,6 +17,7 @@ import {
   insertChildAt,
   findParent,
   findNode,
+  setGroupLogicCascade,
 } from "@/lib/condition-tree";
 import { copyToClipboard, pasteFromClipboard, useConditionClipboard } from "@/lib/condition-clipboard";
 import { ConditionGroupEditor, TreeHandlers } from "@/components/rule-builder/condition-group-editor";
@@ -95,6 +96,7 @@ export function RuleTemplatesManager() {
   // (`selection` omitted below), since there's no bulk bar here.
   const treeHandlers: TreeHandlers = {
     onUpdate: (id, patch) => patchRoot((root) => updateNode(root, id, patch)),
+    onSetGroupLogic: (groupId, logic) => patchRoot((root) => setGroupLogicCascade(root, groupId, logic)),
     onDelete: (id) => patchRoot((root) => removeNode(root, id)),
     onAddChild: (groupId, child) => patchRoot((root) => addChildToGroup(root, groupId, child)),
     onDuplicate: (id) => patchRoot((root) => duplicateNode(root, id)),

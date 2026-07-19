@@ -4,22 +4,24 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { FlaskConical, PlayCircle, RotateCcw, CheckCircle2, Clock, Zap } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { Product, BusinessField, BusinessRule, DecisionResult, ResponseMode } from "@/lib/types";
+import { Product, DecisionResult, ResponseMode } from "@/lib/types";
 import { getMappedRules, executeRulesByProduct } from "@/lib/product-rule-engine";
-import { collectFieldKeys } from "@/lib/condition-tree";
-import { buildSampleRequestJson } from "@/lib/sample-json";
 import { fromSimulation, resolveDecisionResponseConfig, buildApiResponsePayload } from "@/lib/decision-response";
 import { applyMatrixLookup } from "@/lib/matrix-lookup";
+import { buildTemplateJson, buildApiRequestEnvelope, buildResponseShapePreview, buildResponseShapeFromResult } from "@/lib/simulator-json";
 import { SampleJsonPanel } from "@/components/rule-builder/sample-json-panel";
 import { DecisionResultView } from "@/components/simulator/decision-result-view";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-function sampleJsonTextFor(mappedRules: BusinessRule[], fieldCatalog: BusinessField[]): string {
-  const keys = new Set<string>();
-  for (const r of mappedRules) collectFieldKeys(r.rootGroup).forEach((k) => keys.add(k));
-  return JSON.stringify(buildSampleRequestJson(fieldCatalog, Array.from(keys)), null, 2);
+function templateJsonTextFor(
+  product: Product | null,
+  rules: Parameters<typeof buildTemplateJson>[1],
+  mappings: Parameters<typeof buildTemplateJson>[2],
+  fieldCatalog: Parameters<typeof buildTemplateJson>[3]
+): string {
+  return product ? JSON.stringify(buildTemplateJson(product, rules, mappings, fieldCatalog), null, 2) : "{}";
 }
 
 // The run/result logic shared by the standalone /simulator page (which adds
@@ -41,7 +43,7 @@ export function useRunSimulator(product: Product | null, initialSandboxRuleId: s
 
   const domain = product?.domain ?? "";
   const [jsonText, setJsonText] = useState<string>(() =>
-    sampleJsonTextFor(product ? getMappedRules(product.id, rules, productRuleMappings) : [], fieldCatalog)
+    templateJsonTextFor(product, rules, productRuleMappings, fieldCatalog)
   );
   const [decisionResult, setDecisionResult] = useState<DecisionResult | null>(null);
   const [responseMode, setResponseMode] = useState<ResponseMode>(
@@ -62,16 +64,39 @@ export function useRunSimulator(product: Product | null, initialSandboxRuleId: s
   // product), so the input always matches the live configuration.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setJsonText(sampleJsonTextFor(mappedRules, fieldCatalog));
+    setJsonText(templateJsonTextFor(product, rules, productRuleMappings, fieldCatalog));
     setDecisionResult(null);
     setSandboxRuleId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id, mappedRuleIdsKey]);
 
   const resetToSampleJson = () => {
-    setJsonText(sampleJsonTextFor(mappedRules, fieldCatalog));
+    setJsonText(templateJsonTextFor(product, rules, productRuleMappings, fieldCatalog));
     setDecisionResult(null);
   };
+
+  // Panel 2 — API Request envelope, live off whatever Template JSON currently
+  // parses to (falls back to the canonical template shape while invalid).
+  const parsedTemplate = useMemo(() => {
+    try {
+      return JSON.parse(jsonText);
+    } catch {
+      return product ? buildTemplateJson(product, rules, productRuleMappings, fieldCatalog) : {};
+    }
+  }, [jsonText, product, rules, productRuleMappings, fieldCatalog]);
+  const apiRequestEnvelope = useMemo(
+    () => (product ? buildApiRequestEnvelope(product, parsedTemplate) : {}),
+    [product, parsedTemplate]
+  );
+
+  // Panel 3 — API Response shape: full contract with empty values before a
+  // run, populated in place from the real DecisionResult after one.
+  const responseShape = useMemo(() => {
+    if (!product) return null;
+    return decisionResult
+      ? buildResponseShapeFromResult(product, rules, productRuleMappings, decisionResult)
+      : buildResponseShapePreview(product, rules, productRuleMappings);
+  }, [product, rules, productRuleMappings, decisionResult]);
 
   const runScenario = () => {
     if (!product) return;
@@ -111,7 +136,11 @@ export function useRunSimulator(product: Product | null, initialSandboxRuleId: s
       const sim = execution.result;
 
       if (sim.outcome !== "Rejected") {
-        Object.assign(sim.calculatedValues, applyMatrixLookup(matrices, domain, input));
+        // Matrix lookup fills in values a product's own rules didn't already
+        // compute (e.g. legacy Lending products with no native pricing rule)
+        // — it must never clobber a rule-authored output like a "Bracket
+        // Lookup" action's interest_rate with a stale/unrelated matrix row.
+        sim.calculatedValues = { ...applyMatrixLookup(matrices, domain, input), ...sim.calculatedValues };
       }
 
       const dr = fromSimulation(sim, rules);
@@ -153,8 +182,11 @@ export function useRunSimulator(product: Product | null, initialSandboxRuleId: s
 
   return {
     rules,
+    mappedRules,
     jsonText,
     setJsonText,
+    apiRequestEnvelope,
+    responseShape,
     decisionResult,
     responseMode,
     setResponseMode,

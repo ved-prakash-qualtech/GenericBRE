@@ -24,15 +24,18 @@ function operatorText(op: string) {
 export function groupToText(group: ConditionGroup, catalog: BusinessField[]): string {
   if (group.children.length === 0) return "always";
   return group.children
-    .map((c) => {
-      if (c.type === "condition") {
-        const field = getField(catalog, c.field)?.label ?? c.field ?? "…";
-        const val = c.operator === "between" ? `${c.value} and ${c.value2}` : c.value || "…";
-        return `${field} ${operatorText(c.operator)} ${val}`;
-      }
-      return `(${groupToText(c, catalog)})`;
+    .map((c, i) => {
+      const text =
+        c.type === "condition"
+          ? (() => {
+              const field = getField(catalog, c.field)?.label ?? c.field ?? "…";
+              const val = c.operator === "between" ? `${c.value} and ${c.value2}` : c.value || "…";
+              return `${field} ${operatorText(c.operator)} ${val}`;
+            })()
+          : `(${groupToText(c, catalog)})`;
+      return i === 0 ? text : `${c.connector ?? group.logic} ${text}`;
     })
-    .join(` ${group.logic} `);
+    .join(" ");
 }
 
 export function actionsToText(actions: RuleAction[]): string {
@@ -40,6 +43,7 @@ export function actionsToText(actions: RuleAction[]): string {
     .map((a) => {
       if (a.type === "Approve" || a.type === "Reject") return `${a.type.toLowerCase()} the application${a.reasonCode ? ` (${a.reasonCode})` : ""}`;
       if (a.type === "Calculate" || a.type === "Assign Value") return `set ${a.outputField || "…"} = ${a.outputValue || "…"}`;
+      if (a.type === "Bracket Lookup") return `set ${a.outputField || "…"} via bracket lookup on ${a.bracketField || "…"}`;
       return `show message "${a.message || "…"}"`;
     })
     .join("; ");

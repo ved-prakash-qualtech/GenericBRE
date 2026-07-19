@@ -23,7 +23,7 @@ export function RulePreviewPanel({
   const generatedVars = Array.from(
     new Set(
       [...rule.actions, ...(rule.elseActions ?? [])]
-        .filter((a) => (a.type === "Assign Value" || a.type === "Calculate") && a.outputField)
+        .filter((a) => (a.type === "Assign Value" || a.type === "Calculate" || a.type === "Bracket Lookup") && a.outputField)
         .map((a) => a.outputField!)
     )
   );

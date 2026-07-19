@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, CheckCircle2, XCircle, Calculator, Tag, MessageSquare, Flag, ChevronsUpDown, Check, Variable, Sparkles } from "lucide-react";
-import { ActionType, BusinessRule, ConditionGroup, Domain, FieldDataType, RuleAction } from "@/lib/types";
+import { Plus, Trash2, CheckCircle2, XCircle, Calculator, Tag, MessageSquare, Flag, ChevronsUpDown, Check, Variable, Sparkles, ListOrdered } from "lucide-react";
+import { ActionType, BusinessRule, ConditionGroup, Domain, FieldDataType, RuleAction, RuleBracket } from "@/lib/types";
 import { CalculateExpressionEditor } from "@/components/rule-builder/calculate-expression-editor";
 import { fieldsForDomain, getField } from "@/lib/fields";
 import { getGeneratedVariables } from "@/lib/rule-chaining";
@@ -22,6 +22,7 @@ const ACTION_TYPES: { value: ActionType; label: string; icon: React.ElementType;
   { value: "Assign Value", label: "Assign Value", icon: Tag, accent: "text-violet-600 dark:text-violet-400" },
   { value: "Show Message", label: "Show Message", icon: MessageSquare, accent: "text-amber-600 dark:text-amber-400" },
   { value: "Flag for Review", label: "Flag for Review", icon: Flag, accent: "text-orange-600 dark:text-orange-400" },
+  { value: "Bracket Lookup", label: "Bracket Lookup", icon: ListOrdered, accent: "text-cyan-600 dark:text-cyan-400" },
 ];
 
 const OUTPUT_TYPES: { value: FieldDataType; label: string }[] = [
@@ -125,6 +126,52 @@ function OutputFieldPicker({
   );
 }
 
+// Range rows for a "Bracket Lookup" action — e.g. credit score 750-799 -> 8.75.
+// Mirrors the add/remove pattern already used for the actions list itself.
+function BracketRowsEditor({ brackets, onChange }: { brackets: RuleBracket[]; onChange: (brackets: RuleBracket[]) => void }) {
+  const addRow = () => onChange([...brackets, { id: `bkt-${Date.now()}`, min: 0, max: 0, outputValue: "" }]);
+  const updateRow = (id: string, patch: Partial<RuleBracket>) =>
+    onChange(brackets.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  const removeRow = (id: string) => onChange(brackets.filter((b) => b.id !== id));
+
+  return (
+    <div className="space-y-1.5 sm:col-span-2">
+      {brackets.map((b) => (
+        <div key={b.id} className="flex items-center gap-1.5">
+          <Input
+            type="number"
+            placeholder="Min"
+            value={b.min}
+            onChange={(e) => updateRow(b.id, { min: Number(e.target.value) })}
+            className="h-8 w-20 text-xs"
+          />
+          <span className="text-xs text-muted-foreground">to</span>
+          <Input
+            type="number"
+            placeholder="Max"
+            value={b.max}
+            onChange={(e) => updateRow(b.id, { max: Number(e.target.value) })}
+            className="h-8 w-20 text-xs"
+          />
+          <span className="text-xs text-muted-foreground">→</span>
+          <Input
+            placeholder="Output value"
+            value={b.outputValue}
+            onChange={(e) => updateRow(b.id, { outputValue: e.target.value })}
+            className="h-8 flex-1 text-xs"
+          />
+          <Button variant="ghost" size="icon-sm" onClick={() => removeRow(b.id)} className="text-muted-foreground hover:text-destructive">
+            <Trash2 className="size-3.5" />
+          </Button>
+        </div>
+      ))}
+      <Button variant="outline" size="sm" onClick={addRow} className="h-7 gap-1.5 text-xs">
+        <Plus className="size-3" /> Add Bracket
+      </Button>
+    </div>
+  );
+}
+
 function ActionRow({
   action,
   domain,
@@ -147,6 +194,9 @@ function ActionRow({
   const meta = ACTION_TYPES.find((t) => t.value === action.type)!;
   const needsOutput = action.type === "Calculate" || action.type === "Assign Value";
   const needsMessage = action.type === "Show Message" || action.type === "Flag for Review" || action.type === "Approve" || action.type === "Reject";
+  const needsBrackets = action.type === "Bracket Lookup";
+  const fieldCatalog = useAppStore((s) => s.fieldCatalog);
+  const bracketFields = fieldsForDomain(fieldCatalog, domain);
 
   return (
     <div className="rounded-xl border bg-background p-3">
@@ -206,6 +256,29 @@ function ActionRow({
                 className="h-8 flex-1 text-xs sm:col-span-2"
               />
             )}
+          </>
+        )}
+        {needsBrackets && (
+          <>
+            <Select value={action.bracketField ?? ""} onValueChange={(v) => onChange({ bracketField: (v as string) ?? "" })}>
+              <SelectTrigger size="sm" className="h-8 w-full"><SelectValue placeholder="Field to test..." /></SelectTrigger>
+              <SelectContent>
+                {bracketFields.map((f) => (
+                  <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <OutputFieldPicker
+              value={action.outputField ?? ""}
+              domain={domain}
+              rules={rules}
+              currentRuleId={currentRuleId}
+              onChange={(key) => onChange({ outputField: key })}
+            />
+            <BracketRowsEditor
+              brackets={action.brackets ?? []}
+              onChange={(brackets) => onChange({ brackets })}
+            />
           </>
         )}
         {needsMessage && (

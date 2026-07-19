@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { PlayCircle, CheckCircle2, XCircle, FlaskConical } from "lucide-react";
 import { ConditionGroup, RuleAction } from "@/lib/types";
 import { collectFieldKeys } from "@/lib/condition-tree";
-import { evaluateGroup, resolveActionValue, ConditionEvalDetail } from "@/lib/engine";
+import { evaluateGroup, resolveActionValue, resolveBracketValue, ConditionEvalDetail } from "@/lib/engine";
 import { getField } from "@/lib/fields";
 import { useAppStore } from "@/lib/store";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,10 @@ export function InlineTestPanel({
         const resolved = resolveActionValue(action, context);
         outputs[action.outputField] = resolved;
         context[action.outputField] = resolved.value;
+      } else if (action.type === "Bracket Lookup" && action.outputField) {
+        const resolved = resolveBracketValue(action, context);
+        outputs[action.outputField] = resolved;
+        if (!resolved.error) context[action.outputField] = resolved.value;
       }
     }
 

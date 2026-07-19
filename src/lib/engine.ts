@@ -105,7 +105,16 @@ export function evaluateGroup(
     }
     return evaluateGroup(child, input, details, catalog);
   });
-  return group.logic === "AND" ? results.every(Boolean) : results.some(Boolean);
+  // Left-to-right fold using each child's own connector to the sibling
+  // before it (falls back to the group's logic for legacy trees predating
+  // per-connector operators) — this is what lets a group mix AND and OR,
+  // e.g. A AND B OR C, instead of forcing one operator for the whole group.
+  let acc = results[0];
+  for (let i = 1; i < group.children.length; i++) {
+    const op = group.children[i].connector ?? group.logic;
+    acc = op === "AND" ? acc && results[i] : acc || results[i];
+  }
+  return acc;
 }
 
 function evaluateConditionLeaf(
@@ -368,6 +377,23 @@ export function resolveActionValue(
   return { value };
 }
 
+// What a "Bracket Lookup" action would set its Output Field to — resolves one
+// of several range-based outputs (e.g. credit score bracket → interest rate),
+// the branching Calculate's arithmetic-only expression language deliberately
+// can't do (no eval, see expression.ts). Returns an empty-value result when
+// the bracket field is missing/non-numeric or no bracket matches.
+export function resolveBracketValue(action: RuleAction, context: InputMap): ExpressionResult {
+  if (!action.bracketField || !action.brackets?.length) return { value: "" };
+  const raw = context[action.bracketField];
+  const n = typeof raw === "number" ? raw : parseFloat(String(raw));
+  if (Number.isNaN(n)) return { value: "", error: `Unknown or non-numeric field "${action.bracketField}"` };
+  const match = action.brackets.find((b) => n >= b.min && n <= b.max);
+  if (!match) return { value: "", error: `No bracket matched ${action.bracketField}=${n}` };
+  const numeric = coerceNumber(match.outputValue);
+  const value = !Number.isNaN(numeric) && /^[0-9.\-]+$/.test(match.outputValue.trim()) ? numeric : match.outputValue;
+  return { value };
+}
+
 export function applyAction(
   action: RuleAction,
   calculatedValues: Record<string, string | number>,
@@ -376,6 +402,11 @@ export function applyAction(
   if (action.type === "Calculate" || action.type === "Assign Value") {
     if (action.outputField && action.outputValue !== undefined) {
       calculatedValues[action.outputField] = resolveActionValue(action, context).value;
+    }
+  } else if (action.type === "Bracket Lookup") {
+    if (action.outputField) {
+      const resolved = resolveBracketValue(action, context);
+      if (!resolved.error && resolved.value !== "") calculatedValues[action.outputField] = resolved.value;
     }
   }
 }

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import React from "react";
-import { Download, RotateCcw, PlayCircle, Copy, Check } from "lucide-react";
+import { Download, RotateCcw, PlayCircle, Copy, Check, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -31,34 +30,10 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
   const [copiedResponse, setCopiedResponse] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>(product.id);
 
-  // Auto-populate template JSON with empty template when product changes
-  React.useEffect(() => {
-    let jsonObj: Record<string, string | number | boolean> = {};
-
-    // Parse current JSON if it exists
-    try {
-      jsonObj = JSON.parse(sim.jsonText || "{}");
-    } catch {
-      jsonObj = {};
-    }
-
-    // For Home Loan, ensure all required fields are present
-    if (product.name === "Home Loan" || product.id === "prod-home-loan") {
-      jsonObj = {
-        monthly_income: jsonObj.monthly_income ?? "",
-        credit_score: jsonObj.credit_score ?? "",
-        applicant_age: jsonObj.applicant_age ?? "",
-        property_value: jsonObj.property_value ?? ""
-      };
-    }
-
-    sim.setJsonText(JSON.stringify(jsonObj, null, 2));
-  }, [product.id, sim]);
-
   const handleProductChange = (productId: string | null) => {
     if (!productId) return;
     setSelectedProduct(productId);
-    const selected = products.find(p => p.id === productId);
+    const selected = products.find((p) => p.id === productId);
     if (selected && onProductChange) {
       onProductChange(selected);
     }
@@ -85,56 +60,25 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
     toast.success("Copied to clipboard");
   };
 
-  const apiRequestJson = sim.jsonText || JSON.stringify({
-    monthly_income: 50000,
-    credit_score: 720,
-    applicant_age: 35,
-    smoker: false,
-  }, null, 2);
-
-  // Parse input and generate response based on actual values
-  const parseInputData = () => {
+  const handleFormatJson = () => {
     try {
-      return JSON.parse(sim.jsonText || "{}");
+      sim.setJsonText(JSON.stringify(JSON.parse(sim.jsonText || "{}"), null, 2));
     } catch {
-      return {};
+      toast.error("Invalid JSON", { description: "Fix the syntax before formatting." });
     }
   };
 
-  const inputData = parseInputData();
-  const credit_score = inputData.credit_score || 0;
-  const monthly_income = inputData.monthly_income || 0;
-  const property_value = inputData.property_value || 0;
-
-  // Generate decision based on input
-  const generateResponse = () => {
-    try {
-      const creditPass = credit_score >= 700;
-      const incomePass = monthly_income >= 30085;
-      const propertyPass = property_value >= 6000000;
-      const allPass = creditPass && incomePass && propertyPass;
-
-      return JSON.stringify({
-        decision: allPass ? "APPROVED" : creditPass && incomePass ? "CONDITIONAL" : "REJECTED",
-        ltv_ratio: propertyPass ? "75%" : "N/A",
-        eligible_loan_amount: allPass ? 4500000 : 0,
-        currency: "INR",
-        credit_score_status: creditPass ? "PASS" : "FAIL",
-        income_status: incomePass ? "PASS" : "FAIL",
-        property_status: propertyPass ? "PASS" : "FAIL"
-      }, null, 2);
-    } catch {
-      return JSON.stringify({
-        decision: "ERROR",
-        message: "Invalid JSON input",
-        currency: "INR"
-      }, null, 2);
-    }
-  };
-
-  const apiResponseJson = generateResponse();
+  // Panels 2 & 3 are always derived, product/rule-driven, never hardcoded —
+  // Panel 3 shows the full contract shape (empty) before a run, and the real
+  // result (populated in place) after one, via sim.responseShape.
+  const apiRequestJson = JSON.stringify(sim.apiRequestEnvelope, null, 2);
+  const apiResponseJson = JSON.stringify(sim.responseShape, null, 2);
 
   const availableProducts = products.length > 0 ? products : [product];
+
+  const passedCount = sim.decisionResult?.flatTrace.filter((t) => t.status === "Passed").length ?? 0;
+  const failedCount = sim.decisionResult?.flatTrace.filter((t) => t.status === "Failed").length ?? 0;
+  const decisionLabel = sim.responseShape?.decision || "PENDING";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
@@ -181,7 +125,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                       ))}
                     </SelectContent>
                   </Select>
-                  <Badge className="bg-emerald-100 text-emerald-700 border-0 w-fit">Active</Badge>
+                  <Badge className="bg-emerald-100 text-emerald-700 border-0 w-fit">{product.status}</Badge>
                 </div>
               </div>
 
@@ -196,16 +140,18 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                         <td className="px-3 py-2.5 font-medium text-gray-900 text-right">{product.name}</td>
                       </tr>
                       <tr>
-                        <td className="px-3 py-2.5 text-gray-600">Rule Group</td>
-                        <td className="px-3 py-2.5 font-medium text-gray-900 text-right">NBFC Loan Approval</td>
+                        <td className="px-3 py-2.5 text-gray-600">Domain</td>
+                        <td className="px-3 py-2.5 font-medium text-gray-900 text-right">{product.domain}</td>
                       </tr>
                       <tr>
                         <td className="px-3 py-2.5 text-gray-600">Total Rules</td>
-                        <td className="px-3 py-2.5 font-medium text-gray-900 text-right">3</td>
+                        <td className="px-3 py-2.5 font-medium text-gray-900 text-right">{sim.mappedRules.length}</td>
                       </tr>
                       <tr>
                         <td className="px-3 py-2.5 text-gray-600">Last Updated</td>
-                        <td className="px-3 py-2.5 font-medium text-gray-900 text-right">16 Jul 2026 03:45 PM</td>
+                        <td className="px-3 py-2.5 font-medium text-gray-900 text-right">
+                          {new Date(product.updatedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -230,13 +176,11 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                         <Copy className="size-4 text-gray-600" />
                       )}
                     </Button>
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      className="hover:bg-gray-100"
-                      title="Download"
-                    >
-                      <Download className="size-4 text-gray-600" />
+                    <Button size="icon-sm" variant="ghost" className="hover:bg-gray-100" title="Format" onClick={handleFormatJson}>
+                      <Sparkles className="size-4 text-gray-600" />
+                    </Button>
+                    <Button size="icon-sm" variant="ghost" className="hover:bg-gray-100" title="Reset to Default" onClick={sim.resetToSampleJson}>
+                      <RotateCcw className="size-4 text-gray-600" />
                     </Button>
                   </div>
                 </div>
@@ -281,22 +225,31 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Total Rules</span>
-                  <span className="font-medium">3</span>
+                  <span className="font-medium">{sim.mappedRules.length}</span>
                 </div>
               </div>
               <div className="space-y-0.5 text-[11px] border-b pb-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Passed</span>
-                  <span className="font-medium text-emerald-600">3</span>
+                  <span className="font-medium text-emerald-600">{passedCount}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Failed</span>
-                  <span className="font-medium text-red-600">0</span>
+                  <span className="font-medium text-red-600">{failedCount}</span>
                 </div>
               </div>
               <div className="flex gap-1">
-                <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-0 px-2 py-1">COMPLETED</Badge>
-                <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-0 px-2 py-1">APPROVED</Badge>
+                <Badge className={cn("text-[10px] border-0 px-2 py-1", sim.decisionResult ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600")}>
+                  {sim.decisionResult ? "COMPLETED" : "PENDING"}
+                </Badge>
+                <Badge
+                  className={cn(
+                    "text-[10px] border-0 px-2 py-1",
+                    decisionLabel === "APPROVED" ? "bg-emerald-100 text-emerald-700" : decisionLabel === "REJECTED" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+                  )}
+                >
+                  {decisionLabel}
+                </Badge>
               </div>
             </div>
 
@@ -323,10 +276,10 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
               </div>
             </div>
 
-            {/* Final Output (Response JSON) - Compact */}
+            {/* API Response - Compact */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-gray-900">Final Output (Response JSON)</h3>
+                <h3 className="text-xs font-semibold text-gray-900">API Response</h3>
                 <Button
                   size="icon-sm"
                   variant="ghost"
@@ -351,29 +304,32 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
           {/* Full Width Execution Plan Section */}
           <div className="space-y-2.5">
             <h3 className="text-sm font-semibold text-gray-900">Execution Plan (Rule Sequence)</h3>
-            <div className="grid grid-cols-6 gap-2">
-              {[
-                { num: 1, id: "RL-NB-1", name: "Income Validation" },
-                { num: 2, id: "RL-NB-2", name: "CIBIL Assessment" },
-                { num: 3, id: "RL-NB-3", name: "Property Valuation" },
-              ].map((rule) => (
-                <div key={rule.id} className="flex flex-col items-center gap-1 p-2 border border-gray-200 rounded-lg bg-white hover:bg-gray-50">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-white text-[10px] font-bold">
-                    {rule.num}
+            {sim.mappedRules.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-center text-xs text-gray-500">
+                No rules mapped to this product yet — configure Product-Rule Mapping first.
+              </p>
+            ) : (
+              <div className="grid grid-cols-6 gap-2">
+                {sim.mappedRules.map((rule, i) => (
+                  <div key={rule.id} className="flex flex-col items-center gap-1 p-2 border border-gray-200 rounded-lg bg-white hover:bg-gray-50">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-white text-[10px] font-bold">
+                      {i + 1}
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[10px] font-medium text-gray-900">{rule.id}</div>
+                      <div className="text-[9px] text-gray-600 leading-tight">{rule.name}</div>
+                      {rule.ruleType && <Badge className="mt-0.5 text-[8px] bg-blue-50 text-blue-700 border-0 px-1 py-0">{rule.ruleType}</Badge>}
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-[10px] font-medium text-gray-900">{rule.id}</div>
-                    <div className="text-[9px] text-gray-600 leading-tight">{rule.name}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Full Width Simulation Timeline - Below Execution Plan */}
           {sim.decisionResult && (
             <div className="grid grid-cols-12 gap-4">
-              <div className="col-span-10 space-y-2.5">
+              <div className="col-span-12 space-y-2.5">
                 <h3 className="text-sm font-semibold text-gray-900">Simulation Timeline</h3>
                 <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
                   <div className="overflow-x-auto">
@@ -389,39 +345,31 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {[
-                          {
-                            id: "RL-NB-1",
-                            input: `monthly_income = ${monthly_income}`,
-                            condition: "monthly_income >= 30085",
-                            output: monthly_income >= 30085 ? "income_eligible = true" : "income_eligible = false",
-                            status: monthly_income >= 30085 ? "PASSED" : "FAILED",
-                            time: "00:00.421"
-                          },
-                          {
-                            id: "RL-NB-2",
-                            input: `credit_score = ${credit_score}`,
-                            condition: "credit_score >= 700",
-                            output: credit_score >= 700 ? "credit_approved = true" : "credit_approved = false",
-                            status: credit_score >= 700 ? "PASSED" : "FAILED",
-                            time: "00:00.398"
-                          },
-                          {
-                            id: "RL-NB-3",
-                            input: `property_value = ${property_value}`,
-                            condition: "property_value >= 6000000",
-                            output: property_value >= 6000000 ? "ltv_ratio = 75%" : "ltv_ratio = N/A",
-                            status: property_value >= 6000000 ? "PASSED" : "FAILED",
-                            time: "00:00.424"
-                          },
-                        ].map((row) => (
-                          <tr key={row.id} className="hover:bg-gray-50">
-                            <td className="px-3 py-2.5 font-medium text-gray-900">{row.id}</td>
-                            <td className="px-3 py-2.5 text-gray-600">{row.input}</td>
-                            <td className="px-3 py-2.5 text-gray-600">{row.condition}</td>
-                            <td className="px-3 py-2.5 text-gray-600">{row.output}</td>
-                            <td className="px-3 py-2.5"><Badge className={`${row.status === "PASSED" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"} border-0`}>{row.status}</Badge></td>
-                            <td className="px-3 py-2.5 text-gray-600">{row.time}</td>
+                        {sim.decisionResult.flatTrace.map((step) => (
+                          <tr key={step.ruleId} className="hover:bg-gray-50">
+                            <td className="px-3 py-2.5 font-medium text-gray-900">{step.ruleId} — {step.ruleName}</td>
+                            <td className="px-3 py-2.5 text-gray-600">
+                              {step.conditionSummaries.map((c) => `${c.field}=${c.actual}`).join(", ") || "—"}
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-600">
+                              {step.conditionSummaries.map((c) => `${c.field} ${c.operator} ${c.expected}`).join("; ") || "—"}
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-600">
+                              {step.producedValues && Object.keys(step.producedValues).length > 0
+                                ? Object.entries(step.producedValues).map(([k, v]) => `${k}=${v}`).join(", ")
+                                : "—"}
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <Badge
+                                className={cn(
+                                  "border-0",
+                                  step.status === "Passed" ? "bg-emerald-100 text-emerald-700" : step.status === "Failed" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-600"
+                                )}
+                              >
+                                {step.status.toUpperCase()}
+                              </Badge>
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-600">{step.durationMs.toFixed(2)}ms</td>
                           </tr>
                         ))}
                       </tbody>
@@ -429,7 +377,6 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                   </div>
                 </div>
               </div>
-              <div className="col-span-2"></div>
             </div>
           )}
         </div>
@@ -438,11 +385,15 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
       {/* Success Message & Footer */}
       <div className="border-t border-gray-200 bg-white p-4 space-y-3">
         {sim.decisionResult && (
-          <div className="flex items-center gap-3 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3">
-            <Check className="size-5 text-emerald-600 shrink-0" />
+          <div className={cn("flex items-center gap-3 rounded-lg border px-4 py-3", decisionLabel === "APPROVED" ? "bg-emerald-50 border-emerald-200" : decisionLabel === "REJECTED" ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200")}>
+            <Check className={cn("size-5 shrink-0", decisionLabel === "APPROVED" ? "text-emerald-600" : decisionLabel === "REJECTED" ? "text-red-600" : "text-amber-600")} />
             <div>
-              <p className="text-sm font-semibold text-emerald-900">Simulation Completed Successfully</p>
-              <p className="text-xs text-emerald-700">All rules executed successfully. Final decision: APPROVED</p>
+              <p className={cn("text-sm font-semibold", decisionLabel === "APPROVED" ? "text-emerald-900" : decisionLabel === "REJECTED" ? "text-red-900" : "text-amber-900")}>
+                Simulation Completed Successfully
+              </p>
+              <p className={cn("text-xs", decisionLabel === "APPROVED" ? "text-emerald-700" : decisionLabel === "REJECTED" ? "text-red-700" : "text-amber-700")}>
+                All rules executed. Final decision: {decisionLabel}
+              </p>
             </div>
           </div>
         )}

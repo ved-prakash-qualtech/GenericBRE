@@ -6,6 +6,7 @@ import {
   ConditionGroup,
   DecisionMatrix,
   Domain,
+  JsonMapping,
   NotifyCategory,
   NotifyExecutionLog,
   NotifyTrigger,
@@ -68,6 +69,7 @@ function makeRule(partial: {
   updatedDaysAgo: number;
   simulatable?: boolean;
   groupId?: string;
+  ruleType?: BusinessRule["ruleType"];
 }): BusinessRule {
   return {
     id: partial.id,
@@ -76,6 +78,7 @@ function makeRule(partial: {
     category: partial.category,
     subCategory: partial.subCategory,
     groupId: partial.groupId,
+    ruleType: partial.ruleType,
     priority: partial.priority,
     status: partial.status,
     description: partial.description,
@@ -328,6 +331,105 @@ export const CORE_RULES: BusinessRule[] = [
       { id: cid(), type: "Flag for Review", reasonCode: "PERSONAL_LOAN_RISK", message: "Personal loan request flagged: applicant exhibits marginal credit or income profile." },
     ],
     createdDaysAgo: 3,
+    updatedDaysAgo: 1,
+  }),
+
+  // ---- Home Loan — Demo: 4 chained rule types (IF/WHERE/CASE/GROUP) ----
+  makeRule({
+    id: "RL-114",
+    name: "Applicant Eligibility",
+    domain: "Lending",
+    category: "Eligibility",
+    priority: 1,
+    status: "Active",
+    ruleType: "IF",
+    description: "Gates the Home Loan chain: applicant must be 21+ and salaried before any downstream check runs.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [
+      cond("applicant_age", ">=", "21"),
+      cond("employment_type", "=", "Salaried"),
+    ]),
+    actions: [{ id: cid(), type: "Assign Value", outputField: "applicant_eligible", outputValue: "true", outputType: "boolean" }],
+    elseActions: [{ id: cid(), type: "Assign Value", outputField: "applicant_eligible", outputValue: "false", outputType: "boolean" }],
+    createdDaysAgo: 5,
+    updatedDaysAgo: 1,
+  }),
+  makeRule({
+    id: "RL-115",
+    name: "Income Validation",
+    domain: "Lending",
+    category: "Eligibility",
+    priority: 2,
+    status: "Active",
+    ruleType: "WHERE",
+    description: "Only meaningfully passes once Applicant Eligibility has chained applicant_eligible=true — an AND-gate against that output plus the income floor.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [
+      cond("applicant_eligible", "=", "true"),
+      cond("monthly_income", ">=", "50000"),
+    ]),
+    actions: [{ id: cid(), type: "Assign Value", outputField: "income_eligible", outputValue: "true", outputType: "boolean" }],
+    elseActions: [{ id: cid(), type: "Assign Value", outputField: "income_eligible", outputValue: "false", outputType: "boolean" }],
+    createdDaysAgo: 5,
+    updatedDaysAgo: 1,
+  }),
+  makeRule({
+    id: "RL-116",
+    name: "Interest Rate Determination",
+    domain: "Lending",
+    category: "Pricing",
+    priority: 3,
+    status: "Active",
+    ruleType: "CASE",
+    description: "Bracket lookup by credit score: >=800 -> 8.25%, 750-799 -> 8.75%, 700-749 -> 9.50%; below 700 rejects.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [cond("credit_score", ">=", "700")]),
+    actions: [{
+      id: cid(),
+      type: "Bracket Lookup",
+      outputField: "interest_rate",
+      outputType: "number",
+      bracketField: "credit_score",
+      brackets: [
+        { id: cid(), min: 800, max: 900, outputValue: "8.25" },
+        { id: cid(), min: 750, max: 799, outputValue: "8.75" },
+        { id: cid(), min: 700, max: 749, outputValue: "9.50" },
+      ],
+    }],
+    elseActions: [{ id: cid(), type: "Reject", reasonCode: "LOW_CREDIT_SCORE", message: "Credit score below 700 minimum for Home Loan pricing." }],
+    createdDaysAgo: 5,
+    updatedDaysAgo: 1,
+  }),
+  makeRule({
+    id: "RL-117",
+    name: "Final Loan Decision",
+    domain: "Lending",
+    category: "Eligibility",
+    priority: 4,
+    status: "Active",
+    ruleType: "GROUP",
+    description: "Composite gate: both eligibility flags true AND (strong credit score OR high property value).",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [
+      group("AND", [
+        cond("applicant_eligible", "=", "true"),
+        cond("income_eligible", "=", "true"),
+      ]),
+      { ...group("OR", [
+          cond("credit_score", ">=", "750"),
+          cond("property_value", ">=", "7000000"),
+        ]), connector: "AND" },
+    ]),
+    actions: [
+      { id: cid(), type: "Approve", reasonCode: "ELIGIBLE_CUSTOMER", message: "Applicant and income eligible with strong credit/collateral profile." },
+      { id: cid(), type: "Assign Value", outputField: "loan_decision", outputValue: "APPROVED", outputType: "string" },
+      { id: cid(), type: "Calculate", outputField: "approved_amount", outputValue: "{{loan_amount}}", outputType: "number" },
+    ],
+    elseActions: [
+      { id: cid(), type: "Reject", reasonCode: "POLICY_BREACH", message: "Eligibility or credit/collateral thresholds not met." },
+      { id: cid(), type: "Assign Value", outputField: "loan_decision", outputValue: "REJECTED", outputType: "string" },
+    ],
+    createdDaysAgo: 5,
     updatedDaysAgo: 1,
   }),
 
@@ -948,6 +1050,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
   { id: "prod-gold-loan", name: "Gold Loan", code: "GOLD_LOAN", domain: "NBFC", description: "Collateral-backed gold loan scheme.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
   { id: "prod-credit-card", name: "Rewards Credit Card", code: "REWARDS_CARD", domain: "CreditCards", description: "Unsecured revolving credit card with tiered rewards.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
   { id: "prod-wealth-plan", name: "Managed Portfolio Plan", code: "WEALTH_PLAN", domain: "Wealth", description: "Advisor-managed investment portfolio onboarding.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+  { id: "prod-home-loan-demo", name: "Home Loan — Demo", code: "HOME_LOAN_DEMO", domain: "Lending", description: "4-rule chained showcase: IF, WHERE, CASE, GROUP rule types executed in Product Master sequence.", status: "Active", publishStatus: "Published", lastPublishedAt: PRODUCT_SEED_TIMESTAMP, createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
 ];
 
 function mapping(id: string, productId: string, ruleId: string, order: number): ProductRuleMapping {
@@ -989,6 +1092,61 @@ export const DEFAULT_PRODUCT_RULE_MAPPINGS: ProductRuleMapping[] = [
   mapping("prm-21", "prod-wealth-plan", "RL-704", 3),
   mapping("prm-wealth-plan-mod-risk", "prod-wealth-plan", "RL-705", 4),
   mapping("prm-auto-loan-risk-gate", "prod-auto-loan", "RL-113", 4),
+  mapping("prm-hld-1", "prod-home-loan-demo", "RL-114", 0),
+  mapping("prm-hld-2", "prod-home-loan-demo", "RL-115", 1),
+  mapping("prm-hld-3", "prod-home-loan-demo", "RL-116", 2),
+  mapping("prm-hld-4", "prod-home-loan-demo", "RL-117", 3),
+];
+
+// Moved from the store's initial state (was previously inlined there) so
+// every seed array lives in one place, same as products/rules/mappings above.
+export const DEFAULT_JSON_MAPPINGS: JsonMapping[] = [
+  {
+    id: "loan-decision-response",
+    name: "Loan Decision Response",
+    industry: "Lending",
+    productId: undefined,
+    direction: "response",
+    entries: [
+      { id: "entry-1", externalAttribute: "decision", jsonPath: "decision", mappedField: "approval_status", dataType: "string", required: true, status: "Mapped" },
+      { id: "entry-2", externalAttribute: "rate", jsonPath: "interest_rate", mappedField: "interest_rate", dataType: "number", required: false, status: "Mapped" },
+      { id: "entry-3", externalAttribute: "tenure_years", jsonPath: "loan_tenure", mappedField: "loan_tenure", dataType: "number", required: false, status: "Mapped" },
+      { id: "entry-4", externalAttribute: "risk_level", jsonPath: "risk_level", mappedField: "risk_classification", dataType: "string", required: false, status: "Mapped" },
+    ],
+    createdAt: PRODUCT_SEED_TIMESTAMP,
+    updatedAt: PRODUCT_SEED_TIMESTAMP,
+  },
+  {
+    id: "jm-prod-home-loan-demo-request",
+    name: "Home Loan — Demo — Request Mapping",
+    industry: "Lending",
+    productId: "prod-home-loan-demo",
+    direction: "request",
+    entries: [
+      { id: "e1", externalAttribute: "applicant_age", jsonPath: "applicant_age", mappedField: "applicant_age", dataType: "number", required: true, status: "Mapped" },
+      { id: "e2", externalAttribute: "employment_type", jsonPath: "employment_type", mappedField: "employment_type", dataType: "enum", required: true, status: "Mapped" },
+      { id: "e3", externalAttribute: "monthly_income", jsonPath: "monthly_income", mappedField: "monthly_income", dataType: "currency", required: true, status: "Mapped" },
+      { id: "e4", externalAttribute: "credit_score", jsonPath: "credit_score", mappedField: "credit_score", dataType: "number", required: true, status: "Mapped" },
+      { id: "e5", externalAttribute: "property_value", jsonPath: "property_value", mappedField: "property_value", dataType: "currency", required: true, status: "Mapped" },
+      { id: "e6", externalAttribute: "loan_amount", jsonPath: "loan_amount", mappedField: "loan_amount", dataType: "currency", required: true, status: "Mapped" },
+    ],
+    createdAt: PRODUCT_SEED_TIMESTAMP,
+    updatedAt: PRODUCT_SEED_TIMESTAMP,
+  },
+  {
+    id: "jm-prod-home-loan-demo-response",
+    name: "Home Loan — Demo — Response Mapping",
+    industry: "Lending",
+    productId: "prod-home-loan-demo",
+    direction: "response",
+    entries: [
+      { id: "e1", externalAttribute: "decision", jsonPath: "decision", mappedField: "loan_decision", dataType: "string", required: true, status: "Mapped" },
+      { id: "e2", externalAttribute: "approvedAmount", jsonPath: "approvedAmount", mappedField: "approved_amount", dataType: "number", required: false, status: "Mapped" },
+      { id: "e3", externalAttribute: "interestRate", jsonPath: "interestRate", mappedField: "interest_rate", dataType: "number", required: false, status: "Mapped" },
+    ],
+    createdAt: PRODUCT_SEED_TIMESTAMP,
+    updatedAt: PRODUCT_SEED_TIMESTAMP,
+  },
 ];
 
 // ============================================================

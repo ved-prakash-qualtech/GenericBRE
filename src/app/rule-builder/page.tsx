@@ -39,6 +39,7 @@ import {
   findParent,
   findNode,
   wrapInGroup,
+  setGroupLogicCascade,
 } from "@/lib/condition-tree";
 import { getField, fieldsForDomain } from "@/lib/fields";
 import { copyToClipboard, pasteFromClipboard, useConditionClipboard } from "@/lib/condition-clipboard";
@@ -320,6 +321,7 @@ function RuleBuilderContent() {
 
   const treeHandlers: TreeHandlers = {
     onUpdate: updateTreeNode,
+    onSetGroupLogic: (groupId, logic) => commitRule((r) => ({ ...r, rootGroup: setGroupLogicCascade(r.rootGroup, groupId, logic) })),
     onDelete: deleteTreeNode,
     onAddChild: addTreeChild,
     onDuplicate: (id) => commitRule((r) => ({ ...r, rootGroup: duplicateNode(r.rootGroup, id) })),

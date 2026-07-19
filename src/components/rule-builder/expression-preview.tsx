@@ -86,7 +86,7 @@ function GroupInline({ group, catalog }: { group: ConditionGroup; catalog: Busin
           {i > 0 && (
             <>
               {" "}
-              <Keyword>{group.logic}</Keyword>{" "}
+              <Keyword>{child.connector ?? group.logic}</Keyword>{" "}
             </>
           )}
           {child.type === "condition" ? (
@@ -120,7 +120,7 @@ export function ExpressionPreview({ rootGroup, catalog }: { rootGroup: Condition
                 <>
                   {"\n"}
                   {"  "}
-                  <Keyword>{rootGroup.logic}</Keyword>{" "}
+                  <Keyword>{child.connector ?? rootGroup.logic}</Keyword>{" "}
                 </>
               )}
               {child.type === "condition" ? (

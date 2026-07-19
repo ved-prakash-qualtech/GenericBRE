@@ -75,7 +75,7 @@ function GroupView({ group, depth = 0, catalog }: { group: ConditionGroup; depth
       {group.children.map((child, i) => (
         <div key={child.id}>
           {i > 0 && (
-            <p className="my-1 text-[10px] font-bold uppercase tracking-wide text-primary/70">{group.logic}</p>
+            <p className="my-1 text-[10px] font-bold uppercase tracking-wide text-primary/70">{child.connector ?? group.logic}</p>
           )}
           {child.type === "condition" ? (
             <div className="rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs">

@@ -9,6 +9,7 @@ import {
   DEFAULT_NOTIFY_TRIGGERS,
   DEFAULT_NOTIFY_WORKFLOWS,
   DEFAULT_NOTIFY_WORKFLOW_TEMPLATES,
+  DEFAULT_JSON_MAPPINGS,
   DEFAULT_PRODUCTS,
   DEFAULT_PRODUCT_RULE_MAPPINGS,
   DEFAULT_ROLES,
@@ -356,23 +357,7 @@ export const useAppStore = create<AppState>()(
       ruleCategories: DEFAULT_RULE_CATEGORIES,
       owners: DEFAULT_OWNERS,
       executionSettings: {},
-      jsonMappings: [
-        {
-          id: "loan-decision-response",
-          name: "Loan Decision Response",
-          industry: "Lending",
-          productId: undefined,
-          direction: "response",
-          entries: [
-            { id: "entry-1", externalAttribute: "decision", jsonPath: "decision", mappedField: "approval_status", dataType: "string", required: true, status: "Mapped", transformation: undefined },
-            { id: "entry-2", externalAttribute: "rate", jsonPath: "interest_rate", mappedField: "interest_rate", dataType: "number", required: false, status: "Mapped", transformation: undefined },
-            { id: "entry-3", externalAttribute: "tenure_years", jsonPath: "loan_tenure", mappedField: "loan_tenure", dataType: "number", required: false, status: "Mapped", transformation: undefined },
-            { id: "entry-4", externalAttribute: "risk_level", jsonPath: "risk_level", mappedField: "risk_classification", dataType: "string", required: false, status: "Mapped", transformation: undefined },
-          ],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-      ],
+      jsonMappings: DEFAULT_JSON_MAPPINGS,
       // Execution Manager state removed
       decisionResponseSettings: { default: DEFAULT_DECISION_RESPONSE_CONFIG },
 
@@ -488,8 +473,12 @@ export const useAppStore = create<AppState>()(
       },
 
       addJsonMapping: (mapping) => {
-        const { currentUser, roles } = get();
+        const { currentUser, roles, jsonMappings } = get();
         if (!hasCapability(roles, currentUser.role, "config.manage")) return;
+        // Defensive: at most one mapping per product+direction — the product-scoped
+        // JSON Mapping screen only ever auto-creates when one doesn't already exist,
+        // but guard here too in case another caller is added later.
+        if (mapping.productId && jsonMappings.some((m) => m.productId === mapping.productId && m.direction === mapping.direction)) return;
         set((s) => ({ jsonMappings: [mapping, ...s.jsonMappings] }));
         get().logAudit({ user: get().currentUser.name, action: "Created JSON Mapping", entity: "JsonMapping", entityId: mapping.id, details: `Added mapping "${mapping.name}".` });
       },

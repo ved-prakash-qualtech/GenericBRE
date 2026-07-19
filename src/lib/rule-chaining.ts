@@ -24,7 +24,7 @@ export function getGeneratedVariables(rules: BusinessRule[], excludeRuleId?: str
   for (const r of rules) {
     if (r.id === excludeRuleId) continue;
     for (const action of [...r.actions, ...(r.elseActions ?? [])]) {
-      if ((action.type === "Assign Value" || action.type === "Calculate") && action.outputField && !seen.has(action.outputField)) {
+      if ((action.type === "Assign Value" || action.type === "Calculate" || action.type === "Bracket Lookup") && action.outputField && !seen.has(action.outputField)) {
         seen.add(action.outputField);
         variables.push({ key: action.outputField, sourceRuleId: r.id, sourceRuleName: r.name });
       }
@@ -49,7 +49,7 @@ export function detectCircularDependency(rules: BusinessRule[]): CircularDepende
   const outputToRule = new Map<string, string>(); // outputField -> ruleId
   for (const r of rules) {
     for (const action of [...r.actions, ...(r.elseActions ?? [])]) {
-      if ((action.type === "Assign Value" || action.type === "Calculate") && action.outputField) {
+      if ((action.type === "Assign Value" || action.type === "Calculate" || action.type === "Bracket Lookup") && action.outputField) {
         outputToRule.set(action.outputField, r.id);
       }
     }
