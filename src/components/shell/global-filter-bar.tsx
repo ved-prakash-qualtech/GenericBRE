@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { RotateCcw, SlidersHorizontal, Check } from "lucide-react";
-import { useAppStore, useHasCapability } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,6 @@ export function GlobalFilterBar() {
   const filters = useAppStore((s) => s.globalFilters);
   const setFilters = useAppStore((s) => s.setGlobalFilters);
   const resetFilters = useAppStore((s) => s.resetGlobalFilters);
-  const canManageSystem = useHasCapability("system.manage");
   const industries = useAppStore((s) => s.industries);
   const DOMAIN_OPTIONS = industries.map((i) => ({ value: i.id, label: i.name }));
   const hasActive = filters.domains.length > 0 || filters.statuses.length > 0;
@@ -66,9 +65,9 @@ export function MobileFilterButton() {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="h-9 gap-1.5 lg:hidden" onClick={() => setOpen(true)}>
+      <Button variant="outline" size="sm" className="h-9 gap-1.5 lg:hidden" onClick={() => setOpen(true)} aria-label="Filters">
         <SlidersHorizontal className="size-3.5" />
-        Filters
+        <span className="hidden lg:inline">Filters</span>
         {count > 0 && <Badge variant="secondary" className="h-4.5 min-w-4.5 rounded-full px-1 text-[10px]">{count}</Badge>}
       </Button>
       <Sheet open={open} onOpenChange={setOpen}>

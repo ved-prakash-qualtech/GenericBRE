@@ -28,6 +28,8 @@ export function ProductHubGrid({
   onConfigure,
   onRunSimulation,
   showControls,
+  compact,
+  limit,
 }: {
   products: Product[];
   industries: Industry[];
@@ -37,6 +39,10 @@ export function ProductHubGrid({
   onConfigure: (product: Product) => void;
   onRunSimulation: (product: Product) => void;
   showControls?: boolean;
+  /** Denser card (Dashboard's pinned preview) — status/count/last-updated/actions only, no sparkline or status-mix row. */
+  compact?: boolean;
+  /** Cap the number of cards shown (the caller is expected to offer its own "View all"). */
+  limit?: number;
 }) {
   const [search, setSearch] = useState("");
   const [domainFilter, setDomainFilter] = useState<string[]>([]);
@@ -56,6 +62,7 @@ export function ProductHubGrid({
       return true;
     });
   }, [base, search, domainFilter, statusFilter, showControls]);
+  const visible = limit ? filtered.slice(0, limit) : filtered;
 
   const exportCsv = () => {
     downloadCsv(
@@ -117,21 +124,25 @@ export function ProductHubGrid({
       {filtered.length === 0 && (
         <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">No products match this filter.</p>
       )}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filtered.map((p) => {
+      <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", compact && "gap-2.5")}>
+        {visible.map((p) => {
           const industry = industries.find((i) => i.id === p.domain);
           const Icon = iconForIndustry(industry?.icon) ?? Package;
           const mappedRules = getMappedRules(p.id, rules, mappings);
           const mappedCount = mappedRules.length;
           const lastSim = simulations.find((s) => s.productId === p.id);
           const published = p.publishStatus === "Published";
+          const lastUpdatedLabel =
+            published && p.lastPublishedAt
+              ? `Published ${new Date(p.lastPublishedAt).toLocaleDateString()}`
+              : `Updated ${new Date(p.updatedAt).toLocaleDateString()}`;
 
           // Priority mix (P1..P5) among this product's mapped rules — drives the
-          // sparkline. Real derived data, not decorative filler.
+          // sparkline. Real derived data, not decorative filler. Full card only.
           const priorityCounts = [1, 2, 3, 4, 5].map((pr) => mappedRules.filter((r) => r.priority === pr).length);
           const maxPriorityCount = Math.max(1, ...priorityCounts);
 
-          // Status mix among mapped rules — drives the small heatmap row.
+          // Status mix among mapped rules — drives the small heatmap row. Full card only.
           const statusMix: { status: BusinessRule["status"]; color: string }[] = [
             { status: "Active", color: "bg-emerald-500" },
             { status: "Draft", color: "bg-amber-500" },
@@ -153,32 +164,30 @@ export function ProductHubGrid({
               onClick={() => onConfigure(p)}
               onKeyDown={(e) => e.key === "Enter" && onConfigure(p)}
               className={cn(
-                "flex cursor-pointer flex-col gap-2.5 rounded-xl border bg-card p-3.5 text-left transition-colors hover:border-primary/40 hover:bg-accent/40",
+                "flex cursor-pointer flex-col rounded-xl border bg-card text-left transition-colors hover:border-primary/40 hover:bg-accent/40",
+                compact ? "gap-2 p-3" : "gap-2.5 p-3.5",
                 p.status === "Inactive" && "opacity-60"
               )}
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Icon className="size-4" />
+                <span className={cn("flex shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary", compact ? "size-7" : "size-8")}>
+                  <Icon className={compact ? "size-3.5" : "size-4"} />
                 </span>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  {p.status === "Inactive" && <Badge variant="outline" className="text-[9px]">Inactive</Badge>}
-                  <Badge variant={published ? "default" : "secondary"} className="text-[9px]">
-                    {p.publishStatus ?? "Draft"}
-                  </Badge>
-                </div>
-                <div className="flex h-6 items-end gap-0.5" title="Mapped rules by priority (P1–P5)">
-                  {priorityCounts.map((c, i) => (
-                    <span
-                      key={i}
-                      className={cn("w-1 rounded-sm", c > 0 ? "bg-primary/60" : "bg-muted")}
-                      style={{ height: `${Math.max(15, (c / maxPriorityCount) * 100)}%` }}
-                    />
-                  ))}
-                </div>
-                <Badge variant={published ? "default" : "secondary"} className="shrink-0 text-[9px]">
-                  {p.publishStatus ?? "Draft"}
+                {/* One status badge — Inactive takes precedence since it overrides publish state at a glance. */}
+                <Badge variant={p.status === "Inactive" ? "outline" : published ? "default" : "secondary"} className="shrink-0 text-[9px]">
+                  {p.status === "Inactive" ? "Inactive" : (p.publishStatus ?? "Draft")}
                 </Badge>
+                {!compact && (
+                  <div className="flex h-6 items-end gap-0.5" title="Mapped rules by priority (P1–P5)">
+                    {priorityCounts.map((c, i) => (
+                      <span
+                        key={i}
+                        className={cn("w-1 rounded-sm", c > 0 ? "bg-primary/60" : "bg-muted")}
+                        style={{ height: `${Math.max(15, (c / maxPriorityCount) * 100)}%` }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="min-w-0">
@@ -188,22 +197,19 @@ export function ProductHubGrid({
 
               <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>
-                  <span className="font-semibold text-foreground">{mappedCount}</span> mapped rule{mappedCount === 1 ? "" : "s"}
+                  <span className="font-semibold text-foreground">{mappedCount}</span> rule{mappedCount === 1 ? "" : "s"}
+                  {compact && <span className="text-muted-foreground/70"> · {lastUpdatedLabel}</span>}
                 </span>
                 {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-1.5 py-0 text-[9px]" />}
               </div>
 
-              {statusDots.length > 0 && (
+              {!compact && statusDots.length > 0 && (
                 <div className="flex items-center gap-1" title="Mapped rule status mix">
                   {statusDots}
                 </div>
               )}
 
-              <p className="text-[10px] text-muted-foreground/70">
-                {published && p.lastPublishedAt
-                  ? `Published ${new Date(p.lastPublishedAt).toLocaleDateString()}`
-                  : `Last updated ${new Date(p.updatedAt).toLocaleDateString()}`}
-              </p>
+              {!compact && <p className="text-[10px] text-muted-foreground/70">{lastUpdatedLabel}</p>}
 
               <div className="grid grid-cols-2 gap-1.5" onClick={(e) => e.stopPropagation()}>
                 <Button

@@ -54,8 +54,8 @@ export function MappedRulesReorder({
   if (ordered.length === 0) return null;
 
   return (
-    <div className="rounded-xl border bg-card shadow-sm">
-      <div className="flex items-center gap-2 border-b bg-muted/30 px-3.5 py-2.5">
+    <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
+      <div className="flex shrink-0 items-center gap-2 border-b bg-muted/30 px-3.5 py-2.5">
         <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
           <ListOrdered className="size-3.5" />
         </span>
@@ -65,7 +65,7 @@ export function MappedRulesReorder({
         </div>
         <Badge variant="secondary" className="ml-auto shrink-0 text-[9px]">{ordered.length} rule{ordered.length === 1 ? "" : "s"}</Badge>
       </div>
-      <div className="max-h-48 space-y-1.5 overflow-y-auto p-2.5">
+      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5">
         {ordered.map((r, i) => (
           <div
             key={r.id}
@@ -179,8 +179,8 @@ export function MappedRulesChecklist({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="rounded-xl border bg-card shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-3.5 py-2.5">
+      <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-card shadow-sm">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-muted/30 px-3.5 py-2.5">
           <div className="relative flex-1 min-w-48">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -214,7 +214,7 @@ export function MappedRulesChecklist({
           </Button>
         </div>
 
-        <div className="flex items-center justify-between px-3.5 py-2 text-[11px] text-muted-foreground">
+        <div className="flex shrink-0 items-center justify-between px-3.5 py-2 text-[11px] text-muted-foreground">
           <span>
             <span className="font-semibold text-foreground">{activeSelection.size}</span> rule{activeSelection.size === 1 ? "" : "s"} mapped to{" "}
             <span className="font-semibold text-foreground">{product.name}</span>
@@ -223,7 +223,7 @@ export function MappedRulesChecklist({
         </div>
 
         {crossDomainMappedCount > 0 && (
-          <div className="mx-3.5 mb-3 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+          <div className="mx-3.5 mb-3 flex shrink-0 items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
             <ShieldAlert className="size-3.5 shrink-0" />
             <span>
               <span className="font-semibold">{crossDomainMappedCount}</span> mapped rule{crossDomainMappedCount === 1 ? "" : "s"} outside this
@@ -233,8 +233,8 @@ export function MappedRulesChecklist({
           </div>
         )}
 
-        <div className="mx-3.5 mb-3.5 rounded-lg border overflow-hidden">
-          <div className="flex items-center gap-3 bg-muted/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b select-none">
+        <div className="mx-3.5 mb-3.5 flex min-h-0 flex-1 flex-col rounded-lg border overflow-hidden">
+          <div className="flex shrink-0 items-center gap-3 bg-muted/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b select-none">
             <div className="flex items-center">
               <Checkbox checked={allFilteredSelected} onCheckedChange={toggleSelectAllFiltered} />
             </div>
@@ -244,7 +244,7 @@ export function MappedRulesChecklist({
             <span className="w-20 shrink-0 text-center">Domain</span>
           </div>
 
-          <ScrollArea className="h-[260px]">
+          <ScrollArea className="min-h-0 flex-1">
             <div className="divide-y">
               {filteredRules.map((r, i) => (
                 <label
@@ -292,9 +292,6 @@ export function MappedRulesChecklist({
   );
 }
 
-// Product-Rule Mapping — the many-to-many wiring that replaces Execution
-// Manager's group/step routing. Category here is filter-only (narrows the
-// picker), never part of execution.
 const productColors = [
   "bg-blue-50 border-blue-200 hover:bg-blue-100",
   "bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
@@ -304,6 +301,9 @@ const productColors = [
   "bg-cyan-50 border-cyan-200 hover:bg-cyan-100",
 ];
 
+// Product-Rule Mapping — the many-to-many wiring that replaces Execution
+// Manager's group/step routing. Category here is filter-only (narrows the
+// picker), never part of execution.
 export function ProductRuleMappingManager() {
   const products = useAppStore((s) => s.products);
   const rules = useAppStore((s) => s.rules);
@@ -414,10 +414,19 @@ export function ProductRuleMappingManager() {
             </div>
           </div>
 
-          {/* Two-Column Layout: Available Rules + Selected Sequence */}
-          <div className="flex flex-1 gap-4 min-h-0">
+          {/* Two-Column Layout: Available Rules + Selected Sequence. Side by
+              side only at xl+ (1280px) — below that, 3 fixed-width columns
+              (Products + this row) don't reliably fit, and Execution
+              Sequence being shrink-0 meant it could get pushed past the
+              visible area instead of shrinking. Stacking avoids that
+              entirely: each column takes the full width on its own row, so
+              nothing can be squeezed off-screen. Side by side, both stretch
+              to the same height (the root's xl:h-125 provides a real bound)
+              and scroll their own content internally; stacked, they size to
+              content and the page's own scroll takes over instead. */}
+          <div className="flex min-h-0 flex-1 flex-col gap-4 xl:flex-row">
             {/* Left: Available Rules */}
-            <div className="flex-1 min-w-0">
+            <div className="flex min-h-0 flex-1 flex-col min-w-0">
               <MappedRulesChecklist
                 product={selectedProduct}
                 rules={rules}
@@ -427,7 +436,7 @@ export function ProductRuleMappingManager() {
             </div>
 
             {/* Right: Execution Sequence */}
-            <div className="w-80 shrink-0 flex flex-col gap-3">
+            <div className="flex min-h-0 w-full flex-col xl:w-80 xl:shrink-0">
               <MappedRulesReorder
                 product={selectedProduct}
                 rules={rules}

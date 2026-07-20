@@ -91,7 +91,11 @@ export function evaluateExpression(expr: string, context: ExpressionContext): Ex
   }
 
   try {
-    return { value: evaluateArithmetic(substituted) };
+    // Normalize IEEE-754 noise (e.g. 12000 * 1.35 = 16200.000000000002) so
+    // currency/score outputs never show float artifacts in decisions — 6
+    // decimal places is far beyond any business-rule precision need.
+    const raw = evaluateArithmetic(substituted);
+    return { value: Math.round(raw * 1e6) / 1e6 };
   } catch (e) {
     return { value: trimmed, error: e instanceof Error ? e.message : "Invalid expression" };
   }

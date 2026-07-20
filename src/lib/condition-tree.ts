@@ -1,4 +1,4 @@
-import { BusinessRule, Condition, ConditionGroup } from "./types";
+import { BusinessRule, Condition, ConditionGroup, Connector } from "./types";
 
 let seq = 0;
 export function newId(prefix: string) {
@@ -53,9 +53,10 @@ export function removeNode(root: ConditionGroup, id: string): ConditionGroup {
 export function addChildToGroup(root: ConditionGroup, groupId: string, child: Node): ConditionGroup {
   function recurse(group: ConditionGroup): ConditionGroup {
     if (group.id === groupId) {
-      // The first child has nothing before it to connect to; every later
-      // child defaults its connector to the group's current logic so it
-      // still behaves like before until a user overrides that one connector.
+      // First child in a group never has a connector; every later one
+      // defaults to the group's legacy `logic` so a freshly-built group
+      // reads the same as before this feature existed until the user
+      // explicitly picks a different connector for it.
       const withConnector = group.children.length === 0 ? child : { ...child, connector: child.connector ?? group.logic };
       return { ...group, children: [...group.children, withConnector] };
     }
@@ -197,14 +198,32 @@ export function moveNode(root: ConditionGroup, nodeId: string, targetGroupId: st
   return insertChildAt(removeNode(root, nodeId), targetGroupId, node, adjustedIndex);
 }
 
+/** How `group.children[index]` joins the accumulated result of its earlier
+ *  siblings — null for index 0 (nothing precedes it). Falls back to the
+ *  group's legacy `logic` when the child has no explicit `connector`, which
+ *  is what keeps every pre-existing rule evaluating unchanged. */
+export function effectiveConnector(group: ConditionGroup, index: number): Connector | null {
+  if (index === 0 || index >= group.children.length) return null;
+  return group.children[index].connector ?? group.logic;
+}
+
 /** Wraps N same-parent siblings (in their current order) into one new group. */
 export function wrapInGroup(root: ConditionGroup, ids: string[], logic: "AND" | "OR" = "AND"): ConditionGroup {
   if (ids.length === 0) return root;
   const parent = findParent(root, ids[0]);
   if (!parent || !ids.every((id) => parent.children.some((c) => c.id === id))) return root;
   const idSet = new Set(ids);
-  const wrapped: ConditionGroup = { id: newId("grp"), type: "group", logic, children: parent.children.filter((c) => idSet.has(c.id)) };
   const firstIdx = parent.children.findIndex((c) => idSet.has(c.id));
+  // The wrapper now occupies the first wrapped sibling's old slot, so it
+  // inherits that sibling's connector relative to whatever precedes it.
+  const wrapperConnector = effectiveConnector(parent, firstIdx) ?? undefined;
+  const wrapped: ConditionGroup = {
+    id: newId("grp"),
+    type: "group",
+    logic,
+    connector: wrapperConnector,
+    children: parent.children.filter((c) => idSet.has(c.id)),
+  };
   const remaining = parent.children.filter((c) => !idSet.has(c.id));
   remaining.splice(firstIdx, 0, wrapped);
   return updateNode(root, parent.id, { children: remaining });
@@ -215,23 +234,22 @@ export interface TreeStats {
   groups: number;
   andCount: number;
   orCount: number;
+  naCount: number;
   maxDepth: number;
 }
 
-/** Connector counts — one per child after the first, using that child's own
- *  connector (falling back to the parent group's logic for legacy trees) —
- *  i.e. how many AND/OR joins the rendered expression actually contains. */
+/** Per-child connector counts (via `effectiveConnector`) — i.e. how many
+ *  AND/OR/N.A joins the rendered expression actually contains. */
 export function treeStats(root: ConditionGroup): TreeStats {
-  const stats: TreeStats = { conditions: 0, groups: 0, andCount: 0, orCount: 0, maxDepth: 0 };
+  const stats: TreeStats = { conditions: 0, groups: 0, andCount: 0, orCount: 0, naCount: 0, maxDepth: 0 };
   function walk(group: ConditionGroup, depth: number) {
     stats.groups += 1;
     stats.maxDepth = Math.max(stats.maxDepth, depth);
     group.children.forEach((c, i) => {
-      if (i > 0) {
-        const op = c.connector ?? group.logic;
-        if (op === "AND") stats.andCount += 1;
-        else stats.orCount += 1;
-      }
+      const connector = effectiveConnector(group, i);
+      if (connector === "AND") stats.andCount += 1;
+      else if (connector === "OR") stats.orCount += 1;
+      else if (connector === "N.A.") stats.naCount += 1;
       if (c.type === "group") walk(c, depth + 1);
       else stats.conditions += 1;
     });

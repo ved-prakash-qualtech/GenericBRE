@@ -867,6 +867,235 @@ export const CORE_RULES: BusinessRule[] = [
     createdDaysAgo: 18,
     updatedDaysAgo: 6,
   }),
+
+  // ============================================================
+  // ENTERPRISE DEMO RULES (RL-501…RL-508) — production-style banking
+  // rules authored for client demonstration: nested AND/OR groups,
+  // calculated variables, rule chaining (RL-501 → RL-502), multiple
+  // outputs, and approve/reject/review flows. All metadata-driven —
+  // every field referenced exists in the Field Catalog; risk_score is
+  // a chained Generated Variable produced by RL-501.
+  // ============================================================
+
+  // COMPLEX 1 — risk scoring with nested employment logic; feeds RL-502.
+  makeRule({
+    id: "RL-501",
+    name: "Personal Loan Application Risk Grade",
+    domain: "Lending",
+    category: "Risk & Fraud",
+    priority: 1,
+    status: "Active",
+    description:
+      "Grades applicant risk from bureau score and leverage. Salaried/Government profiles qualify directly; self-employed applicants need ₹75,000+ monthly income. Produces risk_score (0–100) for downstream eligibility rules on both branches.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [
+      cond("credit_score", ">=", "650"),
+      cond("dti_ratio", "<=", "45"),
+      group("OR", [
+        cond("employment_type", "=", "Salaried"),
+        cond("employment_type", "=", "Government"),
+        group("AND", [
+          cond("employment_type", "=", "Self-Employed"),
+          cond("monthly_income", ">=", "75000"),
+        ]),
+      ]),
+    ]),
+    actions: [
+      { id: cid(), type: "Calculate", outputField: "risk_score", outputValue: "({{credit_score}} - 300) / 6", outputType: "number" },
+      { id: cid(), type: "Assign Value", outputField: "risk_grade", outputValue: "Standard", outputType: "string" },
+    ],
+    elseActions: [
+      { id: cid(), type: "Calculate", outputField: "risk_score", outputValue: "({{credit_score}} - 300) / 6", outputType: "number" },
+      { id: cid(), type: "Assign Value", outputField: "risk_grade", outputValue: "High Risk", outputType: "string" },
+      { id: cid(), type: "Flag for Review", reasonCode: "RISK_REVIEW", message: "Profile outside standard risk band — manual credit review required." },
+    ],
+    createdDaysAgo: 6,
+    updatedDaysAgo: 1,
+  }),
+
+  // COMPLEX 2 — eligibility + limit sizing; CHAINS on RL-501's risk_score.
+  makeRule({
+    id: "RL-502",
+    name: "Personal Loan Eligibility & Limit",
+    domain: "Lending",
+    category: "Eligibility",
+    priority: 1,
+    status: "Active",
+    description:
+      "Approves personal-loan applicants aged 21–58 earning ₹40,000+ with a chained risk_score of 55+ (from Personal Loan Application Risk Grade), and sizes the eligible amount at 60× monthly income with an indicative EMI.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [
+      cond("applicant_age", "between", "21", "58"),
+      cond("monthly_income", ">=", "40000"),
+      cond("loan_type", "=", "Personal Loan"),
+      cond("risk_score", ">=", "55"),
+    ]),
+    actions: [
+      { id: cid(), type: "Approve", reasonCode: "ELIGIBLE_PERSONAL_LOAN", message: "Applicant meets personal-loan underwriting criteria." },
+      { id: cid(), type: "Calculate", outputField: "pl_eligible_amount", outputValue: "{{monthly_income}} * 60", outputType: "currency" },
+      { id: cid(), type: "Calculate", outputField: "pl_emi_estimate", outputValue: "{{pl_eligible_amount}} * 0.0225", outputType: "currency" },
+    ],
+    elseActions: [
+      { id: cid(), type: "Reject", reasonCode: "INELIGIBLE_PROFILE", message: "Applicant profile does not meet personal-loan eligibility thresholds." },
+    ],
+    createdDaysAgo: 6,
+    updatedDaysAgo: 1,
+  }),
+
+  // COMPLEX 3 — insurance premium loading with OR root + nested AND.
+  makeRule({
+    id: "RL-503",
+    name: "Life Cover High-Risk Premium Loading",
+    domain: "Insurance",
+    category: "Pricing",
+    priority: 2,
+    status: "Active",
+    description:
+      "Loads the base premium by 35% when the applicant is over 60, a smoker, has a medical history flag, or combines BMI ≥ 32 with a high-risk occupation; otherwise prices at standard.",
+    owner: "Actuarial Underwriting",
+    rootGroup: group("OR", [
+      cond("applicant_age", ">", "60"),
+      cond("smoker", "=", "true"),
+      cond("medical_history", "=", "true"),
+      group("AND", [
+        cond("bmi", ">=", "32"),
+        cond("occupation_type", "=", "High Risk"),
+      ]),
+    ]),
+    actions: [
+      { id: cid(), type: "Assign Value", outputField: "risk_category", outputValue: "High", outputType: "string" },
+      { id: cid(), type: "Calculate", outputField: "loaded_premium", outputValue: "{{base_premium}} * 1.35", outputType: "currency" },
+    ],
+    elseActions: [
+      { id: cid(), type: "Assign Value", outputField: "risk_category", outputValue: "Standard", outputType: "string" },
+      { id: cid(), type: "Calculate", outputField: "loaded_premium", outputValue: "{{base_premium}} * 1", outputType: "currency" },
+    ],
+    createdDaysAgo: 5,
+    updatedDaysAgo: 1,
+  }),
+
+  // COMPLEX 4 — card underwriting with alternative qualification paths.
+  makeRule({
+    id: "RL-504",
+    name: "Platinum Card Underwriting Gate",
+    domain: "CreditCards",
+    category: "Underwriting",
+    priority: 2,
+    status: "Active",
+    description:
+      "Approves Platinum card requests for clean-repayment applicants 25+ holding ≤ 4 cards who either earn ₹18L+ annually or are Premium-segment with utilization ≤ 30%; sizes the limit at annual income ÷ 4. All other Platinum requests route to manual underwriting.",
+    owner: "Product Strategy Team",
+    rootGroup: group("AND", [
+      cond("card_type_requested", "=", "Platinum"),
+      cond("applicant_age", ">=", "25"),
+      cond("late_payment_history", "=", "false"),
+      cond("existing_cards_count", "<=", "4"),
+      group("OR", [
+        cond("annual_income", ">=", "1800000"),
+        group("AND", [
+          cond("segment", "=", "Premium"),
+          cond("credit_utilization_ratio", "<=", "30"),
+        ]),
+      ]),
+    ]),
+    actions: [
+      { id: cid(), type: "Approve", reasonCode: "CARD_APPROVED", message: "Platinum underwriting criteria satisfied." },
+      { id: cid(), type: "Calculate", outputField: "approved_credit_limit", outputValue: "{{annual_income}} / 4", outputType: "currency" },
+    ],
+    elseActions: [
+      { id: cid(), type: "Flag for Review", reasonCode: "MANUAL_UNDERWRITING", message: "Platinum request outside auto-approval criteria — route to underwriter." },
+    ],
+    createdDaysAgo: 5,
+    updatedDaysAgo: 1,
+  }),
+
+  // COMPLEX 5 — collateral clearance with disbursal calculation.
+  makeRule({
+    id: "RL-505",
+    name: "Gold Collateral LTV Clearance",
+    domain: "NBFC",
+    category: "Collateral",
+    priority: 2,
+    status: "Active",
+    description:
+      "Clears gold collateral of 75%+ purity appraised at ₹25,000+ when the requested LTV stays within the 75% regulatory cap, and computes the maximum disbursal from appraised value × LTV.",
+    owner: "Asset Management Group",
+    rootGroup: group("AND", [
+      cond("collateral_type", "=", "Gold"),
+      cond("purity_grade", ">=", "75"),
+      cond("appraised_value", ">=", "25000"),
+      cond("ltv_requested", "<=", "75"),
+    ]),
+    actions: [
+      { id: cid(), type: "Approve", reasonCode: "COLLATERAL_CLEARED", message: "Collateral satisfies purity, value, and LTV policy." },
+      { id: cid(), type: "Calculate", outputField: "max_disbursal_amount", outputValue: "{{appraised_value}} * {{ltv_requested}} / 100", outputType: "currency" },
+    ],
+    elseActions: [
+      { id: cid(), type: "Flag for Review", reasonCode: "COLLATERAL_REVIEW", message: "Collateral outside standard policy — branch valuation review required." },
+    ],
+    createdDaysAgo: 4,
+    updatedDaysAgo: 1,
+  }),
+
+  // SIMPLE 1 — field assignment on verification state.
+  makeRule({
+    id: "RL-506",
+    name: "KYC Completion Status",
+    domain: "Wealth",
+    category: "Compliance",
+    priority: 3,
+    status: "Active",
+    description: "Marks KYC as Completed once verification is confirmed; otherwise routes the applicant to the KYC pending queue.",
+    owner: "Compliance Office",
+    rootGroup: group("AND", [cond("kyc_verified", "=", "true")]),
+    actions: [
+      { id: cid(), type: "Assign Value", outputField: "kyc_status", outputValue: "Completed", outputType: "string" },
+    ],
+    elseActions: [
+      { id: cid(), type: "Flag for Review", reasonCode: "KYC_PENDING", message: "KYC verification incomplete — documents required before onboarding." },
+    ],
+    createdDaysAgo: 4,
+    updatedDaysAgo: 1,
+  }),
+
+  // SIMPLE 2 — hard regulatory gate.
+  makeRule({
+    id: "RL-507",
+    name: "Minor Applicant Rejection",
+    domain: "Lending",
+    category: "Compliance",
+    priority: 1,
+    status: "Active",
+    description: "Rejects any application where the applicant is under 18 — minors cannot contract for credit.",
+    owner: "Compliance Office",
+    rootGroup: group("AND", [cond("applicant_age", "<", "18")]),
+    actions: [
+      { id: cid(), type: "Reject", reasonCode: "MINOR_APPLICANT", message: "Applicant is a minor — credit cannot be extended under 18." },
+    ],
+    createdDaysAgo: 4,
+    updatedDaysAgo: 1,
+  }),
+
+  // SIMPLE 3 — segment-based fee assignment.
+  makeRule({
+    id: "RL-508",
+    name: "Premium Segment Fee Waiver",
+    domain: "Lending",
+    category: "Pricing",
+    priority: 3,
+    status: "Active",
+    description: "Waives the processing fee for Premium-segment customers; standard applicants pay the published ₹1,999 fee.",
+    owner: "Product Strategy Team",
+    rootGroup: group("AND", [cond("segment", "=", "Premium")]),
+    actions: [
+      { id: cid(), type: "Assign Value", outputField: "processing_fee", outputValue: "0", outputType: "currency" },
+    ],
+    elseActions: [
+      { id: cid(), type: "Assign Value", outputField: "processing_fee", outputValue: "1999", outputType: "currency" },
+    ],
+    createdDaysAgo: 4,
+    updatedDaysAgo: 1,
+  }),
 ];
 
 // ============================================================
@@ -1051,6 +1280,7 @@ export const DEFAULT_PRODUCTS: Product[] = [
   { id: "prod-credit-card", name: "Rewards Credit Card", code: "REWARDS_CARD", domain: "CreditCards", description: "Unsecured revolving credit card with tiered rewards.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
   { id: "prod-wealth-plan", name: "Managed Portfolio Plan", code: "WEALTH_PLAN", domain: "Wealth", description: "Advisor-managed investment portfolio onboarding.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
   { id: "prod-home-loan-demo", name: "Home Loan — Demo", code: "HOME_LOAN_DEMO", domain: "Lending", description: "4-rule chained showcase: IF, WHERE, CASE, GROUP rule types executed in Product Master sequence.", status: "Active", publishStatus: "Published", lastPublishedAt: PRODUCT_SEED_TIMESTAMP, createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
+  { id: "prod-personal-loan", name: "Personal Loan", code: "PERSONAL_LOAN", domain: "Lending", description: "Unsecured personal loan with chained risk-scoring and limit sizing.", status: "Active", publishStatus: "Draft", createdAt: PRODUCT_SEED_TIMESTAMP, updatedAt: PRODUCT_SEED_TIMESTAMP },
 ];
 
 function mapping(id: string, productId: string, ruleId: string, order: number): ProductRuleMapping {
@@ -1096,6 +1326,12 @@ export const DEFAULT_PRODUCT_RULE_MAPPINGS: ProductRuleMapping[] = [
   mapping("prm-hld-2", "prod-home-loan-demo", "RL-115", 1),
   mapping("prm-hld-3", "prod-home-loan-demo", "RL-116", 2),
   mapping("prm-hld-4", "prod-home-loan-demo", "RL-117", 3),
+  // Personal Loan — sequenced to demonstrate chaining: the minor gate rejects
+  // first, RL-501 produces risk_score, RL-502 consumes it, RL-508 prices fees.
+  mapping("prm-pl-minor-gate", "prod-personal-loan", "RL-507", 0),
+  mapping("prm-pl-risk-grade", "prod-personal-loan", "RL-501", 1),
+  mapping("prm-pl-eligibility", "prod-personal-loan", "RL-502", 2),
+  mapping("prm-pl-fee-waiver", "prod-personal-loan", "RL-508", 3),
 ];
 
 // Moved from the store's initial state (was previously inlined there) so

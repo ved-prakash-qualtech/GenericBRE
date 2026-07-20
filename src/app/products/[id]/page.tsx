@@ -170,24 +170,33 @@ export default function ProductWorkspacePage() {
             </Button>
           )}
         </div>
-        <Stepper
-          steps={WORKSPACE_STEPS}
-          currentStepId={activeTab === "history" ? "simulate" : activeTab}
-          completedStepIds={completedStepIds}
-          onStepClick={(id) => setActiveTab(id === "publish" ? "overview" : id)}
-        />
+        {/* Scroll the journey stepper on narrow screens (its 7 steps don't fit
+            under ~500px); restores the full-width flex spread at sm and up. */}
+        <div className="overflow-x-auto">
+          <Stepper
+            steps={WORKSPACE_STEPS}
+            currentStepId={activeTab === "history" ? "simulate" : activeTab}
+            completedStepIds={completedStepIds}
+            onStepClick={(id) => setActiveTab(id === "publish" ? "overview" : id)}
+            className="min-w-[520px] sm:min-w-0"
+          />
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as string)} className="flex min-h-0 flex-1 flex-col gap-0">
-        <TabsList className="mx-5 mt-3 w-fit sm:mx-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="mapped-rules">Mapped Rules</TabsTrigger>
-          <TabsTrigger value="sequence">Rule Sequence</TabsTrigger>
-          <TabsTrigger value="sample-json">Sample JSON</TabsTrigger>
-          <TabsTrigger value="simulate">Run Simulator</TabsTrigger>
-          <TabsTrigger value="history">Simulation History</TabsTrigger>
-          <TabsTrigger value="api">API Information</TabsTrigger>
-        </TabsList>
+        {/* Horizontal-scroll wrapper so the 7-tab bar stays fully reachable on
+            narrow screens instead of clipping off the right edge. */}
+        <div className="mx-5 mt-3 overflow-x-auto sm:mx-6">
+          <TabsList className="w-fit">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="mapped-rules">Mapped Rules</TabsTrigger>
+            <TabsTrigger value="sequence">Rule Sequence</TabsTrigger>
+            <TabsTrigger value="sample-json">Sample JSON</TabsTrigger>
+            <TabsTrigger value="simulate">Run Simulator</TabsTrigger>
+            <TabsTrigger value="history">Simulation History</TabsTrigger>
+            <TabsTrigger value="api">API Information</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="min-h-0 flex-1">
           <ScrollArea className="h-full">

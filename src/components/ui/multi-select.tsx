@@ -60,7 +60,7 @@ export function MultiSelect({ label, options, selected, onChange, className, ali
         )}
       </span>
       {selected.length > 0 ? (
-        <X className="size-3.5 opacity-60 hover:opacity-100" onClick={clear} />
+        <X className="size-3.5 opacity-60 hover:opacity-100 cursor-pointer" onClick={clear} />
       ) : (
         <ChevronDown className="size-3.5 opacity-50" />
       )}

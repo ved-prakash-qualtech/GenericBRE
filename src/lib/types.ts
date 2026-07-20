@@ -63,6 +63,14 @@ export type ActionType =
   | "Flag for Review"
   | "Bracket Lookup";
 
+// How a condition/group joins with the accumulated result of its earlier
+// siblings within its own parent's children array. Never meaningful for the
+// first child in a group (there's nothing before it to join with) — the UI
+// hides it there and the engine ignores it if somehow set. "N.A." excludes
+// the item from the AND/OR fold entirely (still evaluated for trace/preview
+// purposes, just not counted toward the outcome) — see evaluateGroup in engine.ts.
+export type Connector = "AND" | "OR" | "N.A.";
+
 export interface Condition {
   id: string;
   type: "condition";
@@ -71,22 +79,26 @@ export interface Condition {
   value: string;
   value2?: string; // used for "between"
   prefix?: "IF" | "WHERE" | "CASE"; // condition prefix
-  /** How this node combines with the accumulated result of its earlier
-   *  siblings (left-to-right fold). Undefined on the first child of a group
-   *  (nothing precedes it) or on legacy trees predating per-connector
-   *  operators, in which case the parent group's `logic` is the fallback. */
-  connector?: "AND" | "OR";
+  /** How this condition joins its earlier siblings — see `Connector`. Absent
+   *  on every pre-existing rule; falls back to the parent group's `logic`. */
+  connector?: Connector;
 }
 
 export interface ConditionGroup {
   id: string;
   type: "group";
+  /** Legacy uniform AND/OR — kept only as the backward-compatible fallback
+   *  for children with no explicit `connector` (i.e. every rule saved before
+   *  per-child connectors existed). New authoring sets `connector` on each
+   *  child directly instead; this field is no longer surfaced in the UI. */
   logic: "AND" | "OR";
   collapsed?: boolean;
+  /** How this group itself joins its earlier siblings when it's a nested
+   *  child of another group — see `Connector`. Same meaning as
+   *  Condition.connector — lets a nested group have its own relation to the
+   *  sibling before it, independent of its own children's logic. */
+  connector?: Connector;
   children: (Condition | ConditionGroup)[];
-  /** Same meaning as Condition.connector — lets a nested group have its own
-   *  relation to the sibling before it, independent of its own children's logic. */
-  connector?: "AND" | "OR";
 }
 
 /** One range in a "Bracket Lookup" action — e.g. credit score 750-799 → 8.75. */

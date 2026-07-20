@@ -15,8 +15,17 @@ export function getMappedRules(
   const relevant = mappings.filter((m) => m.productId === productId && m.active);
   const orderByRuleId = new Map(relevant.map((m) => [m.ruleId, m.order]));
   const ruleIds = new Set(relevant.map((m) => m.ruleId));
+  // Dedupe by rule id — persisted stores can accumulate a duplicate rule
+  // object with the same id (e.g. from an older import/migration), and without
+  // this guard the same rule would render twice (duplicate React key) and be
+  // evaluated twice by the engine. Keep the first occurrence only.
+  const seen = new Set<string>();
   return allRules
-    .filter((r) => ruleIds.has(r.id))
+    .filter((r) => {
+      if (!ruleIds.has(r.id) || seen.has(r.id)) return false;
+      seen.add(r.id);
+      return true;
+    })
     .sort((a, b) => {
       const oa = orderByRuleId.get(a.id);
       const ob = orderByRuleId.get(b.id);

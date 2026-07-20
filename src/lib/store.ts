@@ -319,7 +319,22 @@ interface AppState {
   setSidebarCollapsed: (collapsed: boolean) => void;
 }
 
-let ruleIdSeq = 900;
+// Collision-safe rule id: derive from the live rule set (max numeric id + 1)
+// rather than a module counter, which resets to a fixed value on every reload
+// and would re-mint ids that already exist in the persisted store — the root
+// cause of duplicate rule ids (e.g. two RL-901s after cloning across sessions).
+function nextRuleIdFor(rules: BusinessRule[]): string {
+  const existing = new Set(rules.map((r) => r.id));
+  const nums = rules.map((r) => parseInt(r.id.replace(/\D/g, ""), 10)).filter((n) => !Number.isNaN(n));
+  let n = (nums.length ? Math.max(...nums) : 900) + 1;
+  let id = `RL-${n}`;
+  while (existing.has(id)) {
+    n += 1;
+    id = `RL-${n}`;
+  }
+  return id;
+}
+
 let matrixRowSeq = 900;
 
 export const useAppStore = create<AppState>()(
@@ -841,6 +856,12 @@ export const useAppStore = create<AppState>()(
         if (!hasCapability(roles, currentUser.role, "rule.create")) {
           return { ok: false, reason: `${currentUser.name} doesn't have permission to create rules.` };
         }
+        // Guard against a duplicate id entering the store — without this the
+        // rules array can hold two rules with the same id, which breaks React
+        // keys and double-evaluates the rule in the engine (see getMappedRules).
+        if (get().rules.some((r) => r.id === rule.id)) {
+          return { ok: false, reason: `A rule with id ${rule.id} already exists.` };
+        }
         set((s) => ({
           rules: [rule, ...s.rules],
           ruleVersions: [snapshotFromRule(rule, currentUser.name, "created"), ...s.ruleVersions],
@@ -934,8 +955,7 @@ export const useAppStore = create<AppState>()(
           return { ok: false, reason: `${currentUser.name} doesn't have permission to create rules.` };
         }
 
-        ruleIdSeq += 1;
-        const newId = `RL-${ruleIdSeq}`;
+        const newId = nextRuleIdFor(get().rules);
         const clone: BusinessRule = {
           ...source,
           id: newId,
@@ -1129,9 +1149,37 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 31,
+      version: 32,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v31 -> v32 added the enterprise demo rule pack (RL-501…RL-508: nested
+        // AND/OR groups, calculated variables, RL-501→RL-502 chaining), the
+        // Personal Loan product, and its sequenced mappings.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.rules) {
+            const existingIds = new Set(s.rules.map((r) => r.id));
+            for (const id of ["RL-501", "RL-502", "RL-503", "RL-504", "RL-505", "RL-506", "RL-507", "RL-508"]) {
+              if (!existingIds.has(id)) {
+                const rule = ALL_RULES.find((r) => r.id === id);
+                if (rule) s.rules.push(rule);
+              }
+            }
+          }
+          if (s?.products && !s.products.some((p) => p.id === "prod-personal-loan")) {
+            const product = DEFAULT_PRODUCTS.find((p) => p.id === "prod-personal-loan");
+            if (product) s.products.push(product);
+          }
+          if (s?.productRuleMappings) {
+            const existingPairs = new Set(s.productRuleMappings.map((m) => `${m.productId}:${m.ruleId}`));
+            for (const mappingDef of DEFAULT_PRODUCT_RULE_MAPPINGS.filter((m) => m.productId === "prod-personal-loan")) {
+              if (!existingPairs.has(`${mappingDef.productId}:${mappingDef.ruleId}`)) {
+                s.productRuleMappings.push(mappingDef);
+              }
+            }
+          }
+        }
+
         // v30 -> v31 added RL-113 demo rule (Composite Personal Loan Risk Gate) and its mapping
         {
           const s = persistedState as Partial<AppState>;

@@ -5,7 +5,7 @@ import { ListChecks, Variable } from "lucide-react";
 import { BusinessField, BusinessRule } from "@/lib/types";
 import { collectFieldKeys } from "@/lib/condition-tree";
 import { getField } from "@/lib/fields";
-import { groupToText, actionsToText } from "./rule-summary";
+import { groupToText, actionsToText, getRulePrefix } from "./rule-summary";
 import { Badge } from "@/components/ui/badge";
 
 // A structured breakdown (Input Fields → Conditions → Actions → Generated
@@ -48,7 +48,7 @@ export function RulePreviewPanel({
         </PreviewSection>
 
         <PreviewSection label="Conditions">
-          <p className="text-xs leading-relaxed text-foreground/80">IF {groupToText(rule.rootGroup, fieldCatalog)}</p>
+          <p className="text-xs leading-relaxed text-foreground/80">{getRulePrefix(rule.rootGroup)} {groupToText(rule.rootGroup, fieldCatalog)}</p>
         </PreviewSection>
 
         <PreviewSection label="Actions">

@@ -168,7 +168,7 @@ export function ExecutionLogsPanel() {
     return auditLog
       .filter((a) => OPERATIONAL_ACTIONS.has(a.action))
       .filter((a) => !domainFilter.length || !isRuleEvent(a.entityId) || scopedRuleIds.has(a.entityId))
-      .slice(0, 10);
+      .slice(0, 5);
   }, [auditLog, allRules, domainFilter, scopedRuleIds]);
 
   return (

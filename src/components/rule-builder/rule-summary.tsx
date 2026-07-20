@@ -2,6 +2,7 @@
 
 import { BusinessField, BusinessRule, ConditionGroup, RuleAction } from "@/lib/types";
 import { getField } from "@/lib/fields";
+import { effectiveConnector } from "@/lib/condition-tree";
 import { useAppStore } from "@/lib/store";
 import { Sparkles } from "lucide-react";
 
@@ -33,7 +34,11 @@ export function groupToText(group: ConditionGroup, catalog: BusinessField[]): st
               return `${field} ${operatorText(c.operator)} ${val}`;
             })()
           : `(${groupToText(c, catalog)})`;
-      return i === 0 ? text : `${c.connector ?? group.logic} ${text}`;
+      if (i === 0) return text;
+      // Per-child connector — falls back to the legacy uniform `group.logic`
+      // for any child saved before this existed, so old rules read unchanged.
+      const connector = effectiveConnector(group, i);
+      return connector === "N.A." ? `[excluded] ${text}` : `${connector} ${text}`;
     })
     .join(" ");
 }
@@ -49,6 +54,18 @@ export function actionsToText(actions: RuleAction[]): string {
     .join("; ");
 }
 
+export function getRulePrefix(group: ConditionGroup): "IF" | "WHERE" | "CASE" {
+  if (group.children.length > 0) {
+    const first = group.children[0];
+    if (first.type === "condition" && first.prefix) {
+      return first.prefix;
+    } else if (first.type === "group") {
+      return getRulePrefix(first);
+    }
+  }
+  return "IF";
+}
+
 export function RuleSummary({
   rule,
 }: {
@@ -56,6 +73,7 @@ export function RuleSummary({
 }) {
   const fieldCatalog = useAppStore((s) => s.fieldCatalog);
   const conditionText = groupToText(rule.rootGroup, fieldCatalog);
+  const prefix = getRulePrefix(rule.rootGroup);
   return (
     <div className="rounded-xl border bg-gradient-to-br from-primary/5 to-transparent p-4">
       <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-primary">
@@ -63,7 +81,7 @@ export function RuleSummary({
       </div>
       <p className="text-[13px] leading-relaxed">
         <span className="font-semibold">{rule.name || "This rule"}</span> (Priority {rule.priority}, {rule.status}) —{" "}
-        <span className="font-medium text-primary">IF</span> {conditionText}{" "}
+        <span className="font-medium text-primary">{prefix}</span> {conditionText}{" "}
         {rule.actions.length > 0 && (
           <>
             <span className="font-medium text-primary">THEN</span> {actionsToText(rule.actions)}

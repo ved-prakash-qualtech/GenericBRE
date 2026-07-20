@@ -1,5 +1,6 @@
 import { getField } from "./fields";
 import { evaluateExpression, ExpressionResult } from "./expression";
+import { effectiveConnector } from "./condition-tree";
 import {
   BusinessField,
   BusinessRule,
@@ -92,6 +93,13 @@ export interface ConditionEvalDetail {
   passed: boolean;
 }
 
+// Each child joins the accumulated result of its earlier siblings via its own
+// `effectiveConnector` (per-child AND/OR/N.A, falling back to the group's
+// legacy `logic` when unset) — a strict left-to-right fold, no AND-before-OR
+// precedence. N.A. children are still evaluated (so their trace/preview
+// details are accurate) but excluded from the fold entirely. When every
+// child in a group shares one connector (every rule saved before per-child
+// connectors existed), this reduces to exactly the old every()/some() result.
 export function evaluateGroup(
   group: ConditionGroup,
   input: InputMap,
@@ -99,22 +107,17 @@ export function evaluateGroup(
   catalog: BusinessField[] = []
 ): boolean {
   if (group.children.length === 0) return true;
-  const results = group.children.map((child) => {
-    if (child.type === "condition") {
-      return evaluateConditionLeaf(child, input, details, catalog);
-    }
-    return evaluateGroup(child, input, details, catalog);
+  let acc: boolean | null = null;
+  group.children.forEach((child, i) => {
+    const value =
+      child.type === "condition"
+        ? evaluateConditionLeaf(child, input, details, catalog)
+        : evaluateGroup(child, input, details, catalog);
+    const connector = effectiveConnector(group, i);
+    if (connector === "N.A.") return;
+    acc = acc === null ? value : connector === "OR" ? acc || value : acc && value;
   });
-  // Left-to-right fold using each child's own connector to the sibling
-  // before it (falls back to the group's logic for legacy trees predating
-  // per-connector operators) — this is what lets a group mix AND and OR,
-  // e.g. A AND B OR C, instead of forcing one operator for the whole group.
-  let acc = results[0];
-  for (let i = 1; i < group.children.length; i++) {
-    const op = group.children[i].connector ?? group.logic;
-    acc = op === "AND" ? acc && results[i] : acc || results[i];
-  }
-  return acc;
+  return acc ?? true;
 }
 
 function evaluateConditionLeaf(

@@ -147,7 +147,7 @@ export default function DashboardPage() {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2.5 sm:px-5">
         <div className="mx-auto max-w-350">
           {showInsights && (pendingReview > 0 || criticalDrafts > 0) && (
-            <div className="mb-2.5 flex items-center gap-2.5 rounded-xl border bg-accent px-3.5 py-1.5 text-xs text-accent-foreground">
+            <div className="mb-4 flex items-center gap-2.5 rounded-xl border bg-accent px-3.5 py-1.5 text-xs text-accent-foreground">
               <Sparkles className="size-4 shrink-0 text-primary" />
               <p>
                 <span className="font-semibold">Smart Insight:</span>{" "}
@@ -161,11 +161,11 @@ export default function DashboardPage() {
               </p>
             </div>
           )}
-          <div className="mb-2.5">
+          <div className="mb-4">
             <KpiCards />
           </div>
-          <div className="mb-2.5">
-            <div className="mb-1.5 flex items-center justify-between">
+          <div className="mb-4">
+            <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Products</p>
               <button
                 onClick={() => router.push("/products")}
@@ -182,9 +182,11 @@ export default function DashboardPage() {
               simulations={simulations}
               onConfigure={(p) => router.push(`/products/${p.id}`)}
               onRunSimulation={(p) => router.push(`/products/${p.id}?tab=simulate`)}
+              compact
+              limit={4}
             />
           </div>
-          <div className="grid grid-cols-1 items-start gap-2.5 md:grid-cols-2 xl:grid-cols-6">
+          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-6">
             {visibleWidgets.map((w) => {
               const render = WIDGET_RENDERERS[w.id];
               if (!render) return null;
@@ -193,7 +195,7 @@ export default function DashboardPage() {
                   key={w.id}
                   onDragOver={(e) => editMode && e.preventDefault()}
                   onDrop={() => editMode && handleGridDrop(w.id)}
-                  className={`flex h-60 select-none flex-col gap-1.5 ${WIDGET_SIZE_SPAN[w.size]} ${
+                  className={`flex h-70 select-none flex-col gap-1.5 ${WIDGET_SIZE_SPAN[w.size]} ${
                     editMode ? "rounded-xl outline-dashed outline-2 outline-primary/30" : ""
                   }`}
                 >
