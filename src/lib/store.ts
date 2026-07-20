@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 import {
   ALL_RULES,
   AUDIT_LOG,
+  DEFAULT_APPROVAL_REQUESTS,
   DEFAULT_NOTIFY_CATEGORIES,
   DEFAULT_NOTIFY_TRIGGERS,
   DEFAULT_NOTIFY_WORKFLOWS,
@@ -15,6 +16,7 @@ import {
   DEFAULT_ROLES,
   DEFAULT_RULE_GROUPS,
   DEFAULT_RULE_TEMPLATES,
+  DEFAULT_SIMULATIONS,
   DEFAULT_USERS,
   MATRICES,
 } from "./mock-data";
@@ -343,7 +345,7 @@ export const useAppStore = create<AppState>()(
       rules: ALL_RULES,
       matrices: MATRICES,
       auditLog: AUDIT_LOG,
-      simulations: [],
+      simulations: DEFAULT_SIMULATIONS,
       appearance: DEFAULT_APPEARANCE,
       dashboardLayouts: {},
       currentUser: DEFAULT_USER,
@@ -763,7 +765,7 @@ export const useAppStore = create<AppState>()(
         get().logAudit({ user: currentUser.name, action: "Deleted Rule Template", entity: "RuleTemplate", entityId: id, details: `Rule template "${id}" removed.` });
       },
 
-      approvalRequests: [],
+      approvalRequests: DEFAULT_APPROVAL_REQUESTS,
       submitForReview: (ruleId) => {
         const rule = get().rules.find((r) => r.id === ruleId);
         if (!rule) return { ok: false, reason: "Rule not found." };
@@ -1149,9 +1151,94 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 32,
+      version: 37,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v36 -> v37 added 5 rejected-outcome demo simulations (SIM-DEMO-1…5)
+        // so the "Failed Simulations" KPI (Underwriter/Operations dashboards)
+        // and Product Workspace's Simulation History tab show real data
+        // instead of empty. Each reuses a real ACTIVE reject rule with a
+        // full, faithful evaluation trace — see DEFAULT_SIMULATIONS.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.simulations) {
+            const existingIds = new Set(s.simulations.map((sim) => sim.id));
+            for (const sim of DEFAULT_SIMULATIONS) {
+              if (!existingIds.has(sim.id)) s.simulations.push(sim);
+            }
+          }
+        }
+
+        // v35 -> v36 added the maker-checker demo pack (RL-509…RL-513, each
+        // status "Testing" with a matching Pending Review approval request)
+        // so "Rules Awaiting Review" / "Pending Review" / "Approval Queue"
+        // show real demo data instead of an empty state. Not mapped to any
+        // product, so no live simulator outcome changes. Audit log entries
+        // are seed-only (not retro-migrated here, since splicing into an
+        // already-persisted hash-chained auditLog would require rehashing
+        // the whole chain — out of scope for this fix).
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.rules) {
+            const existingIds = new Set(s.rules.map((r) => r.id));
+            for (const id of ["RL-509", "RL-510", "RL-511", "RL-512", "RL-513"]) {
+              if (!existingIds.has(id)) {
+                const rule = ALL_RULES.find((r) => r.id === id);
+                if (rule) s.rules.push(rule);
+              }
+            }
+          }
+          if (s?.approvalRequests) {
+            const existingIds = new Set(s.approvalRequests.map((a) => a.id));
+            for (const ar of DEFAULT_APPROVAL_REQUESTS) {
+              if (!existingIds.has(ar.id)) s.approvalRequests.push(ar);
+            }
+          }
+        }
+
+        // v34 -> v35 removed the "demo-scenarios" widget from the
+        // Underwriter role's default widget set too — same reasoning as the
+        // Business Analyst removal in v33->v34 below.
+        {
+          const s = persistedState as Partial<AppState>;
+          const uwConfig = s?.dashboardConfigs?.underwriter;
+          if (uwConfig?.widgets) {
+            uwConfig.widgets = uwConfig.widgets.filter((w) => w.id !== "demo-scenarios");
+          }
+        }
+
+        // v33 -> v34 removed the "demo-scenarios" widget (industry-level
+        // canned simulator presets — demo/sales content, not a BA workflow
+        // tool, and redundant with the "Run Simulator" quick action already
+        // on that dashboard) from the Business Analyst role's default
+        // widget set. Only touches that one widget entry, not the rest of
+        // any admin customization to this role's layout.
+        {
+          const s = persistedState as Partial<AppState>;
+          const baConfig = s?.dashboardConfigs?.["business-analyst"];
+          if (baConfig?.widgets) {
+            baConfig.widgets = baConfig.widgets.filter((w) => w.id !== "demo-scenarios");
+          }
+        }
+
+        // v32 -> v33 standardized every role's dashboard KPI count to exactly
+        // 6 (previously 4-5, inconsistent per role) so the KPI grid always
+        // divides evenly at every breakpoint with no trailing dead space —
+        // overwrite each role's `kpis` list with the new default even if the
+        // role's dashboardConfigs entry already exists, since the count
+        // itself (not a user customization) was the bug.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.dashboardConfigs) {
+            for (const [roleId, config] of Object.entries(s.dashboardConfigs)) {
+              const defaults = DEFAULT_DASHBOARD_CONFIGS[roleId];
+              if (defaults && config.kpis?.length !== 6) {
+                config.kpis = defaults.kpis;
+              }
+            }
+          }
+        }
+
         // v31 -> v32 added the enterprise demo rule pack (RL-501…RL-508: nested
         // AND/OR groups, calculated variables, RL-501→RL-502 chaining), the
         // Personal Loan product, and its sequenced mappings.

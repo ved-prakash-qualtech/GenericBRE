@@ -612,12 +612,41 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                 </div>
 
                 {/* Dashboard Preview */}
-                {(previewTab === "dashboard" || activeTab !== "branding") && (
-                  <div className="flex overflow-hidden rounded-2xl border shadow-xl">
+                {(() => {
+                  // Background wallpaper preview — mirrors the real
+                  // .bg-scoped-layer / .app-wallpaper-layer CSS (globals.css)
+                  // so the BG tab's image/opacity/blur/brightness/dim settings
+                  // are actually visible here. applyAppearance(draft) already
+                  // updates these --app-wallpaper* vars live (see the effect
+                  // above); this mockup previously never rendered anything
+                  // that reads them, so BG changes had no visible preview.
+                  const wallpaperLayer = draft.background.imageData && (
+                    <>
+                      <div
+                        className="pointer-events-none absolute inset-0"
+                        style={{
+                          zIndex: -1,
+                          backgroundImage: "var(--app-wallpaper)",
+                          backgroundSize: "var(--app-wallpaper-size)",
+                          backgroundPosition: "center",
+                          filter: "blur(var(--app-wallpaper-blur, 0px)) brightness(var(--app-wallpaper-brightness, 100%))",
+                          opacity: "var(--app-wallpaper-opacity, 0)",
+                        }}
+                      />
+                      <div
+                        className="pointer-events-none absolute inset-0 bg-black"
+                        style={{ zIndex: -1, opacity: "var(--app-wallpaper-dim, 0)" }}
+                      />
+                    </>
+                  );
+                  return (previewTab === "dashboard" || activeTab !== "branding") && (
+                  <div className="relative isolate flex overflow-hidden rounded-2xl border shadow-xl">
+                  {draft.background.target === "app" && wallpaperLayer}
                   <div
-                    className="flex w-14 shrink-0 flex-col items-center gap-3 py-4"
+                    className="relative isolate flex w-14 shrink-0 flex-col items-center gap-3 py-4"
                     style={{ background: "var(--sidebar)" }}
                   >
+                    {draft.background.target === "sidebar" && wallpaperLayer}
                     <div
                       className="flex size-8 items-center justify-center overflow-hidden rounded-lg"
                       style={{ background: "var(--sidebar-primary)", color: "var(--sidebar-primary-foreground)" }}
@@ -643,7 +672,8 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                     ))}
                   </div>
 
-                  <div className="flex-1 p-4" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+                  <div className="relative isolate flex-1 p-4" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+                    {draft.background.target === "dashboard" && wallpaperLayer}
                     <div className="mb-3 flex items-center gap-2">
                       {draft.logo && (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -739,7 +769,8 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                     </div>
                   </div>
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* Sign-in Page Preview - Split Layout (Branding Tab Only) */}
                 {previewTab === "signin" && activeTab === "branding" && (

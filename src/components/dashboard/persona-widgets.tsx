@@ -42,7 +42,6 @@ export function DraftRulesPanel() {
                 <p className="truncate text-[13px] font-medium">{r.name}</p>
                 <p className="text-[11px] text-muted-foreground">{r.id} · {r.category}</p>
               </div>
-              <span className="shrink-0 text-[10.5px] text-muted-foreground">P{r.priority}</span>
             </button>
           ))}
           {drafts.length === 0 && <EmptyRow>No rules currently in Draft.</EmptyRow>}

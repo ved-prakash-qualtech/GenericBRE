@@ -27,7 +27,9 @@ interface Kpi {
   suffix?: string;
 }
 
-export const DEFAULT_KPI_IDS = ["total-rules", "active-rules", "draft-rules", "rule-executions", "business-categories"];
+// Exactly 6 — matches every role's dashboardConfigs.kpis length, so the grid
+// below always fills completely at every breakpoint with no trailing gap.
+export const DEFAULT_KPI_IDS = ["total-rules", "active-rules", "draft-rules", "rule-executions", "business-categories", "deployments"];
 
 export const KPI_LABELS: Record<string, string> = {
   "total-rules": "Total Rules",
@@ -148,7 +150,7 @@ export function KpiCards() {
   const kpis = ids.map((id) => registry[id]).filter((k): k is Kpi => !!k);
 
   return (
-    <div className="grid grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+    <div className="grid grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 lg:grid-cols-6">
       {kpis.map((k, i) => (
         <motion.button
           key={k.label}

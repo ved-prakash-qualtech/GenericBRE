@@ -1,5 +1,6 @@
 import {
   AppUser,
+  ApprovalRequest,
   AuditEntry,
   BusinessRule,
   Condition,
@@ -19,6 +20,7 @@ import {
   RuleGroup,
   RuleStatus,
   RuleTemplate,
+  SimulationResult,
 } from "./types";
 import { DEFAULT_RULE_CATEGORIES, DEFAULT_OWNERS } from "./fields";
 import { buildHashChain } from "./audit-chain";
@@ -1096,6 +1098,110 @@ export const CORE_RULES: BusinessRule[] = [
     createdDaysAgo: 4,
     updatedDaysAgo: 1,
   }),
+
+  // ============================================================
+  // MAKER-CHECKER DEMO PACK (RL-509…RL-513) — status: "Testing", each paired
+  // with a matching entry in DEFAULT_APPROVAL_REQUESTS (stage "Pending
+  // Review") below, exactly mirroring what store.ts's submitForReview()
+  // produces for a real submission. Not mapped to any product, so they
+  // don't affect any live simulator outcome — purely to give "Rules
+  // Awaiting Review" / "Pending Review" / "Approval Queue" real demo data
+  // instead of the empty state.
+  // ============================================================
+  makeRule({
+    id: "RL-509",
+    name: "Self-Employed Income Stability Check",
+    domain: "Lending",
+    category: "Eligibility",
+    priority: 2,
+    status: "Testing",
+    description: "Approves self-employed applicants directly once their income clears an enhanced stability threshold; others route to manual review.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [
+      cond("employment_type", "=", "Self-Employed"),
+      cond("monthly_income", ">=", "60000"),
+    ]),
+    actions: [
+      { id: cid(), type: "Approve", reasonCode: "ELIGIBLE_STABLE_INCOME", message: "Self-employed applicant demonstrates stable income above the enhanced threshold." },
+    ],
+    elseActions: [
+      { id: cid(), type: "Flag for Review", reasonCode: "SELF_EMPLOYED_INCOME_REVIEW", message: "Self-employed applicant income below the enhanced stability threshold — manual review required." },
+    ],
+    createdDaysAgo: 2,
+    updatedDaysAgo: 2,
+  }),
+  makeRule({
+    id: "RL-510",
+    name: "Elevated BMI Risk Loading",
+    domain: "Insurance",
+    category: "Risk & Fraud",
+    priority: 3,
+    status: "Testing",
+    description: "Flags applicants with an elevated BMI for underwriter review and proposes a risk-loading percentage on the base premium.",
+    owner: "Actuarial Underwriting",
+    rootGroup: group("AND", [cond("bmi", ">=", "30")]),
+    actions: [
+      { id: cid(), type: "Assign Value", outputField: "risk_loading_percent", outputValue: "15", outputType: "number" },
+      { id: cid(), type: "Flag for Review", reasonCode: "ELEVATED_BMI_REVIEW", message: "BMI indicates elevated health risk — underwriter review required before final premium." },
+    ],
+    createdDaysAgo: 1,
+    updatedDaysAgo: 1,
+  }),
+  makeRule({
+    id: "RL-511",
+    name: "Vehicle Collateral Minimum Valuation",
+    domain: "NBFC",
+    category: "Collateral",
+    priority: 2,
+    status: "Testing",
+    description: "Declines vehicle-backed collateral whose appraised value falls below the minimum acceptable threshold for this scheme.",
+    owner: "Asset Management Group",
+    rootGroup: group("AND", [
+      cond("collateral_type", "=", "Vehicle"),
+      cond("appraised_value", "<", "100000"),
+    ]),
+    actions: [
+      { id: cid(), type: "Reject", reasonCode: "COLLATERAL_BELOW_MIN", message: "Vehicle collateral appraised value is below the minimum acceptable threshold." },
+    ],
+    createdDaysAgo: 3,
+    updatedDaysAgo: 3,
+  }),
+  makeRule({
+    id: "RL-512",
+    name: "Festive Season Rate Discount",
+    domain: "Lending",
+    category: "Pricing",
+    priority: 4,
+    status: "Testing",
+    description: "Applies a promotional interest rate to Personal Loan applications during the festive campaign window.",
+    owner: "Product Strategy Team",
+    rootGroup: group("AND", [cond("loan_type", "=", "Personal Loan")]),
+    actions: [
+      { id: cid(), type: "Assign Value", outputField: "interest_rate", outputValue: "9.5", outputType: "number" },
+      { id: cid(), type: "Show Message", message: "Festive season promotional rate applied." },
+    ],
+    createdDaysAgo: 0.2,
+    updatedDaysAgo: 0.2,
+  }),
+  makeRule({
+    id: "RL-513",
+    name: "Platinum Card Utilization Alert",
+    domain: "CreditCards",
+    category: "Risk & Fraud",
+    priority: 3,
+    status: "Testing",
+    description: "Flags Platinum cardholders whose credit utilization exceeds 80% for risk review ahead of their next limit renewal.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [
+      cond("card_type_requested", "=", "Platinum"),
+      cond("credit_utilization_ratio", ">=", "80"),
+    ]),
+    actions: [
+      { id: cid(), type: "Flag for Review", reasonCode: "HIGH_UTILIZATION_ALERT", message: "Platinum cardholder utilization exceeds 80% — risk review required before limit renewal." },
+    ],
+    createdDaysAgo: 4,
+    updatedDaysAgo: 4,
+  }),
 ];
 
 // ============================================================
@@ -1230,14 +1336,170 @@ export const MATRICES: DecisionMatrix[] = [
 // ============================================================
 export const AUDIT_LOG: AuditEntry[] = buildHashChain([
   { id: "A1", timestamp: daysAgo(0.05), user: "Jyoti Sonani", action: "Published Rule", entity: "BusinessRule", entityId: "RL-101", details: "Status changed Draft → Active." },
+  { id: "A9", timestamp: daysAgo(0.2), user: "Ananya Verma", action: "Submitted for Review", entity: "BusinessRule", entityId: "RL-512", details: "Festive Season Rate Discount moved to Testing and queued for review." },
   { id: "A2", timestamp: daysAgo(0.3), user: "Naveen Kumar", action: "Edited Matrix", entity: "DecisionMatrix", entityId: "MTX-LEND-01", details: "Updated interest rate for 650–699 band from 12.0% to 11.5%." },
   { id: "A3", timestamp: daysAgo(0.5), user: "Radhe", action: "Ran Simulation", entity: "Simulation", entityId: "SIM-4471", details: "Digital Lending scenario, outcome Approved." },
   { id: "A4", timestamp: daysAgo(1), user: "Saurabh Anand", action: "Cloned Rule", entity: "BusinessRule", entityId: "RL-206", details: "Cloned to RL-2061 as Draft." },
+  { id: "A10", timestamp: daysAgo(1), user: "Ananya Verma", action: "Submitted for Review", entity: "BusinessRule", entityId: "RL-510", details: "Elevated BMI Risk Loading moved to Testing and queued for review." },
   { id: "A5", timestamp: daysAgo(1.4), user: "Shivang Sharma", action: "Save Failed", entity: "BusinessRule", entityId: "RL-303", details: "Validation error: mandatory Value field missing." },
   { id: "A6", timestamp: daysAgo(2), user: "System", action: "Export Delivered", entity: "Report", entityId: "RPT-WEEKLY-14", details: "CSV export delivered to risk-ops@qualtechedge.com." },
+  { id: "A11", timestamp: daysAgo(2), user: "Ananya Verma", action: "Submitted for Review", entity: "BusinessRule", entityId: "RL-509", details: "Self-Employed Income Stability Check moved to Testing and queued for review." },
+  { id: "A12", timestamp: daysAgo(3), user: "Ananya Verma", action: "Submitted for Review", entity: "BusinessRule", entityId: "RL-511", details: "Vehicle Collateral Minimum Valuation moved to Testing and queued for review." },
   { id: "A7", timestamp: daysAgo(4), user: "Ashutosh Vishwakarma", action: "Disabled Rule", entity: "BusinessRule", entityId: "RL-109", details: "Status changed Active → Inactive." },
+  { id: "A13", timestamp: daysAgo(4), user: "Ananya Verma", action: "Submitted for Review", entity: "BusinessRule", entityId: "RL-513", details: "Platinum Card Utilization Alert moved to Testing and queued for review." },
   { id: "A8", timestamp: daysAgo(6), user: "Jyoti Sonani", action: "Created Rule", entity: "BusinessRule", entityId: "RL-108", details: "New Draft rule created in Compliance category." },
 ]);
+
+// Mirrors what store.ts's submitForReview() creates for a real submission —
+// one entry per RL-509…RL-513 above, all still awaiting their assigned
+// reviewer (see DEFAULT_USERS' approvalCategories: Kavita Rao→Eligibility,
+// Arjun Nair→Risk & Fraud/Collateral, Rohan Mehta→Pricing).
+export const DEFAULT_APPROVAL_REQUESTS: ApprovalRequest[] = [
+  { id: "AR-1", ruleId: "RL-509", stage: "Pending Review", requestedBy: "Ananya Verma", requestedAt: daysAgo(2) },
+  { id: "AR-2", ruleId: "RL-510", stage: "Pending Review", requestedBy: "Ananya Verma", requestedAt: daysAgo(1) },
+  { id: "AR-3", ruleId: "RL-511", stage: "Pending Review", requestedBy: "Ananya Verma", requestedAt: daysAgo(3) },
+  { id: "AR-4", ruleId: "RL-512", stage: "Pending Review", requestedBy: "Ananya Verma", requestedAt: daysAgo(0.2) },
+  { id: "AR-5", ruleId: "RL-513", stage: "Pending Review", requestedBy: "Ananya Verma", requestedAt: daysAgo(4) },
+];
+
+// Rejected-outcome simulation history — the "Failed Simulations" KPI
+// (Underwriter/Operations dashboards) and Product Workspace's Simulation
+// History tab both read the store's global `simulations` array, which
+// starts empty until a real user runs one. Each entry below reuses a real
+// ACTIVE reject rule's actual condition/action, with a full evaluation-order
+// trace (rules before the reject shown as genuinely Failed/benign, rules
+// after it Skipped — exactly how runRulesForCase's Reject-halts behavior
+// works), so expanding one in the UI looks byte-for-byte like a real run.
+export const DEFAULT_SIMULATIONS: SimulationResult[] = [
+  {
+    id: "SIM-DEMO-1",
+    domain: "Lending",
+    productId: "prod-home-loan",
+    outcome: "Rejected",
+    reasonCode: "LOW_CREDIT_SCORE",
+    summary: "Credit score below minimum threshold of 650.",
+    calculatedValues: {},
+    triggeredRules: ["RL-101"],
+    decidingRuleId: "RL-101",
+    trace: [
+      {
+        ruleId: "RL-101", ruleName: "Minimum Credit Score Validation", priority: 1, status: "Passed", branch: "then",
+        conditionSummaries: [{ field: "Bureau Credit Score", operator: "<", expected: "650", actual: "590", passed: true }],
+        actionsApplied: [{ id: "sim1-a1", type: "Reject", reasonCode: "LOW_CREDIT_SCORE", message: "Credit score below minimum threshold of 650." }],
+        durationMs: 0.42,
+      },
+      { ruleId: "RL-103", ruleName: "Minimum Age Validation", priority: 1, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+      { ruleId: "RL-104", ruleName: "Debt-to-Income Ratio Cap", priority: 2, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+      { ruleId: "RL-106", ruleName: "Standard Lending Approval", priority: 5, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+      { ruleId: "RL-110", ruleName: "Home Loan Eligibility – Standard Approval", priority: 3, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+    ],
+    input: { credit_score: 590, applicant_age: 29, dti_ratio: 32, monthly_income: 45000, monthly_liabilities: 14000, employment_type: "Salaried", loan_amount: 2500000, loan_type: "Home Loan", city: "Pune" },
+    timestamp: daysAgo(1.5),
+    totalDurationMs: 0.6,
+  },
+  {
+    id: "SIM-DEMO-2",
+    domain: "Lending",
+    productId: "prod-home-loan",
+    outcome: "Rejected",
+    reasonCode: "HIGH_DTI",
+    summary: "Debt-to-income ratio of 50% or higher exceeds policy limit.",
+    calculatedValues: {},
+    triggeredRules: ["RL-104"],
+    decidingRuleId: "RL-104",
+    trace: [
+      { ruleId: "RL-101", ruleName: "Minimum Credit Score Validation", priority: 1, status: "Failed", conditionSummaries: [{ field: "Bureau Credit Score", operator: "<", expected: "650", actual: "705", passed: false }], actionsApplied: [], durationMs: 0.2 },
+      { ruleId: "RL-103", ruleName: "Minimum Age Validation", priority: 1, status: "Failed", conditionSummaries: [{ field: "Applicant Age", operator: "<", expected: "21", actual: "34", passed: false }], actionsApplied: [], durationMs: 0.1 },
+      {
+        ruleId: "RL-104", ruleName: "Debt-to-Income Ratio Cap", priority: 2, status: "Passed", branch: "then",
+        conditionSummaries: [{ field: "Debt-to-Income Ratio", operator: ">=", expected: "50", actual: "58", passed: true }],
+        actionsApplied: [{ id: "sim2-a1", type: "Reject", reasonCode: "HIGH_DTI", message: "Debt-to-income ratio of 50% or higher exceeds policy limit." }],
+        durationMs: 0.3,
+      },
+      { ruleId: "RL-106", ruleName: "Standard Lending Approval", priority: 5, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+      { ruleId: "RL-110", ruleName: "Home Loan Eligibility – Standard Approval", priority: 3, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+    ],
+    input: { credit_score: 705, applicant_age: 34, dti_ratio: 58, monthly_income: 40000, monthly_liabilities: 23200, employment_type: "Self-Employed", loan_amount: 3000000, loan_type: "Home Loan", city: "Chennai" },
+    timestamp: daysAgo(3),
+    totalDurationMs: 0.6,
+  },
+  {
+    id: "SIM-DEMO-3",
+    domain: "Insurance",
+    productId: "prod-term-life",
+    outcome: "Rejected",
+    reasonCode: "UNDERAGE_APPLICANT",
+    summary: "Applicant is below the minimum insurable age of 18.",
+    calculatedValues: {},
+    triggeredRules: ["RL-202"],
+    decidingRuleId: "RL-202",
+    trace: [
+      {
+        ruleId: "RL-202", ruleName: "Minimum Age for Coverage", priority: 1, status: "Passed", branch: "then",
+        conditionSummaries: [{ field: "Applicant Age", operator: "<", expected: "18", actual: "16", passed: true }],
+        actionsApplied: [{ id: "sim3-a1", type: "Reject", reasonCode: "UNDERAGE_APPLICANT", message: "Applicant is below the minimum insurable age of 18." }],
+        durationMs: 0.3,
+      },
+      { ruleId: "RL-201", ruleName: "Smoker Risk Classification", priority: 2, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+      { ruleId: "RL-207", ruleName: "Standard Policy Approval", priority: 5, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+      { ruleId: "RL-209", ruleName: "Insurance High Risk Occupation Check", priority: 2, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+    ],
+    input: { applicant_age: 16, smoker: false, occupation_type: "Low Risk", bmi: 22, sum_assured: 1000000, base_premium: 8000 },
+    timestamp: daysAgo(2.2),
+    totalDurationMs: 0.4,
+  },
+  {
+    id: "SIM-DEMO-4",
+    domain: "NBFC",
+    productId: "prod-gold-loan",
+    outcome: "Rejected",
+    reasonCode: "UNSUPPORTED_COLLATERAL",
+    summary: "Securities are not accepted as collateral under current policy.",
+    calculatedValues: {},
+    triggeredRules: ["RL-301"],
+    decidingRuleId: "RL-301",
+    trace: [
+      {
+        ruleId: "RL-301", ruleName: "Unsupported Collateral Exclusion", priority: 1, status: "Passed", branch: "then",
+        conditionSummaries: [{ field: "Collateral Asset Type", operator: "=", expected: "Securities", actual: "Securities", passed: true }],
+        actionsApplied: [{ id: "sim4-a1", type: "Reject", reasonCode: "UNSUPPORTED_COLLATERAL", message: "Securities are not accepted as collateral under current policy." }],
+        durationMs: 0.3,
+      },
+      { ruleId: "RL-302", ruleName: "Minimum Appraised Value Threshold", priority: 2, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+      { ruleId: "RL-306", ruleName: "Standard Collateral Approval", priority: 5, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+      { ruleId: "RL-308", ruleName: "Gold Loan High LTV Review", priority: 2, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+    ],
+    input: { collateral_type: "Securities", appraised_value: 250000, purity_grade: 0, ltv_requested: 60 },
+    timestamp: daysAgo(4),
+    totalDurationMs: 0.4,
+  },
+  {
+    id: "SIM-DEMO-5",
+    domain: "CreditCards",
+    productId: "prod-credit-card",
+    outcome: "Rejected",
+    reasonCode: "INSUFFICIENT_INCOME",
+    summary: "Annual income is below the minimum required for card issuance.",
+    calculatedValues: {},
+    triggeredRules: ["RL-601"],
+    decidingRuleId: "RL-601",
+    trace: [
+      {
+        ruleId: "RL-601", ruleName: "Minimum Income Eligibility", priority: 1, status: "Passed", branch: "then",
+        conditionSummaries: [{ field: "Annual Income", operator: "<", expected: "300000", actual: "220000", passed: true }],
+        actionsApplied: [{ id: "sim5-a1", type: "Reject", reasonCode: "INSUFFICIENT_INCOME", message: "Annual income is below the minimum required for card issuance." }],
+        durationMs: 0.3,
+      },
+      { ruleId: "RL-602", ruleName: "Excessive Credit Utilization Exclusion", priority: 2, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+      { ruleId: "RL-603", ruleName: "High Limit Request Manager Review", priority: 3, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+      { ruleId: "RL-604", ruleName: "Standard Card Approval", priority: 5, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+      { ruleId: "RL-605", ruleName: "Credit Card Platinum Eligibility", priority: 3, status: "Skipped", conditionSummaries: [], actionsApplied: [], durationMs: 0 },
+    ],
+    input: { annual_income: 220000, requested_credit_limit: 150000, credit_utilization_ratio: 35, existing_cards_count: 1, card_type_requested: "Standard", late_payment_history: false },
+    timestamp: daysAgo(0.8),
+    totalDurationMs: 0.5,
+  },
+];
 
 export const RECENT_DEPLOYMENTS = [
   { id: "D1", ruleId: "RL-101", ruleName: "Minimum Credit Score Validation", domain: "Lending" as Domain, timestamp: daysAgo(0.05), status: "Live" as const },

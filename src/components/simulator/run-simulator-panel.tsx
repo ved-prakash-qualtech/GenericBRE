@@ -182,6 +182,9 @@ export function useRunSimulator(product: Product | null, initialSandboxRuleId: s
 
   return {
     rules,
+    /** The product's mapped rules in execution order (Rule Sequencer order,
+     *  priority fallback) — surfaced so result UIs can show the real
+     *  execution plan/count instead of hardcoding it. */
     mappedRules,
     jsonText,
     setJsonText,
