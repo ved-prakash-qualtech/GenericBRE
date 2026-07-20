@@ -144,14 +144,13 @@ export function ConditionEditor({
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex items-center gap-1 rounded-md border border-blue-500 bg-blue-500/5 px-2 py-1">
         <span className="text-xs font-bold text-blue-600">Condition:</span>
-        <Select value={condition.prefix || "IF"} onValueChange={(v) => onChange({ prefix: v as "IF" | "WHERE" | "CASE" })}>
+        <Select value={condition.prefix === "WHERE" ? "WHERE" : "IF"} onValueChange={(v) => onChange({ prefix: v as "IF" | "WHERE" })}>
           <SelectTrigger size="sm" className="h-7 w-24 border-0 bg-transparent">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="IF" className="font-semibold">IF</SelectItem>
             <SelectItem value="WHERE" className="font-semibold">WHERE</SelectItem>
-            <SelectItem value="CASE" className="font-semibold">CASE</SelectItem>
           </SelectContent>
         </Select>
       </div>

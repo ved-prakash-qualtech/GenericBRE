@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAppStore, useHasCapability } from "@/lib/store";
 import { MatrixGrid } from "@/components/matrix/matrix-grid";
 import { NewMatrixDialog } from "@/components/matrix/new-matrix-dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function MatrixPage() {
   const matrices = useAppStore((s) => s.matrices);
@@ -18,6 +18,15 @@ export default function MatrixPage() {
   // Falls back to the first remaining matrix if the active tab's own was
   // just deleted, without needing an effect to "fix" state after the fact.
   const activeMatrixId = matrices.some((m) => m.id === matrixId) ? matrixId : (matrices[0]?.id ?? "");
+  // Value->label map so the closed trigger shows "Domain — Matrix Name"
+  // instead of falling back to the raw matrix id (base-ui's Select needs an
+  // explicit items map to resolve the trigger's display label).
+  const matrixItems = Object.fromEntries(
+    matrices.map((m) => {
+      const industry = industries.find((i) => i.id === m.domain);
+      return [m.id, `${industry?.name ?? m.domain} — ${m.name}`];
+    })
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -29,27 +38,35 @@ export default function MatrixPage() {
         {canEdit && <NewMatrixDialog defaultDomain={industries[0]?.id ?? ""} />}
       </div>
 
-      <div className="min-h-0 flex-1 p-5 sm:p-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 p-5 sm:p-6">
         {matrices.length === 0 ? (
           <p className="rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
             No matrices configured yet. {canEdit && "Create one to get started."}
           </p>
         ) : (
-          <Tabs value={activeMatrixId} onValueChange={setMatrixId} className="flex h-full flex-col gap-3">
-            <TabsList>
-              {matrices.map((m) => {
-                const industry = industries.find((i) => i.id === m.domain);
-                return (
-                  <TabsTrigger key={m.id} value={m.id}>{industry?.name ?? m.domain} — {m.name}</TabsTrigger>
-                );
-              })}
-            </TabsList>
-            {matrices.map((m) => (
-              <TabsContent key={m.id} value={m.id} className="min-h-0 flex-1">
-                {activeMatrixId === m.id && <MatrixGrid matrix={m} />}
-              </TabsContent>
-            ))}
-          </Tabs>
+          <>
+            <div className="w-full max-w-sm shrink-0 space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">Domain</label>
+              <Select items={matrixItems} value={activeMatrixId} onValueChange={(v) => setMatrixId(v ?? "")}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {matrices.map((m) => {
+                    const industry = industries.find((i) => i.id === m.domain);
+                    return (
+                      <SelectItem key={m.id} value={m.id}>{industry?.name ?? m.domain} — {m.name}</SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="min-h-0 flex-1">
+              {matrices
+                .filter((m) => m.id === activeMatrixId)
+                .map((m) => (
+                  <MatrixGrid key={m.id} matrix={m} />
+                ))}
+            </div>
+          </>
         )}
       </div>
     </div>

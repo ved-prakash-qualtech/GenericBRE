@@ -43,7 +43,7 @@ function slugify(text: string) {
 // offered as suggestions, but typing a name that matches neither lets a
 // Business Analyst define a brand-new variable on the spot (e.g. "Eligible
 // Amount") — this stays a free-text field with autocomplete, not a strict picker.
-function OutputFieldPicker({
+export function OutputFieldPicker({
   value,
   domain,
   rules,
