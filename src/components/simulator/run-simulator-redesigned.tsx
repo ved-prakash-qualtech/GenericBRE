@@ -61,17 +61,6 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
   // Real per-product execution plan (Rule Sequencer order), never hardcoded.
   const executionPlan = sim.mappedRules;
 
-  // Step completion driven by actual state, not literals.
-  const jsonReady = (sim.jsonText ?? "").trim().length > 0;
-  const steps = [
-    { num: 1, label: "Select Product", completed: true },
-    { num: 2, label: "Product Summary", completed: true },
-    { num: 3, label: "Template JSON", completed: jsonReady },
-    { num: 4, label: "Execution Plan", completed: executionPlan.length > 0 },
-    { num: 5, label: "Run Simulation", completed: sim.running || !!result, active: sim.running },
-    { num: 6, label: "Results", completed: !!result },
-  ];
-
   const handleProductChange = (productId: string | null) => {
     if (!productId) return;
     const selected = products.find((p) => p.id === productId);
@@ -108,26 +97,6 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
-      {/* Step Indicator */}
-      <div className="flex items-center gap-3 border-b bg-card px-6 py-3.5 overflow-x-auto">
-        {steps.map((step, idx) => (
-          <div key={step.num} className="flex items-center gap-3 shrink-0">
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white",
-                  step.completed ? "bg-emerald-500" : step.active ? "bg-primary animate-pulse" : "bg-muted-foreground/40"
-                )}
-              >
-                {step.completed ? "✓" : step.num}
-              </div>
-              <span className="text-xs whitespace-nowrap text-muted-foreground font-medium">{step.label}</span>
-            </div>
-            {idx < steps.length - 1 && <div className="h-0.5 w-8 bg-border" />}
-          </div>
-        ))}
-      </div>
-
       {/* Main Content Grid */}
       <ScrollArea className="min-h-0 flex-1">
         <div className="p-5 space-y-4 min-h-full">
