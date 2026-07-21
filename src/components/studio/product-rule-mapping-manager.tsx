@@ -2,9 +2,22 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Search, Save, Package, CheckSquare, Square, GripVertical, ListOrdered, ShieldAlert } from "lucide-react";
+import {
+  Search,
+  Save,
+  Package,
+  CheckSquare,
+  Square,
+  GripVertical,
+  ListOrdered,
+  ShieldAlert,
+  Check,
+  ChevronsUpDown,
+  Clock,
+} from "lucide-react";
 import { useAppStore, useHasCapability } from "@/lib/store";
 import { getMappedRules } from "@/lib/product-rule-engine";
+import { iconForIndustry } from "@/lib/industries";
 import { BusinessRule, Product, ProductRuleMapping } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,6 +25,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { ProductRuleCoverageChart, ProductRuleNetworkDiagram } from "@/components/studio/product-rule-mapping-viz";
 
@@ -292,14 +307,191 @@ export function MappedRulesChecklist({
   );
 }
 
-const productColors = [
-  "bg-blue-50 border-blue-200 hover:bg-blue-100",
-  "bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
-  "bg-purple-50 border-purple-200 hover:bg-purple-100",
-  "bg-amber-50 border-amber-200 hover:bg-amber-100",
-  "bg-rose-50 border-rose-200 hover:bg-rose-100",
-  "bg-cyan-50 border-cyan-200 hover:bg-cyan-100",
-];
+const CARD_VIEW_THRESHOLD = 8;
+
+// Adaptive product picker: a clean card grid while the catalog is small
+// (≤8 — the same neutral card language as the Dashboard's Product panel)
+// that automatically becomes a searchable combobox once it isn't. This is
+// the standard enterprise pattern (Salesforce, Pega, Appian object pickers)
+// for choosing one entity out of a catalog that can grow into the hundreds:
+// cards don't scale past a screenful, but a combobox's footprint never
+// grows with the catalog, and its trigger keeps the current selection
+// permanently visible instead of requiring a scroll to find a highlighted
+// card among hundreds.
+function ProductSelector({
+  products,
+  rules,
+  mappings,
+  industries,
+  selected,
+  onSelect,
+}: {
+  products: Product[];
+  rules: BusinessRule[];
+  mappings: ProductRuleMapping[];
+  industries: { id: string; icon: string }[];
+  selected: Product | null;
+  onSelect: (p: Product) => void;
+}) {
+  const recentProductIds = useAppStore((s) => s.recentProductIds);
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const mappedCount = (id: string) => getMappedRules(id, rules, mappings).length;
+  const iconFor = (domain: string) => iconForIndustry(industries.find((i) => i.id === domain)?.icon) ?? Package;
+
+  if (products.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed p-6 text-center">
+        <Package className="mx-auto mb-2 size-6 text-muted-foreground/40" />
+        <p className="text-[11px] text-muted-foreground">No products yet — add one in Product Master first.</p>
+      </div>
+    );
+  }
+
+  if (products.length <= CARD_VIEW_THRESHOLD) {
+    const q = search.trim().toLowerCase();
+    const filtered = q ? products.filter((p) => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)) : products;
+    return (
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between px-0.5">
+          <p className="text-xs font-semibold text-muted-foreground">Select Product</p>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search products..."
+                className="h-7 w-44 pl-8 text-xs"
+              />
+            </div>
+            <Badge variant="secondary" className="text-[9px]">{filtered.length} of {products.length}</Badge>
+          </div>
+        </div>
+        {filtered.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <Search className="mx-auto mb-2 size-6 text-muted-foreground/40" />
+            <p className="text-[11px] text-muted-foreground">No products match this search.</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2.5">
+            {filtered.map((p) => {
+              const Icon = iconFor(p.domain);
+              const count = mappedCount(p.id);
+              const isSelected = selected?.id === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => onSelect(p)}
+                  className={cn(
+                    "flex shrink-0 items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-left transition-colors",
+                    isSelected
+                      ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20"
+                      : "border-border bg-card hover:border-primary/40 hover:bg-accent/40"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex size-8 shrink-0 items-center justify-center rounded-md",
+                      isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    <Icon className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold whitespace-nowrap">{p.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{count} rule{count === 1 ? "" : "s"}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // >8 products — searchable combobox. Trigger always shows the current
+  // selection; opening it gives instant type-ahead search (reusing the same
+  // Popover+Command pattern as the Rule Builder's field picker) plus a
+  // Recently Used shortlist sourced from the same recentProductIds the
+  // Simulator already tracks, so "frequently used" stays consistent app-wide.
+  const recentProducts = recentProductIds
+    .map((id) => products.find((p) => p.id === id))
+    .filter((p): p is Product => !!p && p.id !== selected?.id)
+    .slice(0, 5);
+
+  const pick = (p: Product) => {
+    onSelect(p);
+    setOpen(false);
+  };
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between px-0.5">
+        <p className="text-xs font-semibold text-muted-foreground">Select Product</p>
+        <Badge variant="secondary" className="text-[9px]">{products.length} products</Badge>
+      </div>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger render={<Button variant="outline" className="h-auto w-full justify-between gap-2 px-3 py-2 sm:w-auto sm:min-w-80" />}>
+          {selected ? (
+            <span className="flex min-w-0 items-center gap-2.5">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                {(() => {
+                  const Icon = iconFor(selected.domain);
+                  return <Icon className="size-4" />;
+                })()}
+              </span>
+              <span className="min-w-0 text-left">
+                <span className="block truncate text-sm font-semibold">{selected.name}</span>
+                <span className="block truncate text-[10.5px] text-muted-foreground">
+                  {selected.code} · {mappedCount(selected.id)} rule{mappedCount(selected.id) === 1 ? "" : "s"}
+                </span>
+              </span>
+            </span>
+          ) : (
+            <span className="text-sm text-muted-foreground">Select a product…</span>
+          )}
+          <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-90 p-0">
+          <Command>
+            <CommandInput placeholder="Search products by name or code..." />
+            <CommandList>
+              <CommandEmpty>No matching products.</CommandEmpty>
+              {recentProducts.length > 0 && (
+                <CommandGroup heading="Recently Used">
+                  {recentProducts.map((p) => (
+                    <CommandItem key={p.id} value={`${p.name} ${p.code}`} onSelect={() => pick(p)} className="gap-2.5">
+                      <Clock className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                      <Badge variant="outline" className="shrink-0 text-[9px]">{mappedCount(p.id)}</Badge>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+              <CommandGroup heading="All Products">
+                {products.map((p) => {
+                  const Icon = iconFor(p.domain);
+                  return (
+                    <CommandItem key={p.id} value={`${p.name} ${p.code}`} onSelect={() => pick(p)} className="gap-2.5">
+                      <Check className={cn("size-3.5 shrink-0", selected?.id === p.id ? "opacity-100" : "opacity-0")} />
+                      <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                      <Badge variant="outline" className="shrink-0 text-[9px]">{p.domain}</Badge>
+                      <span className="w-6 shrink-0 text-right text-[10px] text-muted-foreground">{mappedCount(p.id)}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 // Product-Rule Mapping — the many-to-many wiring that replaces Execution
 // Manager's group/step routing. Category here is filter-only (narrows the
@@ -308,19 +500,17 @@ export function ProductRuleMappingManager() {
   const products = useAppStore((s) => s.products);
   const rules = useAppStore((s) => s.rules);
   const ruleCategories = useAppStore((s) => s.ruleCategories);
+  const industries = useAppStore((s) => s.industries);
   const productRuleMappings = useAppStore((s) => s.productRuleMappings);
   const saveProductRuleMapping = useAppStore((s) => s.saveProductRuleMapping);
+  const recordRecentProduct = useAppStore((s) => s.recordRecentProduct);
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(products[0] ?? null);
-  const [productSearch, setProductSearch] = useState("");
 
   const selectProduct = (p: Product) => {
     setSelectedProduct(p);
+    recordRecentProduct(p.id);
   };
-
-  const filteredProducts = productSearch.trim()
-    ? products.filter((p) => p.name.toLowerCase().includes(productSearch.trim().toLowerCase()) || p.code.toLowerCase().includes(productSearch.trim().toLowerCase()))
-    : products;
 
   const reorderMapped = (orderedIds: string[]) => {
     if (!selectedProduct) return;
@@ -330,70 +520,14 @@ export function ProductRuleMappingManager() {
 
   return (
     <div className="flex h-full min-h-100 flex-col gap-4">
-      {/* Products Horizontal Layout */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between px-0.5">
-          <p className="text-xs font-semibold text-muted-foreground">Select Product</p>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Search products..."
-                className="h-7 w-44 pl-8 text-xs"
-              />
-            </div>
-            <Badge variant="secondary" className="text-[9px]">{filteredProducts.length} of {products.length}</Badge>
-          </div>
-        </div>
-
-        {products.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <Package className="mx-auto mb-2 size-6 text-muted-foreground/40" />
-            <p className="text-[11px] text-muted-foreground">No products yet — add one in Product Master first.</p>
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <Search className="mx-auto mb-2 size-6 text-muted-foreground/40" />
-            <p className="text-[11px] text-muted-foreground">No products match this search.</p>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2.5 overflow-x-auto pb-1">
-            {filteredProducts.map((p, idx) => {
-              const mappedCount = getMappedRules(p.id, rules, productRuleMappings).length;
-              const isSelected = selectedProduct?.id === p.id;
-              const colorClass = productColors[idx % productColors.length];
-
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => selectProduct(p)}
-                  className={cn(
-                    "flex shrink-0 items-center gap-2.5 rounded-lg border-2 px-3.5 py-2.5 text-left transition-all",
-                    isSelected
-                      ? "border-primary bg-primary/10 shadow-md ring-2 ring-primary/20"
-                      : `border ${colorClass}`
-                  )}
-                >
-                  <span className={cn(
-                    "flex size-8 shrink-0 items-center justify-center rounded-md text-sm font-semibold",
-                    isSelected ? "bg-primary/20 text-primary" : "bg-white/40 text-muted-foreground"
-                  )}>
-                    <Package className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold whitespace-nowrap">{p.name}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {mappedCount} rule{mappedCount === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <ProductSelector
+        products={products}
+        rules={rules}
+        mappings={productRuleMappings}
+        industries={industries}
+        selected={selectedProduct}
+        onSelect={selectProduct}
+      />
 
       {/* Main Content */}
       {!selectedProduct ? (

@@ -238,6 +238,8 @@ interface AppState {
   updateProduct: (id: string, patch: Partial<Product>) => void;
   /** Sets publishStatus="Published" + lastPublishedAt (see Product Workspace's guided Stepper). Maker-Checker parity with rules: blocks the same person who last edited the product's overview from being the one to publish it. */
   publishProduct: (id: string) => { ok: boolean; reason?: string };
+  /** Hard delete — only permitted when the product has zero rule mappings and zero simulation history, so referential integrity (mappings/simulations/audit trail) can never be silently broken. A product with any history must be Deactivated instead (see updateProduct/status). */
+  deleteProduct: (id: string) => { ok: boolean; reason?: string };
   productRuleMappings: ProductRuleMapping[];
   // Full-replace semantics for a given product — simplest correct behavior
   // for a checklist-style mapping UI (see product-rule-mapping-manager.tsx).
@@ -612,6 +614,23 @@ export const useAppStore = create<AppState>()(
           ),
         }));
         get().logAudit({ user: currentUser.name, action: "Published Product", entity: "Product", entityId: id, details: `Product "${product.name}" published — available via the Product API.` });
+        return { ok: true };
+      },
+
+      deleteProduct: (id) => {
+        const { currentUser, roles, products, productRuleMappings, simulations } = get();
+        if (!hasCapability(roles, currentUser.role, "config.manage")) {
+          return { ok: false, reason: `${currentUser.name} doesn't have permission to delete products.` };
+        }
+        const product = products.find((p) => p.id === id);
+        if (!product) return { ok: false, reason: "Product not found." };
+        const hasMappings = productRuleMappings.some((m) => m.productId === id);
+        const hasSimulations = simulations.some((s) => s.productId === id);
+        if (hasMappings || hasSimulations) {
+          return { ok: false, reason: "This product has rule mappings or simulation history — deactivate it instead of deleting." };
+        }
+        set((s) => ({ products: s.products.filter((p) => p.id !== id) }));
+        get().logAudit({ user: currentUser.name, action: "Deleted Product", entity: "Product", entityId: id, details: `Unused product "${product.name}" (${product.code}) permanently deleted — no mappings or simulation history existed.` });
         return { ok: true };
       },
 

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Package, Search, Download, Power, PowerOff } from "lucide-react";
+import { Plus, Pencil, Package, Search, Download, Power, PowerOff, Trash2, AlertTriangle } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { Product } from "@/lib/types";
 import { downloadCsv } from "@/lib/csv";
@@ -21,6 +21,16 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 function blank(defaultDomain: string): Product {
   const now = new Date().toISOString();
@@ -35,8 +45,10 @@ export function ProductManager() {
   const products = useAppStore((s) => s.products);
   const industries = useAppStore((s) => s.industries);
   const productRuleMappings = useAppStore((s) => s.productRuleMappings);
+  const simulations = useAppStore((s) => s.simulations);
   const addProduct = useAppStore((s) => s.addProduct);
   const updateProduct = useAppStore((s) => s.updateProduct);
+  const deleteProduct = useAppStore((s) => s.deleteProduct);
 
   const [editing, setEditing] = useState<Product | null>(null);
   const [draft, setDraft] = useState<Product>(blank(industries[0]?.id ?? ""));
@@ -44,6 +56,7 @@ export function ProductManager() {
   const [search, setSearch] = useState("");
   const [domainFilter, setDomainFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null);
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -82,6 +95,12 @@ export function ProductManager() {
   };
 
   const mappedCount = (productId: string) => productRuleMappings.filter((m) => m.productId === productId && m.active).length;
+  // Delete is only ever safe (and only ever offered) for a product nobody has
+  // configured yet — any mapping (active or not) or simulation history means
+  // real referential data would be orphaned by a hard delete; Deactivate is
+  // the retirement path once a product has been used for anything.
+  const hasHistory = (productId: string) =>
+    productRuleMappings.some((m) => m.productId === productId) || simulations.some((sim) => sim.productId === productId);
 
   // Products previously had no retirement path at all — deprecating one just
   // left it as permanent, invisible clutter (audit finding B19). Reuses the
@@ -197,6 +216,16 @@ export function ProductManager() {
               <Button variant="ghost" size="icon-sm" onClick={() => startEdit(p)}>
                 <Pencil className="size-3.5" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-destructive disabled:pointer-events-auto"
+                disabled={hasHistory(p.id)}
+                title={hasHistory(p.id) ? "Has rule mappings or simulation history — deactivate instead" : "Delete permanently"}
+                onClick={() => setDeleteConfirm(p)}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
             </div>
           </div>
         ))}
@@ -275,6 +304,37 @@ export function ProductManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(v) => !v && setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-destructive" /> Delete &quot;{deleteConfirm?.name}&quot; permanently?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This product has no rule mappings or simulation history, so nothing is orphaned — but the deletion itself
+              can&apos;t be undone. If it&apos;s ever used later, Deactivate is the reversible option instead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!deleteConfirm) return;
+                const result = deleteProduct(deleteConfirm.id);
+                if (result.ok) {
+                  toast.success(`"${deleteConfirm.name}" deleted permanently.`);
+                } else {
+                  toast.error("Delete blocked", { description: result.reason });
+                }
+                setDeleteConfirm(null);
+              }}
+            >
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
