@@ -237,6 +237,17 @@ html[data-bg-target="sidebar"] .bg-scoped-layer--sidebar {
   -webkit-backdrop-filter: blur(16px) saturate(140%);
 }
 
+/* The sidebar is fully opaque (bg-sidebar) and sits above the wallpaper
+   layer at z-30, so it was blocking the entire left edge of the "app" and
+   "sidebar" targets no matter what image/opacity was chosen. Same
+   color-mix + backdrop-blur treatment as .glass-panel, scoped to the
+   sidebar's own --sidebar color instead of --card. */
+.glass-mode .sidebar-glass {
+  background-color: color-mix(in oklch, var(--sidebar) 78%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
 /* Display tab — density controls card padding via the existing --card-spacing
    var (higher specificity than the card's own inline utility so it wins);
    font scale controls base text size independently of density. */

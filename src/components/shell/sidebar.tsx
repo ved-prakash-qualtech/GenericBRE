@@ -18,7 +18,7 @@ export function Sidebar() {
     <motion.aside
       animate={{ width: collapsed ? 56 : 220 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
-      className="relative z-30 hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex"
+      className="sidebar-glass relative z-30 hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex"
       style={{ height: "100%" }}
     >
       <div className="bg-scoped-layer bg-scoped-layer--sidebar" />
