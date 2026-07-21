@@ -765,7 +765,11 @@ export interface AppearanceSettings {
   appName: string;
   /** Short tagline shown under appName in the sidebar lockup and login screen. Admin-only. */
   tagline: string;
-  /** Display language code (e.g. "en", "hi") — sets <html lang>. UI copy itself isn't translated in this prototype; this drives locale-aware formatting hooks and signals intent for a future i18n layer. */
+  /** Display language code (e.g. "en", "hi") — sets <html lang> AND drives
+   *  src/lib/i18n.ts's translate()/useTranslate() for the surfaces that have
+   *  been wired up (Sidebar nav, Header, Dashboard, Appearance Studio).
+   *  Other pages still fall back to English until they're wired too — see
+   *  TRANSLATIONS in src/lib/i18n.ts to extend coverage. */
   language: string;
 }
 

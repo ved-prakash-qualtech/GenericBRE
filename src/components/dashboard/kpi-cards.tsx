@@ -17,6 +17,8 @@ import {
 import { useAppStore } from "@/lib/store";
 import { detectRuleConflicts } from "@/lib/conflict-detection";
 import { cn } from "@/lib/utils";
+import { useTranslate } from "@/lib/use-translate";
+import { TranslationKey } from "@/lib/i18n";
 
 interface Kpi {
   label: string;
@@ -44,7 +46,24 @@ export const KPI_LABELS: Record<string, string> = {
   "business-categories": "Business Categories",
 };
 
+// Same ids as KPI_LABELS above (kept as the English source for the admin
+// "manage KPIs" picker in dashboard-management-manager.tsx) mapped to their
+// translation keys for the actual on-screen cards below.
+const KPI_TRANSLATION_KEYS: Record<string, TranslationKey> = {
+  "total-rules": "kpi.totalRules",
+  "active-rules": "kpi.activeRules",
+  "draft-rules": "kpi.draftRules",
+  "pending-review": "kpi.pendingReview",
+  "pending-approvals": "kpi.pendingApprovals",
+  "rule-conflicts": "kpi.ruleConflicts",
+  deployments: "kpi.deployments",
+  "rule-executions": "kpi.ruleExecutions",
+  "failed-simulations": "kpi.failedSimulations",
+  "business-categories": "kpi.businessCategories",
+};
+
 export function KpiCards() {
+  const t = useTranslate();
   const allRules = useAppStore((s) => s.rules);
   const allSimulations = useAppStore((s) => s.simulations);
   const allApprovalRequests = useAppStore((s) => s.approvalRequests);
@@ -71,7 +90,7 @@ export function KpiCards() {
   // metadata (dashboardConfigs[role].kpis), not a hardcoded set per role.
   const registry: Record<string, Kpi> = {
     "total-rules": {
-      label: KPI_LABELS["total-rules"],
+      label: t(KPI_TRANSLATION_KEYS["total-rules"]),
       value: rules.length,
       icon: FileStack,
       accent: "text-primary bg-primary/10",
@@ -79,42 +98,42 @@ export function KpiCards() {
       suffix: disabled ? `· ${disabled} disabled` : undefined,
     },
     "active-rules": {
-      label: KPI_LABELS["active-rules"],
+      label: t(KPI_TRANSLATION_KEYS["active-rules"]),
       value: rules.filter((r) => r.status === "Active").length,
       icon: CheckCircle2,
       accent: "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400",
       href: "/repository?status=Active",
     },
     "draft-rules": {
-      label: KPI_LABELS["draft-rules"],
+      label: t(KPI_TRANSLATION_KEYS["draft-rules"]),
       value: rules.filter((r) => r.status === "Draft").length,
       icon: FileEdit,
       accent: "text-amber-600 bg-amber-500/10 dark:text-amber-400",
       href: "/repository?status=Draft",
     },
     "pending-review": {
-      label: KPI_LABELS["pending-review"],
+      label: t(KPI_TRANSLATION_KEYS["pending-review"]),
       value: rules.filter((r) => r.status === "Testing").length,
       icon: Clock,
       accent: "text-amber-600 bg-amber-500/10 dark:text-amber-400",
       href: "/repository?status=Testing",
     },
     "pending-approvals": {
-      label: KPI_LABELS["pending-approvals"],
+      label: t(KPI_TRANSLATION_KEYS["pending-approvals"]),
       value: approvalRequests.filter((a) => a.stage === "Pending Review").length,
       icon: UserCheck,
       accent: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
       href: "/repository?status=Testing",
     },
     "rule-conflicts": {
-      label: KPI_LABELS["rule-conflicts"],
+      label: t(KPI_TRANSLATION_KEYS["rule-conflicts"]),
       value: detectRuleConflicts(rules).length,
       icon: AlertTriangle,
       accent: "text-red-600 bg-red-500/10 dark:text-red-400",
       href: "/repository?status=Active",
     },
     deployments: {
-      label: KPI_LABELS.deployments,
+      label: t(KPI_TRANSLATION_KEYS.deployments),
       value: deploymentEvents.length,
       icon: Rocket,
       accent: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
@@ -123,14 +142,14 @@ export function KpiCards() {
     "rule-executions": {
       // The +256 is a fixed demo-history baseline with no per-industry
       // breakdown, so it only applies to the unfiltered, all-industries view.
-      label: KPI_LABELS["rule-executions"],
+      label: t(KPI_TRANSLATION_KEYS["rule-executions"]),
       value: domainFilter.length ? simulations.length : simulations.length + 256,
       icon: FlaskConical,
       accent: "text-violet-600 bg-violet-500/10 dark:text-violet-400",
       href: "/simulator",
     },
     "failed-simulations": {
-      label: KPI_LABELS["failed-simulations"],
+      label: t(KPI_TRANSLATION_KEYS["failed-simulations"]),
       value: simulations.filter((s) => s.outcome === "Rejected").length,
       icon: XCircle,
       accent: "text-red-600 bg-red-500/10 dark:text-red-400",
@@ -138,7 +157,7 @@ export function KpiCards() {
       suffix: "this session",
     },
     "business-categories": {
-      label: KPI_LABELS["business-categories"],
+      label: t(KPI_TRANSLATION_KEYS["business-categories"]),
       value: new Set(rules.map((r) => r.category)).size,
       icon: Layers,
       accent: "text-blue-600 bg-blue-500/10 dark:text-blue-400",

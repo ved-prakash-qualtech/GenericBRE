@@ -10,11 +10,13 @@ import { HelpDesk } from "./help-desk";
 import { UserMenu } from "./user-menu";
 import { CommandPalette } from "./command-palette";
 import { AppearanceStudio } from "@/components/studio/appearance-studio";
+import { useTranslate } from "@/lib/use-translate";
 
 export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const router = useRouter();
+  const t = useTranslate();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -43,7 +45,7 @@ export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
           className="ml-1 flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-lg border bg-background px-0 text-sm text-muted-foreground transition-colors hover:border-ring/50 sm:ml-3 sm:w-full sm:max-w-70 sm:justify-start sm:px-3"
         >
           <Search className="size-3.5 shrink-0" />
-          <span className="hidden sm:inline">Search rules, modules...</span>
+          <span className="hidden sm:inline">{t("header.searchPlaceholder")}</span>
           <kbd className="ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] sm:inline">
             ⌘K
           </kbd>
@@ -54,7 +56,7 @@ export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
           <GlobalFilterBar />
           <Button size="sm" className="h-9 gap-1.5" onClick={() => router.push("/rule-builder")} aria-label="Create Rule">
             <Plus className="size-3.5" />
-            <span className="hidden lg:inline">Create Rule</span>
+            <span className="hidden lg:inline">{t("header.createRule")}</span>
           </Button>
           <div className="mx-0.5 hidden h-6 w-px bg-border sm:block" />
           <Button

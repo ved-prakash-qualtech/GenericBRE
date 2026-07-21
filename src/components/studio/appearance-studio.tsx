@@ -21,6 +21,8 @@ import {
 import { useAppStore, useHasCapability, DEFAULT_APPEARANCE } from "@/lib/store";
 import { applyAppearance } from "@/components/providers";
 import { THEME_PRESETS } from "@/lib/theme-presets";
+import { useTranslateFor } from "@/lib/use-translate";
+import type { LanguageCode } from "@/lib/i18n";
 import type {
   AppearanceSettings,
   BackgroundDisplayMode,
@@ -180,6 +182,10 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
   const [previewTab, setPreviewTab] = useState<"dashboard" | "signin">("dashboard");
   const bgInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  // Live Preview reflects the sandboxed draft, not the committed language —
+  // so picking a language and NOT applying yet still shows the mockup
+  // translate immediately, matching every other draft field's behavior.
+  const t = useTranslateFor(draft.language as LanguageCode);
 
   const role = roles.find((r) => r.id === currentUser.role);
 
@@ -244,9 +250,9 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
             <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Sparkles className="size-4" />
             </span>
-            <p className="text-sm font-semibold tracking-tight">Appearance Studio</p>
+            <p className="text-sm font-semibold tracking-tight">{t("appearance.title")}</p>
             <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-              <span className="size-1.5 rounded-full bg-emerald-500" /> Live Preview
+              <span className="size-1.5 rounded-full bg-emerald-500" /> {t("appearance.livePreviewBadge")}
             </span>
 
             <div className="ml-auto flex items-center gap-2">
@@ -275,11 +281,11 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as string)} className="flex min-h-0 flex-1 flex-col">
             <TabsList className="mx-4 mt-3 w-fit shrink-0">
-              <TabsTrigger value="theme">Theme</TabsTrigger>
-              <TabsTrigger value="colors">Colors</TabsTrigger>
-              <TabsTrigger value="bg">BG</TabsTrigger>
-              <TabsTrigger value="display">Display</TabsTrigger>
-              {canManageBranding && <TabsTrigger value="branding">Branding</TabsTrigger>}
+              <TabsTrigger value="theme">{t("appearance.tabTheme")}</TabsTrigger>
+              <TabsTrigger value="colors">{t("appearance.tabColors")}</TabsTrigger>
+              <TabsTrigger value="bg">{t("appearance.tabBg")}</TabsTrigger>
+              <TabsTrigger value="display">{t("appearance.tabDisplay")}</TabsTrigger>
+              {canManageBranding && <TabsTrigger value="branding">{t("appearance.tabBranding")}</TabsTrigger>}
             </TabsList>
 
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -468,7 +474,9 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                       ))}
                     </div>
                     <p className="mt-1.5 text-[10.5px] text-muted-foreground/70">
-                      Sets the page locale (&lt;html lang&gt;) for assistive tech and locale-aware formatting. Interface copy itself isn&apos;t translated in this prototype.
+                      Sets the page locale (&lt;html lang&gt;) for assistive tech and locale-aware formatting, and
+                      translates the sidebar, header, Dashboard, and this Appearance Studio. Coverage across the
+                      rest of the app is rolling out incrementally.
                     </p>
                   </section>
                   <section>
@@ -577,9 +585,9 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                   just set on <html>, so it re-themes in step with the real app. */}
               <div className="flex-1 overflow-y-auto bg-muted/20 p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Live Preview</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("appearance.livePreviewHeading")}</p>
                   <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <span className="size-1.5 rounded-full bg-emerald-500" /> Changes apply instantly
+                    <span className="size-1.5 rounded-full bg-emerald-500" /> {t("appearance.changesApplyInstantly")}
                   </span>
                 </div>
 
@@ -594,7 +602,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                         : "border-transparent text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    Dashboard
+                    {t("appearance.previewDashboardTab")}
                   </button>
                   {activeTab === "branding" && (
                     <button
@@ -606,7 +614,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                           : "border-transparent text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      Sign-in Page
+                      {t("appearance.previewSignInTab")}
                     </button>
                   )}
                 </div>
@@ -643,8 +651,17 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                   <div className="relative isolate flex overflow-hidden rounded-2xl border shadow-xl">
                   {draft.background.target === "app" && wallpaperLayer}
                   <div
-                    className="relative isolate flex w-14 shrink-0 flex-col items-center gap-3 py-4"
-                    style={{ background: "var(--sidebar)" }}
+                    className={cn(
+                      "relative isolate flex w-14 shrink-0 flex-col items-center gap-3 py-4",
+                      draft.background.imageData && "sidebar-glass"
+                    )}
+                    // Opaque background only when there's no wallpaper to
+                    // show through — same rule the real Sidebar follows
+                    // (sidebar-glass, driven by .glass-mode, takes over
+                    // otherwise). Without this, the mockup's own inline
+                    // background would mask the wallpaper even though the
+                    // real app doesn't.
+                    style={draft.background.imageData ? undefined : { background: "var(--sidebar)" }}
                   >
                     {draft.background.target === "sidebar" && wallpaperLayer}
                     <div
@@ -672,7 +689,16 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                     ))}
                   </div>
 
-                  <div className="relative isolate flex-1 p-4" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+                  <div
+                    className="relative isolate flex-1 p-4"
+                    // Same reasoning as the sidebar above — the real <main>
+                    // has no background of its own, so this stays
+                    // transparent whenever there's a wallpaper to reveal.
+                    style={{
+                      color: "var(--foreground)",
+                      ...(draft.background.imageData ? {} : { background: "var(--background)" }),
+                    }}
+                  >
                     {draft.background.target === "dashboard" && wallpaperLayer}
                     <div className="mb-3 flex items-center gap-2">
                       {draft.logo && (
@@ -697,9 +723,9 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
 
                     <div className="mb-3 grid grid-cols-3 gap-2.5">
                       {[
-                        { label: "Revenue", value: "₹42L", trend: "+12%", up: true },
-                        { label: "Sessions", value: "148", trend: "+8%", up: true },
-                        { label: "Payables", value: "₹6L", trend: "-3%", up: false },
+                        { label: t("mockup.revenue"), value: "₹42L", trend: "+12%", up: true },
+                        { label: t("mockup.sessions"), value: "148", trend: "+8%", up: true },
+                        { label: t("mockup.payables"), value: "₹6L", trend: "-3%", up: false },
                       ].map((k) => (
                         <div key={k.label} className="rounded-lg border p-2.5" style={{ background: "var(--card)" }}>
                           <p className="text-[10px]" style={{ color: "var(--muted-foreground)" }}>
@@ -722,7 +748,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                     <div className="mb-3 grid grid-cols-2 gap-2.5">
                       <div className="rounded-lg border p-2.5" style={{ background: "var(--card)" }}>
                         <p className="mb-1.5 text-[10px]" style={{ color: "var(--muted-foreground)" }}>
-                          Billing Trend
+                          {t("mockup.billingTrend")}
                         </p>
                         <div className="flex h-10 items-end gap-1">
                           {[40, 55, 35, 70, 50, 80].map((h, i) => (
@@ -736,7 +762,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                       </div>
                       <div className="rounded-lg border p-2.5" style={{ background: "var(--card)" }}>
                         <p className="mb-1.5 text-[10px]" style={{ color: "var(--muted-foreground)" }}>
-                          Engagements
+                          {t("mockup.engagements")}
                         </p>
                         <div className="space-y-1">
                           {["Astra Mfg", "Nexora Bank", "Helio HC"].map((n, i) => (
@@ -754,7 +780,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                         className="mb-3 flex items-center gap-2 rounded-lg p-2.5 text-[10px]"
                         style={{ background: "var(--accent)", color: "var(--accent-foreground)" }}
                       >
-                        <Sparkles className="size-3 shrink-0" /> Smart Insight: 2 high-risk engagements need attention
+                        <Sparkles className="size-3 shrink-0" /> {t("mockup.smartInsightPrefix")} {t("mockup.smartInsightBody")}
                       </div>
                     )}
 
@@ -763,9 +789,9 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                         className="rounded-lg px-3 py-1.5 text-[10px] font-medium"
                         style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                       >
-                        New Engagement
+                        {t("mockup.newEngagement")}
                       </div>
-                      <div className="rounded-lg border px-3 py-1.5 text-[10px] font-medium">Export CSV</div>
+                      <div className="rounded-lg border px-3 py-1.5 text-[10px] font-medium">{t("mockup.exportCsv")}</div>
                     </div>
                   </div>
                   </div>

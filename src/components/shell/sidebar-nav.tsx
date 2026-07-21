@@ -6,6 +6,7 @@ import { NAV_ITEMS, NAV_ITEMS_SECONDARY, visibleNavItems } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAppStore } from "@/lib/store";
+import { useTranslate } from "@/lib/use-translate";
 import { Badge } from "@/components/ui/badge";
 
 function NavLink({
@@ -85,6 +86,7 @@ function NavLink({
 export function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const roles = useAppStore((s) => s.roles);
   const roleId = useAppStore((s) => s.currentUser.role);
+  const t = useTranslate();
   const primaryItems = visibleNavItems(NAV_ITEMS, roles, roleId);
   const secondaryItems = visibleNavItems(NAV_ITEMS_SECONDARY, roles, roleId);
 
@@ -93,14 +95,14 @@ export function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNa
       <div className="flex flex-col gap-0.5">
         {!collapsed && (
           <p className="px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
-            Workspace
+            {t("nav.workspace")}
           </p>
         )}
         {primaryItems.map((item) => (
           <NavLink
             key={item.href}
             href={item.href}
-            label={item.label}
+            label={t(item.labelKey)}
             Icon={item.icon}
             collapsed={collapsed}
             disabled={item.disabled}
@@ -111,14 +113,14 @@ export function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNa
       <div className="flex flex-col gap-0.5">
         {!collapsed && (
           <p className="px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
-            Platform
+            {t("nav.platform")}
           </p>
         )}
         {secondaryItems.map((item) => (
           <NavLink
             key={item.href}
             href={item.href}
-            label={item.label}
+            label={t(item.labelKey)}
             Icon={item.icon}
             collapsed={collapsed}
             disabled={item.disabled}

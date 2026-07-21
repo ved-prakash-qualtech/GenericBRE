@@ -24,6 +24,7 @@ import { useAppStore } from "@/lib/store";
 import { useDashboardLayout, WIDGET_SIZE_SPAN } from "@/lib/dashboard-layout";
 import { WidgetDef, WidgetSize } from "@/lib/types";
 import { downloadCsv } from "@/lib/csv";
+import { useTranslate } from "@/lib/use-translate";
 
 // The render function for every widget except `kpis` (which stays pinned,
 // full-width, outside the reorderable/resizable set — see DASHBOARD_WIDGET_DEFS
@@ -52,6 +53,7 @@ const WIDGET_DEFAULT_SIZE: Record<string, WidgetSize> = { "demo-scenarios": "LG"
 
 export default function DashboardPage() {
   const router = useRouter();
+  const t = useTranslate();
   const rules = useAppStore((s) => s.rules);
   const showInsights = useAppStore((s) => s.appearance.showInsights);
   const roleId = useAppStore((s) => s.currentUser.role);
@@ -126,12 +128,12 @@ export default function DashboardPage() {
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center justify-between border-b bg-card/40 px-4 py-2.5 sm:px-5">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-xs text-muted-foreground">Central workspace for the Business Rules Engine</p>
+          <h1 className="text-lg font-semibold tracking-tight">{t("dashboard.title")}</h1>
+          <p className="text-xs text-muted-foreground">{t("dashboard.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={exportSummary}>
-            <Download className="size-3.5" /> Export
+            <Download className="size-3.5" /> {t("dashboard.export")}
           </Button>
           <DashboardControls
             dashboardKey={dashboardKey}
@@ -164,12 +166,12 @@ export default function DashboardPage() {
           </div>
           <div className="mb-4">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Products</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("dashboard.products")}</p>
               <button
                 onClick={() => router.push("/products")}
                 className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
               >
-                View all <ArrowRight className="size-3" />
+                {t("dashboard.viewAll")} <ArrowRight className="size-3" />
               </button>
             </div>
             <ProductHubGrid
