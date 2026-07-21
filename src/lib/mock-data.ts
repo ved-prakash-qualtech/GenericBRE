@@ -72,6 +72,8 @@ function makeRule(partial: {
   simulatable?: boolean;
   groupId?: string;
   ruleType?: BusinessRule["ruleType"];
+  caseWhens?: BusinessRule["caseWhens"];
+  caseElseActions?: BusinessRule["caseElseActions"];
 }): BusinessRule {
   return {
     id: partial.id,
@@ -88,6 +90,8 @@ function makeRule(partial: {
     rootGroup: partial.rootGroup,
     actions: partial.actions,
     elseActions: partial.elseActions,
+    caseWhens: partial.caseWhens,
+    caseElseActions: partial.caseElseActions,
     simulatable: partial.simulatable ?? true,
     createdAt: daysAgo(partial.createdDaysAgo),
     updatedAt: daysAgo(partial.updatedDaysAgo),
@@ -383,22 +387,21 @@ export const CORE_RULES: BusinessRule[] = [
     priority: 3,
     status: "Active",
     ruleType: "CASE",
-    description: "Bracket lookup by credit score: >=800 -> 8.25%, 750-799 -> 8.75%, 700-749 -> 9.50%; below 700 rejects.",
+    description: "Native CASE rule: brackets credit score into interest rate tiers (>=800 -> 8.25%, 750-799 -> 8.75%, 700-749 -> 9.50%); rejects below 700.",
     owner: "Credit Risk Division",
-    rootGroup: group("AND", [cond("credit_score", ">=", "700")]),
-    actions: [{
-      id: cid(),
-      type: "Bracket Lookup",
-      outputField: "interest_rate",
-      outputType: "number",
-      bracketField: "credit_score",
-      brackets: [
-        { id: cid(), min: 800, max: 900, outputValue: "8.25" },
-        { id: cid(), min: 750, max: 799, outputValue: "8.75" },
-        { id: cid(), min: 700, max: 749, outputValue: "9.50" },
-      ],
-    }],
-    elseActions: [{ id: cid(), type: "Reject", reasonCode: "LOW_CREDIT_SCORE", message: "Credit score below 700 minimum for Home Loan pricing." }],
+    // CASE mode is the complete rule here — rootGroup/actions stay empty
+    // since the Condition Builder / THEN Action Builder are hidden whenever
+    // caseWhens is populated (see src/app/rule-builder/page.tsx).
+    rootGroup: group("AND", []),
+    actions: [],
+    caseWhens: [
+      { id: cid(), field: "credit_score", operator: ">=", value: "800", outputField: "interest_rate", outputValue: "8.25" },
+      { id: cid(), field: "credit_score", operator: "between", value: "750", value2: "799", outputField: "interest_rate", outputValue: "8.75" },
+      { id: cid(), field: "credit_score", operator: "between", value: "700", value2: "749", outputField: "interest_rate", outputValue: "9.50" },
+    ],
+    caseElseActions: [
+      { id: cid(), type: "Reject", reasonCode: "LOW_CREDIT_SCORE", message: "Credit score below 700 minimum for Home Loan pricing." },
+    ],
     createdDaysAgo: 5,
     updatedDaysAgo: 1,
   }),

@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react";
 import { ListChecks, Variable } from "lucide-react";
-import { BusinessField, BusinessRule } from "@/lib/types";
+import { BusinessField, BusinessRule, CaseWhenClause, RuleAction } from "@/lib/types";
 import { collectFieldKeys } from "@/lib/condition-tree";
 import { getField } from "@/lib/fields";
 import { groupToText, actionsToText, getRulePrefix } from "./rule-summary";
@@ -15,9 +15,16 @@ import { Badge } from "@/components/ui/badge";
 export function RulePreviewPanel({
   rule,
   fieldCatalog,
+  caseWhens,
+  caseElseActions,
 }: {
   rule: Pick<BusinessRule, "rootGroup" | "actions" | "elseActions">;
   fieldCatalog: BusinessField[];
+  /** Additive — CASE Builder data. Omitted by every existing caller, so the
+   *  4 sections below (Input Fields/Conditions/Actions/Generated Variables)
+   *  render exactly as before unless a caller opts in. */
+  caseWhens?: CaseWhenClause[];
+  caseElseActions?: RuleAction[];
 }) {
   const inputKeys = Array.from(collectFieldKeys(rule.rootGroup));
   const generatedVars = Array.from(
@@ -71,9 +78,26 @@ export function RulePreviewPanel({
             </div>
           )}
         </PreviewSection>
+
+        {caseWhens && caseWhens.length > 0 && (
+          <PreviewSection label="CASE">
+            <p className="text-xs leading-relaxed text-foreground/80">
+              CASE
+              {caseWhens.map((w) => ` / ${caseWhenToText(w, fieldCatalog)}`).join("")}
+              {caseElseActions && caseElseActions.length > 0 && ` / ELSE ${actionsToText(caseElseActions)}`}
+            </p>
+          </PreviewSection>
+        )}
       </div>
     </div>
   );
+}
+
+function caseWhenToText(w: CaseWhenClause, fieldCatalog: BusinessField[]): string {
+  const field = getField(fieldCatalog, w.field)?.label ?? (w.field || "…");
+  const outputField = getField(fieldCatalog, w.outputField)?.label ?? (w.outputField || "…");
+  const valueText = w.operator === "between" ? `${w.value || "…"} and ${w.value2 || "…"}` : w.value || "…";
+  return `WHEN ${field} ${w.operator} ${valueText} THEN ${outputField} = ${w.outputValue || "…"}`;
 }
 
 function PreviewSection({ label, children }: { label: string; children: ReactNode }) {

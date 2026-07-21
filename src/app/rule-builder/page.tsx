@@ -22,7 +22,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useAppStore, useHasCapability } from "@/lib/store";
-import { BusinessField, BusinessRule, Condition, ConditionGroup, RuleAction, RuleTemplate } from "@/lib/types";
+import { BusinessField, BusinessRule, CaseWhenClause, Condition, ConditionGroup, RuleAction, RuleTemplate } from "@/lib/types";
 import {
   emptyGroup,
   emptyCondition,
@@ -51,6 +51,7 @@ import { ConditionGroupEditor, TreeHandlers } from "@/components/rule-builder/co
 import { AttributePanel } from "@/components/rule-builder/attribute-panel";
 // import { ExpressionPreview } from "@/components/rule-builder/expression-preview";
 import { ActionListEditor } from "@/components/rule-builder/action-editor";
+import { CaseBuilder } from "@/components/rule-builder/case-builder";
 import { RulePreviewPanel } from "@/components/rule-builder/rule-preview-panel";
 import { InlineTestPanel } from "@/components/rule-builder/inline-test-panel";
 import { TemplatePicker } from "@/components/rule-builder/template-picker";
@@ -158,6 +159,9 @@ function RuleBuilderContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [showElseBranch, setShowElseBranch] = useState(() => !!existingRule?.elseActions?.length);
+  // Additive CASE Builder visibility — independent of the ELSE branch above
+  // (that one belongs to the normal condition tree; this one to the CASE block).
+  const [caseBuilderOpen, setCaseBuilderOpen] = useState(() => !!existingRule?.caseWhens?.length);
   // Non-blocking template hint — shown once per browser session on a fresh,
   // untouched new rule; never forces a modal on rule creation (see below).
   const [templateHintDismissed, setTemplateHintDismissed] = useState(
@@ -175,6 +179,7 @@ function RuleBuilderContent() {
     if (existingRule) {
       setRule(existingRule);
       setShowElseBranch(!!existingRule.elseActions?.length);
+      setCaseBuilderOpen(!!existingRule.caseWhens?.length);
     } else {
       const saved = typeof window !== "undefined" ? window.localStorage.getItem(draftKeyFor(null)) : null;
       if (saved) {
@@ -182,6 +187,7 @@ function RuleBuilderContent() {
           const parsed = JSON.parse(saved) as BusinessRule;
           setRule(parsed);
           setShowElseBranch(!!parsed.elseActions?.length);
+          setCaseBuilderOpen(!!parsed.caseWhens?.length);
           return;
         } catch {
           window.localStorage.removeItem(draftKeyFor(null));
@@ -190,6 +196,7 @@ function RuleBuilderContent() {
       const freshRule = blankRule(nextRuleId(rules), industries[0]?.id ?? "", owners[0] ?? "");
       setRule(freshRule);
       setShowElseBranch(false);
+      setCaseBuilderOpen(false);
     }
   }, [editId, existingRule?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -265,6 +272,23 @@ function RuleBuilderContent() {
     commitRule((r) => ({ ...r, rootGroup: addChildToGroup(r.rootGroup, groupId, child) }));
   const setActions = (actions: RuleAction[]) => commitRule((r) => ({ ...r, actions }));
   const setElseActions = (elseActions: RuleAction[]) => commitRule((r) => ({ ...r, elseActions }));
+
+  // ---- CASE Builder — a distinct rule-type mode. When active, it replaces
+  // the condition tree / THEN Action Builder / ELSE — Otherwise entirely
+  // (see the `caseBuilderOpen` branch in the render below); it never mutates
+  // rootGroup/actions/elseActions itself, so switching back to Condition/
+  // WHERE/GROUP mode leaves whatever was there untouched. ----
+  const setCaseWhens = (updater: (prev: CaseWhenClause[]) => CaseWhenClause[]) =>
+    commitRule((r) => ({ ...r, caseWhens: updater(r.caseWhens ?? []) }));
+  const setCaseElseActions = (caseElseActions: RuleAction[]) => commitRule((r) => ({ ...r, caseElseActions }));
+  const openCaseBuilder = () => {
+    setCaseBuilderOpen(true);
+    setCaseWhens((prev) =>
+      prev.length === 0
+        ? [{ id: `case-when-${Date.now()}`, field: "", operator: "=", value: "", outputField: "", outputValue: "" }]
+        : prev
+    );
+  };
 
   // ---- SQL-style builder: attribute panel, selection, clipboard, DnD ----
   const entities = useAppStore((s) => s.entities);
@@ -379,23 +403,58 @@ function RuleBuilderContent() {
     if (!rule.name.trim()) errs.name = "Rule Name is a mandatory field. Please provide a distinct identifier.";
     if (!rule.domain) errs.domain = "Select a domain for this rule.";
     if (!rule.category) errs.category = "Select a category to classify this rule.";
-    if (countConditions(rule.rootGroup) === 0) errs.condition = "Add at least one condition — a rule needs at least one condition clause.";
 
-    const conditionErrors = validateTree(rule.rootGroup);
-    if (rule.actions.length === 0) errs.actions = "Add at least one THEN action before saving.";
+    let conditionErrors: string[] = [];
 
-    for (const [label, list] of [["THEN", rule.actions], ["ELSE", rule.elseActions ?? []]] as const) {
-      const missingOutput = list.find((a) => (a.type === "Calculate" || a.type === "Assign Value") && !a.outputField);
-      if (missingOutput) errs.outputField = `${label}: a Calculate/Assign Value action needs an Output Field.`;
-      const dup = findDuplicateVariableName(list);
-      if (dup) errs.duplicateVariable = `${label}: more than one action sets the same variable "${dup}".`;
+    if (caseBuilderOpen) {
+      // CASE mode replaces the condition tree / THEN Action Builder / ELSE —
+      // Otherwise entirely (see the render below), so validate the CASE
+      // Builder's own WHEN/ELSE completeness instead of rootGroup/actions.
+      const whens = rule.caseWhens ?? [];
+      if (whens.length === 0) {
+        errs.caseWhen = "Add at least one WHEN clause to the CASE Builder.";
+      } else {
+        const incompleteWhen = whens.find(
+          (w) =>
+            !w.field ||
+            !w.operator ||
+            !w.value.trim() ||
+            (w.operator === "between" && !(w.value2 ?? "").trim()) ||
+            !w.outputField ||
+            !w.outputValue.trim()
+        );
+        if (incompleteWhen) {
+          errs.caseWhen = "CASE: each WHEN clause needs a Field, Operator, Value, Output Field, and Output Value.";
+        }
+      }
+      const caseElseActions = rule.caseElseActions ?? [];
+      if (caseElseActions.length === 0) {
+        errs.caseElse = "CASE: add at least one ELSE action.";
+      } else {
+        const missingOutput = caseElseActions.find((a) => (a.type === "Calculate" || a.type === "Assign Value") && !a.outputField);
+        if (missingOutput) errs.caseElse = "CASE ELSE: a Calculate/Assign Value action needs an Output Field.";
+        const dup = findDuplicateVariableName(caseElseActions);
+        if (dup) errs.caseElse = `CASE ELSE: more than one action sets the same variable "${dup}".`;
+      }
+    } else {
+      if (countConditions(rule.rootGroup) === 0) errs.condition = "Add at least one condition — a rule needs at least one condition clause.";
+      conditionErrors = validateTree(rule.rootGroup);
+      if (rule.actions.length === 0) errs.actions = "Add at least one THEN action before saving.";
+
+      for (const [label, list] of [["THEN", rule.actions], ["ELSE", rule.elseActions ?? []]] as const) {
+        const missingOutput = list.find((a) => (a.type === "Calculate" || a.type === "Assign Value") && !a.outputField);
+        if (missingOutput) errs.outputField = `${label}: a Calculate/Assign Value action needs an Output Field.`;
+        const dup = findDuplicateVariableName(list);
+        if (dup) errs.duplicateVariable = `${label}: more than one action sets the same variable "${dup}".`;
+      }
+
+      const availableVars = new Set(getGeneratedVariables(rules, rule.id).map((v) => v.key));
+      const invalidRefs = findInvalidReferences(rule.rootGroup, fieldCatalog, availableVars);
+      if (invalidRefs.length > 0) {
+        errs.variables = `"${invalidRefs[0]}" isn't a business field or a generated variable from another rule.`;
+      }
     }
 
-    const availableVars = new Set(getGeneratedVariables(rules, rule.id).map((v) => v.key));
-    const invalidRefs = findInvalidReferences(rule.rootGroup, fieldCatalog, availableVars);
-    if (invalidRefs.length > 0) {
-      errs.variables = `"${invalidRefs[0]}" isn't a business field or a generated variable from another rule.`;
-    }
     const simulatedRules = [...rules.filter((r) => r.id !== rule.id), rule];
     const cycle = detectCircularDependency(simulatedRules);
     if (cycle) errs.chain = `Circular rule dependency detected: ${cycle.cycle.join(" → ")}.`;
@@ -515,10 +574,16 @@ function RuleBuilderContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rule, existingRule, selectedIds, clipboardCount]);
 
-  const sampleJson = useMemo(
-    () => buildSampleRequestJson(fieldCatalog, Array.from(collectFieldKeys(rule.rootGroup))),
-    [rule.rootGroup, fieldCatalog]
-  );
+  const sampleJson = useMemo(() => {
+    const keys = collectFieldKeys(rule.rootGroup);
+    // Additive: also pull in any WHERE fields the CASE Builder references,
+    // so its Sample JSON auto-generates the same way the base condition
+    // tree's does — without changing buildSampleRequestJson itself.
+    for (const w of rule.caseWhens ?? []) {
+      if (w.field) keys.add(w.field);
+    }
+    return buildSampleRequestJson(fieldCatalog, Array.from(keys));
+  }, [rule.rootGroup, rule.caseWhens, fieldCatalog]);
 
   // A capability check, not just a hidden button — someone can still land
   // here directly via the URL (e.g. /rule-builder?id=RL-101) without going
@@ -630,120 +695,145 @@ function RuleBuilderContent() {
               </div>
             )}
             <div className={cn("flex flex-col gap-4", attrPanelOpen ? "lg:col-span-6" : "lg:col-span-9")}>
-              <div>
-                <div className="mb-2 flex items-center gap-2 px-1">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-muted-foreground"
-                    title={attrPanelOpen ? "Hide Available Attributes" : "Show Available Attributes"}
-                    onClick={() => setAttrPanelOpen((v) => !v)}
-                  >
-                    {attrPanelOpen ? <PanelLeftClose className="size-3.5" /> : <PanelLeftOpen className="size-3.5" />}
-                  </Button>
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Condition Builder
-                  </h2>
-                  {countConditions(rule.rootGroup) > 0 &&
-                    (liveIssueCount > 0 ? (
-                      <span className="flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
-                        <AlertTriangle className="size-3" /> {liveIssueCount} issue{liveIssueCount === 1 ? "" : "s"}
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 className="size-3" /> Valid
-                      </span>
-                    ))}
+              {caseBuilderOpen ? (
+                <div>
+                  <CaseBuilder
+                    whens={rule.caseWhens ?? []}
+                    caseElseActions={rule.caseElseActions ?? []}
+                    domain={rule.domain}
+                    currentRuleId={rule.id}
+                    rules={rules}
+                    onWhensChange={setCaseWhens}
+                    onCaseElseActionsChange={setCaseElseActions}
+                    onExitCaseMode={() => setCaseBuilderOpen(false)}
+                  />
+                  {errors.caseWhen && <p className="mt-1.5 px-1 text-[11px] text-destructive">{errors.caseWhen}</p>}
+                  {errors.caseElse && <p className="mt-1.5 px-1 text-[11px] text-destructive">{errors.caseElse}</p>}
                 </div>
-                <ConditionGroupEditor
-                  group={rule.rootGroup}
-                  domain={rule.domain}
-                  handlers={treeHandlers}
-                  selection={activeSelection}
-                  clipboardCount={clipboardCount}
-                  currentRuleId={rule.id}
-                  isRoot
-                />
-                {activeSelection.size > 0 && (
-                  <div className="sticky bottom-3 z-10 mx-auto mt-3 flex w-fit items-center gap-2 rounded-xl border bg-card px-3 py-2 shadow-lg">
-                    <span className="text-xs font-medium">{activeSelection.size} selected</span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 gap-1 text-xs"
-                      disabled={!selectionSharesParent}
-                      title={selectionSharesParent ? "Wrap the selection in a new nested group" : "Select 2+ items in the same group to wrap them"}
-                      onClick={bulkGroup}
-                    >
-                      <FolderPlus className="size-3" /> Group
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={bulkCopy}>
-                      <Copy className="size-3" /> Copy
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-7 gap-1 text-xs text-destructive" onClick={bulkDelete}>
-                      <Trash2 className="size-3" /> Delete
-                    </Button>
-                    <Button size="icon-sm" variant="ghost" title="Clear selection" onClick={() => setSelectedIds(new Set())}>
-                      <X className="size-3.5" />
-                    </Button>
+              ) : (
+                <>
+                  <div>
+                    <div className="mb-2 flex items-center gap-2 px-1">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground"
+                        title={attrPanelOpen ? "Hide Available Attributes" : "Show Available Attributes"}
+                        onClick={() => setAttrPanelOpen((v) => !v)}
+                      >
+                        {attrPanelOpen ? <PanelLeftClose className="size-3.5" /> : <PanelLeftOpen className="size-3.5" />}
+                      </Button>
+                      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Condition Builder
+                      </h2>
+                      {countConditions(rule.rootGroup) > 0 &&
+                        (liveIssueCount > 0 ? (
+                          <span className="flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                            <AlertTriangle className="size-3" /> {liveIssueCount} issue{liveIssueCount === 1 ? "" : "s"}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 className="size-3" /> Valid
+                          </span>
+                        ))}
+                    </div>
+                    <ConditionGroupEditor
+                      group={rule.rootGroup}
+                      domain={rule.domain}
+                      handlers={treeHandlers}
+                      selection={activeSelection}
+                      clipboardCount={clipboardCount}
+                      currentRuleId={rule.id}
+                      isRoot
+                      onOpenCaseBuilder={openCaseBuilder}
+                    />
+                    {activeSelection.size > 0 && (
+                      <div className="sticky bottom-3 z-10 mx-auto mt-3 flex w-fit items-center gap-2 rounded-xl border bg-card px-3 py-2 shadow-lg">
+                        <span className="text-xs font-medium">{activeSelection.size} selected</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs"
+                          disabled={!selectionSharesParent}
+                          title={selectionSharesParent ? "Wrap the selection in a new nested group" : "Select 2+ items in the same group to wrap them"}
+                          onClick={bulkGroup}
+                        >
+                          <FolderPlus className="size-3" /> Group
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={bulkCopy}>
+                          <Copy className="size-3" /> Copy
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 gap-1 text-xs text-destructive" onClick={bulkDelete}>
+                          <Trash2 className="size-3" /> Delete
+                        </Button>
+                        <Button size="icon-sm" variant="ghost" title="Clear selection" onClick={() => setSelectedIds(new Set())}>
+                          <X className="size-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div>
-                <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  THEN — Action Builder
-                </h2>
-                <ActionListEditor actions={rule.actions} domain={rule.domain} rules={rules} currentRuleId={rule.id} rootGroup={rule.rootGroup} onChange={setActions} />
-                {errors.actions && <p className="mt-1.5 px-1 text-[11px] text-destructive">{errors.actions}</p>}
-              </div>
-              <div>
-                <div className="mb-2 flex items-center justify-between px-1">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    ELSE — Otherwise
-                  </h2>
-                  {!showElseBranch && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 gap-1 text-[11px]"
-                      onClick={() => setShowElseBranch(true)}
-                    >
-                      <Plus className="size-3" /> Add ELSE Branch
-                    </Button>
-                  )}
-                </div>
-                {showElseBranch ? (
-                  <>
-                    <p className="mb-2 px-1 text-[11px] text-muted-foreground">
-                      Runs instead of THEN when the IF conditions don&apos;t match. Leave empty and this rule simply
-                      does nothing on a non-match, same as before.
-                    </p>
-                    <ActionListEditor actions={rule.elseActions ?? []} domain={rule.domain} rules={rules} currentRuleId={rule.id} rootGroup={rule.rootGroup} onChange={setElseActions} />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-2 h-6 text-[11px] text-muted-foreground"
-                      onClick={() => {
-                        setShowElseBranch(false);
-                        setElseActions([]);
-                      }}
-                    >
-                      Remove ELSE Branch
-                    </Button>
-                  </>
-                ) : (
-                  <p className="rounded-lg border border-dashed px-3 py-3 text-center text-xs text-muted-foreground">
-                    No ELSE branch — this rule does nothing when its conditions don&apos;t match.
-                  </p>
-                )}
-              </div>
+                  <div>
+                    <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      THEN — Action Builder
+                    </h2>
+                    <ActionListEditor actions={rule.actions} domain={rule.domain} rules={rules} currentRuleId={rule.id} rootGroup={rule.rootGroup} onChange={setActions} />
+                    {errors.actions && <p className="mt-1.5 px-1 text-[11px] text-destructive">{errors.actions}</p>}
+                  </div>
+                  <div>
+                    <div className="mb-2 flex items-center justify-between px-1">
+                      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        ELSE — Otherwise
+                      </h2>
+                      {!showElseBranch && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 gap-1 text-[11px]"
+                          onClick={() => setShowElseBranch(true)}
+                        >
+                          <Plus className="size-3" /> Add ELSE Branch
+                        </Button>
+                      )}
+                    </div>
+                    {showElseBranch ? (
+                      <>
+                        <p className="mb-2 px-1 text-[11px] text-muted-foreground">
+                          Runs instead of THEN when the IF conditions don&apos;t match. Leave empty and this rule simply
+                          does nothing on a non-match, same as before.
+                        </p>
+                        <ActionListEditor actions={rule.elseActions ?? []} domain={rule.domain} rules={rules} currentRuleId={rule.id} rootGroup={rule.rootGroup} onChange={setElseActions} />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-2 h-6 text-[11px] text-muted-foreground"
+                          onClick={() => {
+                            setShowElseBranch(false);
+                            setElseActions([]);
+                          }}
+                        >
+                          Remove ELSE Branch
+                        </Button>
+                      </>
+                    ) : (
+                      <p className="rounded-lg border border-dashed px-3 py-3 text-center text-xs text-muted-foreground">
+                        No ELSE branch — this rule does nothing when its conditions don&apos;t match.
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="flex flex-col gap-4 lg:col-span-3">
               {/* FUTURE: Re-enable ExpressionPreview if needed
               <ExpressionPreview rootGroup={rule.rootGroup} catalog={fieldCatalog} />
               */}
-              <RulePreviewPanel rule={rule} fieldCatalog={fieldCatalog} />
+              <RulePreviewPanel
+                rule={rule}
+                fieldCatalog={fieldCatalog}
+                caseWhens={rule.caseWhens}
+                caseElseActions={rule.caseElseActions}
+              />
               <SampleJsonPanel data={sampleJson} />
               <InlineTestPanel
                 rootGroup={rule.rootGroup}

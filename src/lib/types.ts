@@ -138,6 +138,20 @@ export interface RuleAction {
  *  (same precedent as the existing Condition.prefix). */
 export type RuleType = "IF" | "WHERE" | "CASE" | "GROUP";
 
+/** One WHEN → THEN branch of a rule's optional CASE Builder — a purely
+ *  additive, self-contained sibling to the IF/WHERE/GROUP condition tree
+ *  (rootGroup/actions/elseActions), not a replacement for it. A rule can
+ *  have a normal condition tree AND a CASE block at the same time. */
+export interface CaseWhenClause {
+  id: string;
+  field: string;
+  operator: Operator;
+  value: string;
+  value2?: string; // used for "between", same convention as Condition.value2
+  outputField: string;
+  outputValue: string;
+}
+
 export interface BusinessRule {
   id: string; // e.g. RL-101
   name: string;
@@ -175,6 +189,15 @@ export interface BusinessRule {
    *  Hand-authored demo rules are simulatable; bulk-generated filler rules
    *  (added purely for repository/dashboard scale) are not. */
   simulatable?: boolean;
+  /** Optional CASE Builder block. When `caseWhens` has entries, the Rule
+   *  Builder UI shows ONLY the CASE Builder (hiding the normal condition
+   *  tree / THEN Action Builder / ELSE — Otherwise) — the CASE Builder is
+   *  the complete rule in that mode, not an addition alongside the tree. */
+  caseWhens?: CaseWhenClause[];
+  /** CASE Builder's single final ELSE — fires when no WHEN clause matches.
+   *  Reuses the same RuleAction shape (and the same ActionListEditor UI)
+   *  as the normal rule's `actions`/`elseActions`. */
+  caseElseActions?: RuleAction[];
 }
 
 // A full, immutable snapshot of a rule's definition at the moment it was

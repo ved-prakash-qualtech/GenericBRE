@@ -1151,9 +1151,24 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 37,
+      version: 38,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v37 -> v38 migrated RL-116 ("Interest Rate Determination") from
+        // its temporary IF-condition + Bracket Lookup THEN action to a
+        // native CASE rule (caseWhens + caseElseActions), now that the Rule
+        // Builder has a dedicated CASE Builder mode. Replaces the persisted
+        // RL-116 in place so browsers that already seeded the old shape
+        // pick up the migration instead of showing stale data forever.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.rules) {
+            const idx = s.rules.findIndex((r) => r.id === "RL-116");
+            const migrated = ALL_RULES.find((r) => r.id === "RL-116");
+            if (idx !== -1 && migrated) s.rules[idx] = migrated;
+          }
+        }
+
         // v36 -> v37 added 5 rejected-outcome demo simulations (SIM-DEMO-1…5)
         // so the "Failed Simulations" KPI (Underwriter/Operations dashboards)
         // and Product Workspace's Simulation History tab show real data

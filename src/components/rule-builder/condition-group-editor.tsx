@@ -16,6 +16,7 @@ import {
   ArrowUp,
   ArrowDown,
   MoreVertical,
+  Layers,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Condition, ConditionGroup, Connector, Domain } from "@/lib/types";
@@ -76,6 +77,11 @@ interface GroupEditorProps {
    *  its own outputs from its "Generated Variables" list (rule chaining is
    *  global, see src/lib/rule-chaining.ts). Absent for Rule Templates. */
   currentRuleId?: string;
+  /** Optional — renders a "CASE" toolbar button on the root group, beside
+   *  Condition/Group, when provided. Additive-only: omitted entirely (no
+   *  button, no behavior change) for any caller that doesn't pass it, e.g.
+   *  Rule Templates' editor. */
+  onOpenCaseBuilder?: () => void;
 }
 
 function collectGroupIds(group: ConditionGroup, out: string[] = []): string[] {
@@ -152,7 +158,7 @@ function ConnectorDropRow({
   );
 }
 
-export function ConditionGroupEditor({ group, domain, handlers, selection, clipboardCount, isRoot, currentRuleId }: GroupEditorProps) {
+export function ConditionGroupEditor({ group, domain, handlers, selection, clipboardCount, isRoot, currentRuleId, onOpenCaseBuilder }: GroupEditorProps) {
   // Collapse state lives on the group itself (ConditionGroup.collapsed) so it
   // persists with the rule and a root "Collapse All/Expand All" can drive
   // every nested group at once, instead of being local-only UI state.
@@ -294,6 +300,11 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => handlers.onAddChild(group.id, emptyGroup())}>
             <FolderPlus className="size-3" /> Group
           </Button>
+          {isRoot && onOpenCaseBuilder && (
+            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-cyan-700 dark:text-cyan-400" onClick={onOpenCaseBuilder}>
+              <Layers className="size-3" /> CASE
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" title="More actions" />}>
               <MoreVertical className="size-3.5" />
