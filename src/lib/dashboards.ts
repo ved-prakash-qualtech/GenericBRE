@@ -50,14 +50,14 @@ export const DEFAULT_DASHBOARD_CONFIGS: Record<string, DashboardConfig> = {
   operations: {
     roleId: "operations",
     landingRoute: "/simulator",
-    widgets: widgets(["kpis", "decision-lookup", "execution-logs", "environment-status", "recent-activity"]),
+    widgets: widgets(["kpis", "decision-lookup", "execution-logs", "recent-activity"]),
     kpis: ["rule-executions", "failed-simulations", "deployments", "total-rules", "active-rules", "pending-review"],
     quickActions: ["run-simulator", "open-repository"],
   },
   sysadmin: {
     roleId: "sysadmin",
     landingRoute: "/settings",
-    widgets: widgets(["kpis", "environment-status", "execution-logs", "domain-distribution", "rule-status", "recent-activity"]),
+    widgets: widgets(["kpis", "execution-logs", "domain-distribution", "rule-status", "recent-activity"]),
     kpis: ["total-rules", "active-rules", "business-categories", "deployments", "rule-executions", "pending-approvals"],
     quickActions: ["configuration-studio", "open-repository", "decision-matrix"],
   },

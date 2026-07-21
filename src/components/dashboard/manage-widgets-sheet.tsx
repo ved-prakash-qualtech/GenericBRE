@@ -17,6 +17,5 @@ export const WIDGET_LABELS: Record<string, string> = {
   "approval-queue": "Approval Queue",
   "rule-conflicts": "Rule Conflicts",
   "execution-logs": "Execution Logs",
-  "environment-status": "Environment Status",
   "decision-lookup": "Decision Lookup",
 };

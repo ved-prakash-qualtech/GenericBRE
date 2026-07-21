@@ -15,7 +15,6 @@ import {
   ApprovalQueuePanel,
   RuleConflictsPanel,
   ExecutionLogsPanel,
-  EnvironmentStatusPanel,
   DecisionLookupPanel,
 } from "@/components/dashboard/persona-widgets";
 import { WIDGET_LABELS } from "@/components/dashboard/manage-widgets-sheet";
@@ -46,7 +45,6 @@ const WIDGET_RENDERERS: Record<string, () => React.ReactNode> = {
   "approval-queue": () => <ApprovalQueuePanel />,
   "rule-conflicts": () => <RuleConflictsPanel />,
   "execution-logs": () => <ExecutionLogsPanel />,
-  "environment-status": () => <EnvironmentStatusPanel />,
   "decision-lookup": () => <DecisionLookupPanel />,
 };
 

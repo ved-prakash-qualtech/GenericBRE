@@ -204,24 +204,6 @@ export function ExecutionLogsPanel() {
   );
 }
 
-// FUTURE: EnvironmentStatusPanel removed for demo.
-// Restore the full component when environment promotion (Dev → UAT → Prod) is reintroduced.
-export function EnvironmentStatusPanel() {
-  const router = useRouter();
-  return (
-    <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
-      <PanelHeader title="Rule Status Overview" action="View all" onAction={() => router.push("/repository")} />
-      <div className="flex flex-1 items-center justify-center p-4 text-center">
-        <p className="text-[11px] text-muted-foreground">
-          Environment promotion (Dev → UAT → Prod) is simplified for this release.
-          All active rules are available for evaluation.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-
 export function DecisionLookupPanel() {
   const [query, setQuery] = useState("");
   const router = useRouter();
