@@ -7,23 +7,20 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { RuleStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const STATUS_OPTIONS: { value: RuleStatus; label: string }[] = [
-  { value: "Active", label: "Active" },
-  { value: "Draft", label: "Draft" },
-  { value: "Inactive", label: "Inactive" },
-  { value: "Archived", label: "Archived" },
-];
-
+// Domain-only — this is what actually scopes the Dashboard's widgets (see
+// useScopedRules/globalFilters.domains). Status used to live here too but
+// was never read by any page, so it was dropped rather than shipped as a
+// dead control. The header only renders this on /dashboard (see header.tsx)
+// since no other page consumes globalFilters at all.
 export function GlobalFilterBar() {
   const filters = useAppStore((s) => s.globalFilters);
   const setFilters = useAppStore((s) => s.setGlobalFilters);
   const resetFilters = useAppStore((s) => s.resetGlobalFilters);
   const industries = useAppStore((s) => s.industries);
   const DOMAIN_OPTIONS = industries.map((i) => ({ value: i.id, label: i.name }));
-  const hasActive = filters.domains.length > 0 || filters.statuses.length > 0;
+  const hasActive = filters.domains.length > 0;
 
   return (
     <div className="hidden items-center gap-2 lg:flex">
@@ -32,12 +29,6 @@ export function GlobalFilterBar() {
         options={DOMAIN_OPTIONS}
         selected={filters.domains}
         onChange={(v) => setFilters({ domains: v as string[] })}
-      />
-      <MultiSelect
-        label="Status"
-        options={STATUS_OPTIONS}
-        selected={filters.statuses}
-        onChange={(v) => setFilters({ statuses: v as RuleStatus[] })}
       />
       {hasActive && (
         <Button variant="ghost" size="icon" className="size-9" onClick={resetFilters} aria-label="Reset filters">
@@ -55,12 +46,11 @@ export function MobileFilterButton() {
   const resetFilters = useAppStore((s) => s.resetGlobalFilters);
   const industries = useAppStore((s) => s.industries);
   const DOMAIN_OPTIONS = industries.map((i) => ({ value: i.id, label: i.name }));
-  const count = filters.domains.length + filters.statuses.length;
+  const count = filters.domains.length;
 
-  const toggle = (key: "domains" | "statuses", value: string) => {
-    const current = filters[key] as string[];
-    const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
-    setFilters({ [key]: next } as never);
+  const toggle = (value: string) => {
+    const next = filters.domains.includes(value) ? filters.domains.filter((v) => v !== value) : [...filters.domains, value];
+    setFilters({ domains: next });
   };
 
   return (
@@ -82,31 +72,13 @@ export function MobileFilterButton() {
                 {DOMAIN_OPTIONS.map((o) => (
                   <button
                     key={o.value}
-                    onClick={() => toggle("domains", o.value)}
+                    onClick={() => toggle(o.value)}
                     className={cn(
                       "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm",
                       filters.domains.includes(o.value) && "border-primary bg-primary/10 text-primary"
                     )}
                   >
                     {filters.domains.includes(o.value) && <Check className="size-3.5" />}
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
-              <div className="flex flex-wrap gap-2">
-                {STATUS_OPTIONS.map((o) => (
-                  <button
-                    key={o.value}
-                    onClick={() => toggle("statuses", o.value)}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm",
-                      filters.statuses.includes(o.value) && "border-primary bg-primary/10 text-primary"
-                    )}
-                  >
-                    {filters.statuses.includes(o.value) && <Check className="size-3.5" />}
                     {o.label}
                   </button>
                 ))}

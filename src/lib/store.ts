@@ -134,12 +134,13 @@ const DEFAULT_USER: CurrentUser = { name: "Ananya Verma", role: "business-analys
 // paginated storage instead of a client-side cap.
 const AUDIT_LOG_CAP = 500;
 
+// Status was dropped — it was set by the header's filter UI but never read
+// by any page (only `domains` is consumed, and only by the Dashboard).
 export interface GlobalFilters {
   domains: Domain[];
-  statuses: RuleStatus[];
 }
 
-const DEFAULT_GLOBAL_FILTERS: GlobalFilters = { domains: [], statuses: [] };
+const DEFAULT_GLOBAL_FILTERS: GlobalFilters = { domains: [] };
 
 interface AppState {
   rules: BusinessRule[];

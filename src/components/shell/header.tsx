@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Menu, Search, Plus, Palette } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LogoLockup } from "./logo";
 import { GlobalFilterBar, MobileFilterButton } from "./global-filter-bar";
@@ -17,6 +17,10 @@ export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const router = useRouter();
   const t = useTranslate();
+  // The Domain filter only ever scopes the Dashboard's widgets (globalFilters
+  // is consumed nowhere else) — showing it on every other page implied it
+  // did something there too, when it silently did nothing.
+  const isDashboard = usePathname() === "/dashboard";
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -52,8 +56,12 @@ export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
         </button>
 
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-          <MobileFilterButton />
-          <GlobalFilterBar />
+          {isDashboard && (
+            <>
+              <MobileFilterButton />
+              <GlobalFilterBar />
+            </>
+          )}
           <Button size="sm" className="h-9 gap-1.5" onClick={() => router.push("/rule-builder")} aria-label="Create Rule">
             <Plus className="size-3.5" />
             <span className="hidden lg:inline">{t("header.createRule")}</span>
