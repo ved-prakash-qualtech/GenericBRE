@@ -201,6 +201,16 @@ export default function AuditLogPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="h-32 text-center text-sm text-muted-foreground">
+                      <div className="flex flex-col items-center gap-2">
+                        <ScrollText className="size-6 text-muted-foreground/40" />
+                        <span>No audit entries match the current filters.</span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
                 {filtered.map((a) => {
                   const isOpen = expanded.has(a.id);
                   return (
