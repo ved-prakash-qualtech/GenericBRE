@@ -116,10 +116,10 @@ export function ExpressionPreview({ rootGroup, catalog }: { rootGroup: Condition
   const stats = treeStats(rootGroup);
   return (
     <div className="rounded-xl border bg-card">
-      <div className="flex items-center gap-1.5 border-b px-3.5 py-2.5 text-xs font-semibold">
+      <div className="flex items-center gap-1.5 border-b px-3.5 py-2.5 text-sm font-semibold">
         <Code2 className="size-3.5 text-primary" /> Expression Preview
       </div>
-      <div className="whitespace-pre-wrap break-words px-3.5 py-3 font-mono text-[11.5px] leading-relaxed">
+      <div className="whitespace-pre-wrap break-words px-3.5 py-3 font-mono text-sm leading-relaxed">
         <Keyword>WHERE</Keyword>{" "}
         {rootGroup.children.length === 0 ? (
           <span className="text-muted-foreground">— no conditions, matches every case</span>
@@ -165,7 +165,7 @@ export function ExpressionPreview({ rootGroup, catalog }: { rootGroup: Condition
         ).map(([label, value]) => (
           <div key={label} className="px-1 py-2">
             <p className="text-sm font-bold tabular-nums">{value}</p>
-            <p className="text-[9.5px] uppercase tracking-wide text-muted-foreground">{label}</p>
+            <p className="text-sm uppercase tracking-wide text-muted-foreground">{label}</p>
           </div>
         ))}
       </div>

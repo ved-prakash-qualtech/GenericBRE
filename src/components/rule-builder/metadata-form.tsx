@@ -30,7 +30,7 @@ export function MetadataForm({ data, onChange, errors = {} }: MetadataFormProps)
             placeholder="e.g. Minimum Credit Score Validation"
             className={cn(errors.name && "border-destructive")}
           />
-          {errors.name && <p className="text-[11px] text-destructive">{errors.name}</p>}
+          {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
         </div>
 
         <div className="space-y-1.5">

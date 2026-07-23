@@ -114,7 +114,7 @@ export function OutputFieldPicker({
                     <Check className={cn("size-3.5", value === v.key ? "opacity-100" : "opacity-0")} />
                     <Variable className="size-3.5 shrink-0 text-primary" />
                     <span className="truncate">{v.key}</span>
-                    <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">from {v.sourceRuleName}</span>
+                    <span className="ml-auto shrink-0 text-sm text-muted-foreground">from {v.sourceRuleName}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -143,29 +143,29 @@ function BracketRowsEditor({ brackets, onChange }: { brackets: RuleBracket[]; on
             placeholder="Min"
             value={b.min}
             onChange={(e) => updateRow(b.id, { min: Number(e.target.value) })}
-            className="h-8 w-20 text-xs"
+            className="h-8 w-24 text-sm"
           />
-          <span className="text-xs text-muted-foreground">to</span>
+          <span className="text-sm text-muted-foreground">to</span>
           <Input
             type="number"
             placeholder="Max"
             value={b.max}
             onChange={(e) => updateRow(b.id, { max: Number(e.target.value) })}
-            className="h-8 w-20 text-xs"
+            className="h-8 w-24 text-sm"
           />
-          <span className="text-xs text-muted-foreground">→</span>
+          <span className="text-sm text-muted-foreground">→</span>
           <Input
             placeholder="Output value"
             value={b.outputValue}
             onChange={(e) => updateRow(b.id, { outputValue: e.target.value })}
-            className="h-8 flex-1 text-xs"
+            className="h-8 flex-1 text-sm"
           />
           <Button variant="ghost" size="icon-sm" onClick={() => removeRow(b.id)} className="text-muted-foreground hover:text-destructive">
             <Trash2 className="size-3.5" />
           </Button>
         </div>
       ))}
-      <Button variant="outline" size="sm" onClick={addRow} className="h-7 gap-1.5 text-xs">
+      <Button variant="outline" size="sm" onClick={addRow} className="h-7 gap-1.5 text-sm">
         <Plus className="size-3" /> Add Bracket
       </Button>
     </div>
@@ -253,7 +253,7 @@ function ActionRow({
                 placeholder="Value"
                 value={action.outputValue ?? ""}
                 onChange={(e) => onChange({ outputValue: e.target.value })}
-                className="h-8 flex-1 text-xs sm:col-span-2"
+                className="h-8 flex-1 text-sm sm:col-span-2"
               />
             )}
           </>
@@ -286,7 +286,7 @@ function ActionRow({
             placeholder="Message shown to the business user / audit trail"
             value={action.message ?? ""}
             onChange={(e) => onChange({ message: e.target.value })}
-            className="min-h-14 text-xs sm:col-span-2"
+            className="min-h-14 text-sm sm:col-span-2"
           />
         )}
       </div>
@@ -320,7 +320,7 @@ export function ActionListEditor({
   return (
     <div className="space-y-2.5">
       {actions.length === 0 && (
-        <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
+        <p className="rounded-lg border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
           No actions configured — add at least one THEN action.
         </p>
       )}

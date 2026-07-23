@@ -79,7 +79,7 @@ export function AttributePanel({
           if (e.dataTransfer) e.dataTransfer.effectAllowed = "copy";
         }}
         onDragEnd={clearDragPayload}
-        className="group flex cursor-grab select-none items-center gap-1.5 rounded-lg border border-transparent px-2 py-1.5 text-xs transition-colors hover:border-primary/30 hover:bg-primary/5 active:cursor-grabbing"
+        className="group flex cursor-grab select-none items-center gap-1.5 rounded-lg border border-transparent px-2 py-1.5 text-sm transition-colors hover:border-primary/30 hover:bg-primary/5 active:cursor-grabbing"
       >
         <GripVertical className="size-3 shrink-0 text-muted-foreground/40" />
         <button
@@ -89,7 +89,7 @@ export function AttributePanel({
           className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
         >
           <span className="truncate font-medium">{f.label}</span>
-          <Badge variant="secondary" className="ml-auto shrink-0 px-1 text-[9px] capitalize">{f.type}</Badge>
+          <Badge variant="secondary" className="ml-auto shrink-0 px-1 text-sm capitalize">{f.type}</Badge>
         </button>
         <button
           type="button"
@@ -123,7 +123,7 @@ export function AttributePanel({
           disabled={!collapsible}
           onClick={() => collapsible && toggleSection(name)}
           className={cn(
-            "flex w-full items-center gap-1.5 px-1 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors disabled:cursor-default",
+            "flex w-full items-center gap-1.5 px-1 py-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground transition-colors disabled:cursor-default",
             collapsible && "hover:text-foreground"
           )}
         >
@@ -140,14 +140,14 @@ export function AttributePanel({
   return (
     <div className="flex h-full flex-col rounded-xl border bg-card">
       <div className="border-b p-2.5">
-        <p className="mb-2 px-0.5 text-xs font-semibold">Available Attributes</p>
+        <p className="mb-2 px-0.5 text-sm font-semibold">Available Attributes</p>
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search fields..."
-            className="h-8 pl-8 text-xs"
+            className="h-8 pl-8 text-sm"
           />
         </div>
       </div>
@@ -160,10 +160,10 @@ export function AttributePanel({
           renderSection(name, <Boxes className="size-3" />, sectionFields)
         )}
         {visibleFields.length === 0 && (
-          <p className="px-2 py-6 text-center text-[11px] text-muted-foreground">No fields match this search.</p>
+          <p className="px-2 py-6 text-center text-sm text-muted-foreground">No fields match this search.</p>
         )}
       </div>
-      <p className="border-t px-3 py-2 text-[10px] text-muted-foreground">
+      <p className="border-t px-3 py-2 text-sm text-muted-foreground">
         Click to add a condition · drag into the builder to place it exactly
       </p>
     </div>

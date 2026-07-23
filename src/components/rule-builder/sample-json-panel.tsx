@@ -64,7 +64,7 @@ export function SampleJsonPanel({ data, editable = false, value, onChange }: Sam
   return (
     <div className="rounded-xl border bg-card p-3.5">
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           <FileJson className="size-3.5" /> Sample Request JSON
         </p>
         <div className="flex gap-1">
@@ -77,7 +77,7 @@ export function SampleJsonPanel({ data, editable = false, value, onChange }: Sam
         </div>
       </div>
       {isEmpty && !editable ? (
-        <p className="rounded-lg border border-dashed p-3 text-center text-[11px] text-muted-foreground">
+        <p className="rounded-lg border border-dashed p-3 text-center text-sm text-muted-foreground">
           Add conditions or actions referencing business fields to generate a sample payload.
         </p>
       ) : editable ? (
@@ -87,17 +87,17 @@ export function SampleJsonPanel({ data, editable = false, value, onChange }: Sam
             onChange={(e) => onChange?.(e.target.value)}
             spellCheck={false}
             className={cn(
-              "max-h-80 min-h-40 overflow-auto font-mono text-[11px] leading-relaxed",
+              "max-h-80 min-h-40 overflow-auto font-mono text-sm leading-relaxed",
               parseError && "border-destructive"
             )}
           />
-          {parseError && <p className="mt-1.5 text-[11px] text-destructive">Invalid JSON — fix before running the simulation.</p>}
+          {parseError && <p className="mt-1.5 text-sm text-destructive">Invalid JSON — fix before running the simulation.</p>}
         </>
       ) : (
-        <pre className="max-h-64 overflow-auto rounded-lg bg-muted/40 p-3 text-[11px] leading-relaxed">{json}</pre>
+        <pre className="max-h-64 overflow-auto rounded-lg bg-muted/40 p-3 text-sm leading-relaxed">{json}</pre>
       )}
       {!editable && (
-        <p className="mt-2 text-[10px] text-muted-foreground/70">Auto-regenerates from every field this rule references.</p>
+        <p className="mt-2 text-sm text-muted-foreground/70">Auto-regenerates from every field this rule references.</p>
       )}
     </div>
   );

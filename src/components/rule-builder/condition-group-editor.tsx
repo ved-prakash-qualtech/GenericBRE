@@ -140,20 +140,20 @@ function ConnectorDropRow({
             <SelectTrigger
               size="sm"
               title="How this condition/group joins the ones before it — applies only to this item"
-              className={cn("h-6 gap-1 rounded-md border px-2 py-0 font-mono text-[10px] font-bold tracking-wider", CONNECTOR_STYLES[connector])}
+              className={cn("h-6 gap-1 rounded-md border px-2 py-0 font-mono text-sm font-bold tracking-wider", CONNECTOR_STYLES[connector])}
             >
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="start">
-              <SelectItem value="AND" className="font-mono text-[11px] font-bold">AND</SelectItem>
-              <SelectItem value="OR" className="font-mono text-[11px] font-bold">OR</SelectItem>
-              <SelectItem value="N.A." className="font-mono text-[11px] font-bold text-muted-foreground">N.A.</SelectItem>
+              <SelectItem value="AND" className="font-mono text-sm font-bold">AND</SelectItem>
+              <SelectItem value="OR" className="font-mono text-sm font-bold">OR</SelectItem>
+              <SelectItem value="N.A." className="font-mono text-sm font-bold text-muted-foreground">N.A.</SelectItem>
             </SelectContent>
           </Select>
           <div className="h-px flex-1 bg-border/60" />
         </>
       )}
-      {active && <p className="w-full text-center text-[10px] font-medium text-primary">Drop here</p>}
+      {active && <p className="w-full text-center text-sm font-medium text-primary">Drop here</p>}
     </div>
   );
 }
@@ -248,7 +248,7 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
             <button
               onClick={() => handlers.onSetGroupLogic(group.id, "AND")}
               className={cn(
-                "px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                "px-2.5 py-1 text-sm font-semibold transition-colors",
                 group.logic === "AND" ? "bg-blue-600 text-white" : "hover:bg-accent"
               )}
             >
@@ -257,7 +257,7 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
             <button
               onClick={() => handlers.onSetGroupLogic(group.id, "OR")}
               className={cn(
-                "px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                "px-2.5 py-1 text-sm font-semibold transition-colors",
                 group.logic === "OR" ? "bg-amber-500 text-white" : "hover:bg-accent"
               )}
             >
@@ -265,7 +265,7 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
             </button>
           </div>
         )}
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {collapsed
             ? `( ${countConditions(group)} condition${countConditions(group) === 1 ? "" : "s"} )`
             : group.children.length === 0
@@ -279,7 +279,7 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1 text-xs text-muted-foreground"
+                className="h-7 gap-1 text-sm text-muted-foreground"
                 onClick={() => collectGroupIds(group).forEach((id) => id !== group.id && handlers.onUpdate(id, { collapsed: true }))}
               >
                 <ChevronsDownUp className="size-3" /> Collapse All
@@ -287,21 +287,21 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1 text-xs text-muted-foreground"
+                className="h-7 gap-1 text-sm text-muted-foreground"
                 onClick={() => collectGroupIds(group).forEach((id) => id !== group.id && handlers.onUpdate(id, { collapsed: false }))}
               >
                 <ChevronsUpDown className="size-3" /> Expand All
               </Button>
             </>
           )}
-          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => handlers.onAddChild(group.id, emptyCondition())}>
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-sm" onClick={() => handlers.onAddChild(group.id, emptyCondition())}>
             <Plus className="size-3" /> Condition
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => handlers.onAddChild(group.id, emptyGroup())}>
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-sm" onClick={() => handlers.onAddChild(group.id, emptyGroup())}>
             <FolderPlus className="size-3" /> Group
           </Button>
           {isRoot && onOpenCaseBuilder && (
-            <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-cyan-700 dark:text-cyan-400" onClick={onOpenCaseBuilder}>
+            <Button variant="ghost" size="sm" className="h-7 gap-1 text-sm text-cyan-700 dark:text-cyan-400" onClick={onOpenCaseBuilder}>
               <Layers className="size-3" /> CASE
             </Button>
           )}
@@ -362,7 +362,7 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
                     if (payload.kind === "node") handlers.onMoveNode(payload.nodeId, group.id, 0);
                     else handlers.onInsertField(group.id, 0, payload.fieldKey);
                   }}
-                  className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground"
+                  className="rounded-lg border border-dashed px-3 py-4 text-center text-sm text-muted-foreground"
                 >
                   No conditions yet — this {isRoot ? "rule applies to every case" : "group always passes"}. Add a condition, or drag a
                   field here from Available Attributes.

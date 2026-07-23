@@ -76,10 +76,10 @@ export function RuleSummary({
   const prefix = getRulePrefix(rule.rootGroup);
   return (
     <div className="rounded-xl border bg-gradient-to-br from-primary/5 to-transparent p-4">
-      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-primary">
+      <div className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary">
         <Sparkles className="size-3.5" /> Live Rule Summary
       </div>
-      <p className="text-[13px] leading-relaxed">
+      <p className="text-sm leading-relaxed">
         <span className="font-semibold">{rule.name || "This rule"}</span> (Priority {rule.priority}, {rule.status}) —{" "}
         <span className="font-medium text-primary">{prefix}</span> {conditionText}{" "}
         {rule.actions.length > 0 && (

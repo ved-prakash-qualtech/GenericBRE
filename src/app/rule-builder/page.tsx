@@ -614,10 +614,10 @@ function RuleBuilderContent() {
         </Button>
         <div className="mr-auto">
           <h1 className="text-base font-semibold tracking-tight">{existingRule ? `Edit Rule · ${rule.id}` : "Create New Rule"}</h1>
-          <p className="text-xs text-muted-foreground">No-code visual rule configuration — standalone, reusable across any Product</p>
+          <p className="text-sm text-muted-foreground">No-code visual rule configuration — standalone, reusable across any Product</p>
         </div>
         {Object.keys(errors).length > 0 && (
-          <span className="flex items-center gap-1.5 text-xs text-destructive">
+          <span className="flex items-center gap-1.5 text-sm text-destructive">
             <AlertTriangle className="size-3.5" /> Fix validation errors to save
           </span>
         )}
@@ -658,7 +658,7 @@ function RuleBuilderContent() {
         <div className="flex w-full flex-col gap-4 px-5 py-5 sm:px-6">
           <MetadataForm data={rule} onChange={patchRule} errors={errors} />
           {(errors.condition || errors.outputField || errors.duplicateVariable || errors.variables || errors.chain) && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {errors.condition && <p>{errors.condition}</p>}
               {errors.outputField && <p>{errors.outputField}</p>}
               {errors.duplicateVariable && <p>{errors.duplicateVariable}</p>}
@@ -670,10 +670,10 @@ function RuleBuilderContent() {
           {!existingRule && !templateHintDismissed && countConditions(rule.rootGroup) === 0 && rule.actions.length === 0 && (
             <div className="flex items-center gap-3 rounded-lg border border-dashed bg-muted/30 px-3.5 py-2.5">
               <LayoutTemplate className="size-4 shrink-0 text-primary" />
-              <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+              <p className="min-w-0 flex-1 text-sm text-muted-foreground">
                 Starting from scratch? A template can pre-fill the condition and action builder below — fully editable after.
               </p>
-              <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1.5 text-xs" onClick={() => setTemplatePickerOpen(true)}>
+              <Button size="sm" variant="outline" className="h-7 shrink-0 gap-1.5 text-sm" onClick={() => setTemplatePickerOpen(true)}>
                 <LayoutTemplate className="size-3.5" /> Browse Templates
               </Button>
               <Button size="icon-sm" variant="ghost" className="shrink-0" title="Dismiss" onClick={dismissTemplateHint}>
@@ -707,8 +707,8 @@ function RuleBuilderContent() {
                     onCaseElseActionsChange={setCaseElseActions}
                     onExitCaseMode={() => setCaseBuilderOpen(false)}
                   />
-                  {errors.caseWhen && <p className="mt-1.5 px-1 text-[11px] text-destructive">{errors.caseWhen}</p>}
-                  {errors.caseElse && <p className="mt-1.5 px-1 text-[11px] text-destructive">{errors.caseElse}</p>}
+                  {errors.caseWhen && <p className="mt-1.5 px-1 text-sm text-destructive">{errors.caseWhen}</p>}
+                  {errors.caseElse && <p className="mt-1.5 px-1 text-sm text-destructive">{errors.caseElse}</p>}
                 </div>
               ) : (
                 <>
@@ -723,16 +723,16 @@ function RuleBuilderContent() {
                       >
                         {attrPanelOpen ? <PanelLeftClose className="size-3.5" /> : <PanelLeftOpen className="size-3.5" />}
                       </Button>
-                      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                         Condition Builder
                       </h2>
                       {countConditions(rule.rootGroup) > 0 &&
                         (liveIssueCount > 0 ? (
-                          <span className="flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                          <span className="flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-sm font-medium text-destructive">
                             <AlertTriangle className="size-3" /> {liveIssueCount} issue{liveIssueCount === 1 ? "" : "s"}
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                          <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                             <CheckCircle2 className="size-3" /> Valid
                           </span>
                         ))}
@@ -749,21 +749,21 @@ function RuleBuilderContent() {
                     />
                     {activeSelection.size > 0 && (
                       <div className="sticky bottom-3 z-10 mx-auto mt-3 flex w-fit items-center gap-2 rounded-xl border bg-card px-3 py-2 shadow-lg">
-                        <span className="text-xs font-medium">{activeSelection.size} selected</span>
+                        <span className="text-sm font-medium">{activeSelection.size} selected</span>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 gap-1 text-xs"
+                          className="h-7 gap-1 text-sm"
                           disabled={!selectionSharesParent}
                           title={selectionSharesParent ? "Wrap the selection in a new nested group" : "Select 2+ items in the same group to wrap them"}
                           onClick={bulkGroup}
                         >
                           <FolderPlus className="size-3" /> Group
                         </Button>
-                        <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={bulkCopy}>
+                        <Button size="sm" variant="outline" className="h-7 gap-1 text-sm" onClick={bulkCopy}>
                           <Copy className="size-3" /> Copy
                         </Button>
-                        <Button size="sm" variant="outline" className="h-7 gap-1 text-xs text-destructive" onClick={bulkDelete}>
+                        <Button size="sm" variant="outline" className="h-7 gap-1 text-sm text-destructive" onClick={bulkDelete}>
                           <Trash2 className="size-3" /> Delete
                         </Button>
                         <Button size="icon-sm" variant="ghost" title="Clear selection" onClick={() => setSelectedIds(new Set())}>
@@ -773,22 +773,22 @@ function RuleBuilderContent() {
                     )}
                   </div>
                   <div>
-                    <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <h2 className="mb-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                       THEN — Action Builder
                     </h2>
                     <ActionListEditor actions={rule.actions} domain={rule.domain} rules={rules} currentRuleId={rule.id} rootGroup={rule.rootGroup} onChange={setActions} />
-                    {errors.actions && <p className="mt-1.5 px-1 text-[11px] text-destructive">{errors.actions}</p>}
+                    {errors.actions && <p className="mt-1.5 px-1 text-sm text-destructive">{errors.actions}</p>}
                   </div>
                   <div>
                     <div className="mb-2 flex items-center justify-between px-1">
-                      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                         ELSE — Otherwise
                       </h2>
                       {!showElseBranch && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 gap-1 text-[11px]"
+                          className="h-7 gap-1 text-sm"
                           onClick={() => setShowElseBranch(true)}
                         >
                           <Plus className="size-3" /> Add ELSE Branch
@@ -797,7 +797,7 @@ function RuleBuilderContent() {
                     </div>
                     {showElseBranch ? (
                       <>
-                        <p className="mb-2 px-1 text-[11px] text-muted-foreground">
+                        <p className="mb-2 px-1 text-sm text-muted-foreground">
                           Runs instead of THEN when the IF conditions don&apos;t match. Leave empty and this rule simply
                           does nothing on a non-match, same as before.
                         </p>
@@ -805,7 +805,7 @@ function RuleBuilderContent() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="mt-2 h-6 text-[11px] text-muted-foreground"
+                          className="mt-2 h-7 text-sm text-muted-foreground"
                           onClick={() => {
                             setShowElseBranch(false);
                             setElseActions([]);
@@ -815,7 +815,7 @@ function RuleBuilderContent() {
                         </Button>
                       </>
                     ) : (
-                      <p className="rounded-lg border border-dashed px-3 py-3 text-center text-xs text-muted-foreground">
+                      <p className="rounded-lg border border-dashed px-3 py-3 text-center text-sm text-muted-foreground">
                         No ELSE branch — this rule does nothing when its conditions don&apos;t match.
                       </p>
                     )}

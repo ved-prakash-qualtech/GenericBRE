@@ -117,7 +117,7 @@ export function ConditionEditor({
             placeholder="From"
             className="h-8 w-20"
           />
-          <span className="text-xs text-muted-foreground">–</span>
+          <span className="text-sm text-muted-foreground">–</span>
           <Input
             type={betweenType}
             value={condition.value2 ?? ""}
@@ -143,7 +143,7 @@ export function ConditionEditor({
     <div className={cn("rounded-lg border bg-background px-2 py-1.5", issue && "border-destructive/50 ring-1 ring-destructive/20")}>
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex items-center gap-1 rounded-md border border-blue-500 bg-blue-500/5 px-2 py-1">
-        <span className="text-xs font-bold text-blue-600">Condition:</span>
+        <span className="text-sm font-bold text-blue-600">Condition:</span>
         <Select value={condition.prefix === "WHERE" ? "WHERE" : "IF"} onValueChange={(v) => onChange({ prefix: v as "IF" | "WHERE" })}>
           <SelectTrigger size="sm" className="h-7 w-24 border-0 bg-transparent">
             <SelectValue />
@@ -184,7 +184,7 @@ export function ConditionEditor({
                       <Check className={cn("size-3.5", condition.field === v.key ? "opacity-100" : "opacity-0")} />
                       <Variable className="size-3.5 shrink-0 text-primary" />
                       <span className="truncate">{v.key}</span>
-                      <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">from {v.sourceRuleName}</span>
+                      <span className="ml-auto shrink-0 text-sm text-muted-foreground">from {v.sourceRuleName}</span>
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -210,7 +210,7 @@ export function ConditionEditor({
       </Select>
 
       {renderValueInput()}
-      {field?.unit && <span className="text-xs text-muted-foreground">{field.unit}</span>}
+      {field?.unit && <span className="text-sm text-muted-foreground">{field.unit}</span>}
 
       <div className="ml-auto flex items-center">
         {onCopy && (
@@ -229,7 +229,7 @@ export function ConditionEditor({
       </div>
     </div>
     {issue && (
-      <p className="mt-1 flex items-center gap-1 px-0.5 text-[10.5px] text-destructive">
+      <p className="mt-1 flex items-center gap-1 px-0.5 text-sm text-destructive">
         <AlertCircle className="size-3 shrink-0" /> {issue}
       </p>
     )}

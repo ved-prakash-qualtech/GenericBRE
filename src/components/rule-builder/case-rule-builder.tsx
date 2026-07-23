@@ -37,23 +37,23 @@ function BracketRowsEditor({ brackets, onChange }: { brackets: RuleBracket[]; on
     <div className="space-y-1.5 sm:col-span-2">
       {sorted.map((b, i) => (
         <div key={b.id} className="flex flex-wrap items-center gap-1.5">
-          <Input type="number" value={b.min} onChange={(e) => updateRow(b.id, { min: Number(e.target.value) })} className="h-8 w-20 text-xs" />
+          <Input type="number" value={b.min} onChange={(e) => updateRow(b.id, { min: Number(e.target.value) })} className="h-8 w-24 text-sm" />
           {i < sorted.length - 1 || sorted.length === 1 ? (
             <>
-              <span className="text-xs text-muted-foreground">to</span>
-              <Input type="number" value={b.max} onChange={(e) => updateRow(b.id, { max: Number(e.target.value) })} className="h-8 w-20 text-xs" />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input type="number" value={b.max} onChange={(e) => updateRow(b.id, { max: Number(e.target.value) })} className="h-8 w-24 text-sm" />
             </>
           ) : (
-            <span className="text-xs text-muted-foreground">and above</span>
+            <span className="text-sm text-muted-foreground">and above</span>
           )}
-          <span className="text-xs text-muted-foreground">→</span>
-          <Input placeholder="Output value" value={b.outputValue} onChange={(e) => updateRow(b.id, { outputValue: e.target.value })} className="h-8 flex-1 text-xs" />
+          <span className="text-sm text-muted-foreground">→</span>
+          <Input placeholder="Output value" value={b.outputValue} onChange={(e) => updateRow(b.id, { outputValue: e.target.value })} className="h-8 flex-1 text-sm" />
           <Button variant="ghost" size="icon-sm" onClick={() => removeRow(b.id)} className="text-muted-foreground hover:text-destructive">
             <Trash2 className="size-3.5" />
           </Button>
         </div>
       ))}
-      <Button variant="outline" size="sm" onClick={addRow} className="h-7 gap-1.5 text-xs">
+      <Button variant="outline" size="sm" onClick={addRow} className="h-7 gap-1.5 text-sm">
         <Plus className="size-3" /> Add Bracket
       </Button>
     </div>
@@ -133,15 +133,15 @@ export function CaseRuleBuilder({
 
   return (
     <div className="space-y-4">
-      <p className="px-1 font-mono text-xs font-bold text-primary">CASE</p>
+      <p className="px-1 font-mono text-sm font-bold text-primary">CASE</p>
 
       {/* WHERE */}
       <div>
-        <h2 className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <span className="rounded-md border border-cyan-500 bg-cyan-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-cyan-700 dark:text-cyan-400">WHERE</span>
+        <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="rounded-md border border-cyan-500 bg-cyan-500/10 px-2 py-0.5 font-mono text-sm font-bold text-cyan-700 dark:text-cyan-400">WHERE</span>
         </h2>
         <div className="overflow-hidden rounded-xl border">
-          <div className="grid grid-cols-[1fr_1fr_1fr_32px] divide-x bg-muted/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="grid grid-cols-[1fr_1fr_1fr_32px] divide-x bg-muted/50 text-sm font-bold uppercase tracking-wider text-muted-foreground">
             <div className="px-3 py-2">Field</div>
             <div className="px-3 py-2">Operator</div>
             <div className="px-3 py-2">Value</div>
@@ -178,7 +178,7 @@ export function CaseRuleBuilder({
                     value={condition.value}
                     onChange={(e) => updateWhere(condition.id, { value: e.target.value })}
                     placeholder="Value"
-                    className="h-8 w-full text-xs"
+                    className="h-8 w-full text-sm"
                   />
                 </div>
                 <div className="flex items-center justify-center p-1">
@@ -190,21 +190,21 @@ export function CaseRuleBuilder({
             );
           })}
         </div>
-        <Button variant="outline" size="sm" onClick={addWhere} className="mt-2 h-7 gap-1.5 text-xs">
+        <Button variant="outline" size="sm" onClick={addWhere} className="mt-2 h-7 gap-1.5 text-sm">
           <Plus className="size-3" /> Add Condition
         </Button>
       </div>
 
       {/* THEN */}
       <div>
-        <h2 className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <span className="rounded-md border border-emerald-500 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-700 dark:text-emerald-400">THEN</span>
+        <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="rounded-md border border-emerald-500 bg-emerald-500/10 px-2 py-0.5 font-mono text-sm font-bold text-emerald-700 dark:text-emerald-400">THEN</span>
         </h2>
         {thenAction && (
           <div className="space-y-3 rounded-xl border bg-background p-3">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="space-y-1">
-                <p className="px-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Output Field</p>
+                <p className="px-0.5 text-sm font-bold uppercase tracking-wider text-muted-foreground">Output Field</p>
                 <OutputFieldPicker
                   value={thenAction.outputField ?? ""}
                   domain={domain}
@@ -214,7 +214,7 @@ export function CaseRuleBuilder({
                 />
               </div>
               <div className="space-y-1">
-                <p className="px-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Value</p>
+                <p className="px-0.5 text-sm font-bold uppercase tracking-wider text-muted-foreground">Value</p>
                 <Select value={valueType} onValueChange={(v) => changeValueType(v as ThenValueType)}>
                   <SelectTrigger size="sm" className="h-8 w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -238,7 +238,7 @@ export function CaseRuleBuilder({
                 placeholder="Value"
                 value={thenAction.outputValue ?? ""}
                 onChange={(e) => updateThenAction({ outputValue: e.target.value })}
-                className="h-8 w-full text-xs"
+                className="h-8 w-full text-sm"
               />
             )}
             {valueType === "Formula / Expression" && (
@@ -251,21 +251,21 @@ export function CaseRuleBuilder({
               />
             )}
             {valueType === "Decision Matrix Lookup" && (
-              <p className="rounded-lg border border-dashed px-3 py-2 text-[11px] text-muted-foreground">
+              <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
                 Configured via the Decision Matrix module — matrices for this domain are applied automatically during simulation.
               </p>
             )}
-            {outputField?.unit && <p className="px-0.5 text-[10px] text-muted-foreground">Unit: {outputField.unit}</p>}
+            {outputField?.unit && <p className="px-0.5 text-sm text-muted-foreground">Unit: {outputField.unit}</p>}
           </div>
         )}
       </div>
 
       {/* ELSE */}
       <div>
-        <h2 className="mb-2 flex items-center gap-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <span className="rounded-md border border-red-500 bg-red-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-red-700 dark:text-red-400">ELSE</span>
+        <h2 className="mb-2 flex items-center gap-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="rounded-md border border-red-500 bg-red-500/10 px-2 py-0.5 font-mono text-sm font-bold text-red-700 dark:text-red-400">ELSE</span>
         </h2>
-        <p className="mb-2 px-1 text-[11px] text-muted-foreground">
+        <p className="mb-2 px-1 text-sm text-muted-foreground">
           Runs when no WHERE condition matches — defaults to Reject Application.
         </p>
         <ActionListEditor

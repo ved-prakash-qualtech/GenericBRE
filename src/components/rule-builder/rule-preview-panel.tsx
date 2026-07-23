@@ -37,7 +37,7 @@ export function RulePreviewPanel({
 
   return (
     <div className="rounded-xl border bg-card p-4">
-      <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="mb-3 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         <ListChecks className="size-3.5" /> Rule Preview
       </p>
       <div className="space-y-3">
@@ -48,18 +48,18 @@ export function RulePreviewPanel({
             <div className="flex flex-wrap gap-1.5">
               {inputKeys.map((k) => {
                 const f = getField(fieldCatalog, k);
-                return <Badge key={k} variant="outline" className="text-[10px]">{f?.label ?? k}</Badge>;
+                return <Badge key={k} variant="outline" className="text-sm">{f?.label ?? k}</Badge>;
               })}
             </div>
           )}
         </PreviewSection>
 
         <PreviewSection label="Conditions">
-          <p className="text-xs leading-relaxed text-foreground/80">{getRulePrefix(rule.rootGroup)} {groupToText(rule.rootGroup, fieldCatalog)}</p>
+          <p className="text-sm leading-relaxed text-foreground/80">{getRulePrefix(rule.rootGroup)} {groupToText(rule.rootGroup, fieldCatalog)}</p>
         </PreviewSection>
 
         <PreviewSection label="Actions">
-          <p className="text-xs leading-relaxed text-foreground/80">
+          <p className="text-sm leading-relaxed text-foreground/80">
             {rule.actions.length > 0 ? `THEN ${actionsToText(rule.actions)}` : "No THEN actions configured yet."}
             {rule.elseActions && rule.elseActions.length > 0 && <> · ELSE {actionsToText(rule.elseActions)}</>}
           </p>
@@ -71,7 +71,7 @@ export function RulePreviewPanel({
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {generatedVars.map((v) => (
-                <Badge key={v} variant="secondary" className="gap-1 text-[10px]">
+                <Badge key={v} variant="secondary" className="gap-1 text-sm">
                   <Variable className="size-3" /> {v}
                 </Badge>
               ))}
@@ -81,7 +81,7 @@ export function RulePreviewPanel({
 
         {caseWhens && caseWhens.length > 0 && (
           <PreviewSection label="CASE">
-            <p className="text-xs leading-relaxed text-foreground/80">
+            <p className="text-sm leading-relaxed text-foreground/80">
               CASE
               {caseWhens.map((w) => ` / ${caseWhenToText(w, fieldCatalog)}`).join("")}
               {caseElseActions && caseElseActions.length > 0 && ` / ELSE ${actionsToText(caseElseActions)}`}
@@ -103,12 +103,12 @@ function caseWhenToText(w: CaseWhenClause, fieldCatalog: BusinessField[]): strin
 function PreviewSection({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">{label}</p>
+      <p className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground/70">{label}</p>
       {children}
     </div>
   );
 }
 
 function EmptyNote({ text }: { text: string }) {
-  return <p className="text-[11px] text-muted-foreground/60">{text}</p>;
+  return <p className="text-sm text-muted-foreground/60">{text}</p>;
 }

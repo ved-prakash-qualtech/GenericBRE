@@ -53,22 +53,22 @@ export function TemplatePicker({
                 <div className="flex flex-wrap items-center gap-1.5">
                   <p className="text-sm font-semibold">{t.name}</p>
                   {t.domain && (
-                    <Badge variant="secondary" className="text-[9px]">
+                    <Badge variant="secondary" className="text-sm">
                       {industries.find((i) => i.id === t.domain)?.name ?? t.domain}
                     </Badge>
                   )}
                   {t.categoryId && (
-                    <Badge variant="outline" className="text-[9px]">
+                    <Badge variant="outline" className="text-sm">
                       {categories.find((c) => c.id === t.categoryId)?.name ?? t.categoryId}
                     </Badge>
                   )}
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">{t.description}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">{t.description}</p>
               </div>
             </button>
           ))}
           {templates.length === 0 && (
-            <p className="rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+            <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
               No templates configured yet.
             </p>
           )}

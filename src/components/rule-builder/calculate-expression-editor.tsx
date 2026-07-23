@@ -78,7 +78,7 @@ function VariablePicker({
                       <Variable className="size-3.5 shrink-0 text-primary" />
                     )}
                     <span className="min-w-0 truncate">{v.label}</span>
-                    <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">{v.key}</span>
+                    <span className="ml-auto shrink-0 font-mono text-sm text-muted-foreground">{v.key}</span>
                     {v.sourceDetail && source !== "field" && source !== "condition" && (
                       <span className="sr-only">{v.sourceDetail}</span>
                     )}
@@ -190,14 +190,14 @@ export function CalculateExpressionEditor({
           placeholder="e.g. {{loan_amount}} × 0.05"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={cn("h-8 flex-1 font-mono text-xs", unknownKeys.length > 0 && "border-destructive focus-visible:ring-destructive/30")}
+          className={cn("h-8 flex-1 font-mono text-sm", unknownKeys.length > 0 && "border-destructive focus-visible:ring-destructive/30")}
           aria-invalid={unknownKeys.length > 0}
         />
         <VariablePicker variables={variables} onInsert={insertFieldReference} />
       </div>
 
       {unknownKeys.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-destructive">
+        <div className="flex flex-wrap items-center gap-1.5 text-sm text-destructive">
           <AlertCircle className="size-3 shrink-0" />
           Unknown variable{unknownKeys.length > 1 ? "s" : ""}:{" "}
           {unknownKeys.map((key) => (
@@ -210,7 +210,7 @@ export function CalculateExpressionEditor({
       )}
 
       {hasExpression && unknownKeys.length === 0 && preview.result.error && (
-        <div className="flex items-center gap-1.5 text-[10px] text-destructive">
+        <div className="flex items-center gap-1.5 text-sm text-destructive">
           <AlertCircle className="size-3 shrink-0" />
           {preview.result.error}
         </div>
@@ -218,11 +218,11 @@ export function CalculateExpressionEditor({
 
       {hasExpression && isValid && (
         <div className="rounded-lg border bg-muted/30 px-2.5 py-2">
-          <div className="mb-1 flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+          <div className="mb-1 flex items-center gap-1 text-sm font-medium text-muted-foreground">
             <CheckCircle2 className="size-3 text-emerald-500" />
             Live preview
           </div>
-          <p className="font-mono text-[11px] leading-relaxed">
+          <p className="font-mono text-sm leading-relaxed">
             {preview.substituted}
             {" = "}
             <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatResult(preview.result.value)}</span>
@@ -232,21 +232,21 @@ export function CalculateExpressionEditor({
 
       {referencedKeys.length > 0 && (
         <div className="rounded-lg border border-dashed px-2.5 py-2">
-          <p className="mb-1.5 text-[10px] font-medium text-muted-foreground">Sample values for preview</p>
+          <p className="mb-1.5 text-sm font-medium text-muted-foreground">Sample values for preview</p>
           <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
             {referencedKeys.map((key) => {
               const field = getField(fieldCatalog, key);
               const currentVal = sampleOverrides[key] ?? String(previewContext[key] ?? "");
               return (
                 <div key={key} className="flex items-center gap-1.5">
-                  <label className="min-w-0 flex-1 truncate text-[10px]" title={labelForKey(key)}>
+                  <label className="min-w-0 flex-1 truncate text-sm" title={labelForKey(key)}>
                     {labelForKey(key)}
                   </label>
                   <Input
                     type={field?.type === "number" || field?.type === "currency" ? "number" : "text"}
                     value={currentVal}
                     onChange={(e) => setSampleOverrides((s) => ({ ...s, [key]: e.target.value }))}
-                    className="h-7 w-24 shrink-0 font-mono text-[10px]"
+                    className="h-7 w-28 shrink-0 font-mono text-sm"
                   />
                 </div>
               );
@@ -255,7 +255,7 @@ export function CalculateExpressionEditor({
         </div>
       )}
 
-      <p className="text-[10px] text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Click <code className="rounded bg-muted px-1">{"{}"}</code> to insert a variable — labels are shown in the picker,
         but expressions use internal keys like <code className="rounded bg-muted px-1">{"{{loan_amount}}"}</code>. Supports +, −, ×, ÷, %, and parentheses.
       </p>
