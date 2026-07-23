@@ -60,7 +60,9 @@ export function JsonMappingManager() {
   const deleteJsonMapping = useAppStore((s) => s.deleteJsonMapping);
 
   const [domainFilter, setDomainFilter] = useState<string>(industries[0]?.id ?? "");
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(
+    () => products.find((p) => p.domain === (industries[0]?.id ?? ""))?.id ?? null
+  );
   const [activeDirection, setActiveDirection] = useState<"request" | "response">("request");
   const [payloadText, setPayloadText] = useState("");
   const [pendingDelete, setPendingDelete] = useState<JsonMapping | null>(null);
@@ -183,7 +185,14 @@ export function JsonMappingManager() {
       <div className="w-56 shrink-0 space-y-3">
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Domain</Label>
-          <Select value={domainFilter} onValueChange={(v) => { setDomainFilter((v as string) ?? ""); setSelectedProductId(null); }}>
+          <Select
+            value={domainFilter}
+            onValueChange={(v) => {
+              const nextDomain = (v as string) ?? "";
+              setDomainFilter(nextDomain);
+              setSelectedProductId(products.find((p) => p.domain === nextDomain)?.id ?? null);
+            }}
+          >
             <SelectTrigger className="w-full h-8"><SelectValue /></SelectTrigger>
             <SelectContent>
               {industries.map((i) => (
