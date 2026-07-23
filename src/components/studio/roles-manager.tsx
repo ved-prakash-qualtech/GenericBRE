@@ -98,7 +98,7 @@ export function RolesManager() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Every role and its demo persona shown on the &quot;Switch Role&quot; picker — add one here and it appears immediately, no code changes.
         </p>
         <Button size="sm" className="shrink-0 gap-1.5" onClick={startCreate}>
@@ -116,10 +116,10 @@ export function RolesManager() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{role.personaName}</p>
-                <p className="truncate text-[11px] text-muted-foreground">{role.name}</p>
+                <p className="truncate text-sm text-muted-foreground">{role.name}</p>
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {role.capabilities.map((c) => (
-                    <Badge key={c} variant="outline" className="text-[9px]">{capabilityLabel(c)}</Badge>
+                    <Badge key={c} variant="outline" className="text-sm">{capabilityLabel(c)}</Badge>
                   ))}
                 </div>
               </div>
@@ -135,7 +135,7 @@ export function RolesManager() {
           );
         })}
         {roles.length === 0 && (
-          <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+          <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
             No roles configured yet. Add one to get started.
           </p>
         )}
@@ -180,7 +180,7 @@ export function RolesManager() {
               <Label>Capabilities</Label>
               <div className="grid grid-cols-2 gap-2 rounded-lg border p-2.5">
                 {ALL_CAPABILITIES.map((cap) => (
-                  <label key={cap} className="flex items-center gap-2 text-xs">
+                  <label key={cap} className="flex items-center gap-2 text-sm">
                     <Checkbox checked={draft.capabilities.includes(cap)} onCheckedChange={() => toggleCapability(cap)} />
                     {capabilityLabel(cap)}
                   </label>

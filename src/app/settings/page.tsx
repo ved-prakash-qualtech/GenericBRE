@@ -167,7 +167,7 @@ export default function SettingsPage() {
         </span>
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Configuration Studio</h1>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             No-code configuration layer — every industry, field, mapping, category and rule-governance setting used
             across the platform lives here.
           </p>
@@ -175,11 +175,11 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <ScrollArea className="w-56 shrink-0 border-r">
+        <ScrollArea className="w-64 shrink-0 border-r">
           <nav className="space-y-4 p-3">
             {NAV_GROUPS.map((group) => (
               <div key={group.label}>
-                <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="mb-1.5 px-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   {group.label}
                 </p>
                 <div className="space-y-0.5">
@@ -187,7 +187,7 @@ export default function SettingsPage() {
                     <button
                       key={item.id}
                       onClick={() => setSection(item.id)}
-                      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors ${
+                      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-colors ${
                         section === item.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
@@ -200,13 +200,13 @@ export default function SettingsPage() {
             ))}
 
             <div>
-              <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Roadmap</p>
+              <p className="mb-1.5 px-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Roadmap</p>
               <div className="space-y-0.5">
                 {ROADMAP.map((u) => (
-                  <div key={u.label} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs text-muted-foreground/50">
+                  <div key={u.label} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground/50">
                     <u.icon className="size-3.5 shrink-0" />
                     <span className="truncate">{u.label}</span>
-                    <Badge variant="secondary" className="ml-auto shrink-0 text-[9px] opacity-70">Planned</Badge>
+                    <Badge variant="secondary" className="ml-auto shrink-0 text-sm opacity-70">Planned</Badge>
                   </div>
                 ))}
               </div>
@@ -218,7 +218,7 @@ export default function SettingsPage() {
           <div className="mx-auto max-w-350 space-y-3 px-5 py-5 sm:px-6">
             <div>
               <h2 className="text-sm font-semibold">{[...NAV_GROUPS.flatMap((g) => g.items)].find((i) => i.id === section)?.label}</h2>
-              <p className="text-xs text-muted-foreground">{SECTION_DESCRIPTIONS[section]}</p>
+              <p className="text-sm text-muted-foreground">{SECTION_DESCRIPTIONS[section]}</p>
             </div>
 
             {section === "fields" && <FieldCatalogManager />}
@@ -238,7 +238,7 @@ export default function SettingsPage() {
             {section === "notifyx" && <NotifyXManager />}
 
             {section === "fields" && (
-              <p className="pt-2 text-[11px] text-muted-foreground">
+              <p className="pt-2 text-sm text-muted-foreground">
                 Looking for the full metadata overview across every module? See the{" "}
                 <Link href="/metadata-explorer" className="text-primary hover:underline">Metadata Explorer</Link>.
               </p>

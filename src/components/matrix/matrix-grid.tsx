@@ -108,7 +108,7 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
       <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
         <div className="mr-auto">
           <p className="text-sm font-semibold">{matrix.name}</p>
-          <p className="text-xs text-muted-foreground">{matrix.description}</p>
+          <p className="text-sm text-muted-foreground">{matrix.description}</p>
         </div>
         {canEdit && (
           <>
@@ -161,14 +161,14 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
       {issues.length > 0 ? (
         <div className="flex flex-col gap-1 border-b bg-destructive/5 px-4 py-2.5">
           {issues.map((issue: MatrixIssue, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs text-destructive">
+            <div key={i} className="flex items-center gap-2 text-sm text-destructive">
               <AlertTriangle className="size-3.5 shrink-0" />
               <span className="font-semibold capitalize">{issue.type}:</span> {issue.message}
             </div>
           ))}
         </div>
       ) : (
-        <div className="flex items-center gap-2 border-b bg-emerald-500/5 px-4 py-2 text-xs text-emerald-600 dark:text-emerald-400">
+        <div className="flex items-center gap-2 border-b bg-emerald-500/5 px-4 py-2 text-sm text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="size-3.5" /> No overlaps, duplicates, or gaps detected.
         </div>
       )}
@@ -178,9 +178,9 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow className="hover:bg-transparent">
               {matrix.columns.map((c) => (
-                <TableHead key={c.key} className="text-xs font-semibold text-muted-foreground">{c.label}</TableHead>
+                <TableHead key={c.key} className="text-sm font-semibold text-muted-foreground">{c.label}</TableHead>
               ))}
-              <TableHead className="w-20 text-xs font-semibold text-muted-foreground">Actions</TableHead>
+              <TableHead className="w-20 text-sm font-semibold text-muted-foreground">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

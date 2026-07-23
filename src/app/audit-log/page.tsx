@@ -109,7 +109,7 @@ export default function AuditLogPage() {
           <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
             <ScrollText className="size-4.5 text-muted-foreground" /> Audit Log
           </h1>
-          <p className="text-xs text-muted-foreground">Tamper-evident, append-only trail of every significant platform action</p>
+          <p className="text-sm text-muted-foreground">Tamper-evident, append-only trail of every significant platform action</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={runVerify}>
@@ -142,7 +142,7 @@ export default function AuditLogPage() {
       {integrity && (
         <div
           className={cn(
-            "flex shrink-0 items-start gap-2.5 border-b px-5 py-2.5 text-xs sm:px-6",
+            "flex shrink-0 items-start gap-2.5 border-b px-5 py-2.5 text-sm sm:px-6",
             integrity.intact ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "bg-destructive/10 text-destructive"
           )}
         >
@@ -159,7 +159,7 @@ export default function AuditLogPage() {
                 something before it) no longer matches the recorded hash chain.
               </p>
             )}
-            <p className="mt-0.5 flex items-center gap-1 text-[11px] opacity-80">
+            <p className="mt-0.5 flex items-center gap-1 text-sm opacity-80">
               <ShieldQuestion className="size-3 shrink-0" /> This detects casual edits to this browser&apos;s stored log,
               not a determined attacker — there&apos;s no backend, so anyone with devtools access could recompute a
               consistent chain. Real immutability needs server-side signing.
@@ -178,18 +178,18 @@ export default function AuditLogPage() {
         <MultiSelect label="Domain" options={domainOptions} selected={domains} onChange={setDomains} />
         <MultiSelect label="User" options={userOptions} selected={users} onChange={setUsers} />
         {hasFilters && (
-          <Button variant="ghost" size="sm" className="h-9 text-xs" onClick={clearAll}>
+          <Button variant="ghost" size="sm" className="h-9 text-sm" onClick={clearAll}>
             Clear all
           </Button>
         )}
-        <span className="ml-auto text-xs text-muted-foreground">{filtered.length} entries</span>
+        <span className="ml-auto text-sm text-muted-foreground">{filtered.length} entries</span>
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="px-5 py-4 sm:px-6">
           <div className="overflow-hidden rounded-xl border">
             <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs text-muted-foreground">
+              <thead className="bg-muted/40 text-sm text-muted-foreground">
                 <tr>
                   <th className="w-7 px-2 py-2" />
                   <th className="px-3 py-2 text-left font-medium">Timestamp</th>
@@ -228,17 +228,17 @@ export default function AuditLogPage() {
                             <ChevronRight className={cn("size-3.5 text-muted-foreground transition-transform", isOpen && "rotate-90")} />
                           )}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">{format(new Date(a.timestamp), "dd MMM yyyy, HH:mm")}</td>
-                        <td className="px-3 py-2 text-xs font-medium">{a.user}</td>
-                        <td className="whitespace-nowrap px-3 py-2 text-xs font-medium text-primary">{a.action}</td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">{a.entity}</td>
-                        <td className="px-3 py-2 text-xs font-mono text-muted-foreground">{a.entityId}</td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">{a.details}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-sm text-muted-foreground">{format(new Date(a.timestamp), "dd MMM yyyy, HH:mm")}</td>
+                        <td className="px-3 py-2 text-sm font-medium">{a.user}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-sm font-medium text-primary">{a.action}</td>
+                        <td className="px-3 py-2 text-sm text-muted-foreground">{a.entity}</td>
+                        <td className="px-3 py-2 text-sm font-mono text-muted-foreground">{a.entityId}</td>
+                        <td className="px-3 py-2 text-sm text-muted-foreground">{a.details}</td>
                       </tr>
                       {isOpen && a.decisionContext && (
                         <tr key={`${a.id}-detail`} className="bg-muted/20">
                           <td colSpan={7} className="px-5 py-3">
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
                               <DetailField label="Correlation ID" value={a.decisionContext.correlationId} mono />
                               {/* Environment removed — FUTURE: restore <DetailField label="Environment" value={a.decisionContext.environment} /> */}
                               <DetailField label="Execution Time" value={`${a.decisionContext.executionTimeMs.toFixed(1)}ms`} />
@@ -249,14 +249,14 @@ export default function AuditLogPage() {
                             </div>
                             <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
                               <div>
-                                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Request Payload</p>
-                                <pre className="max-h-48 overflow-auto rounded-lg bg-background p-2.5 text-[11px] leading-relaxed">
+                                <p className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Request Payload</p>
+                                <pre className="max-h-48 overflow-auto rounded-lg bg-background p-2.5 text-sm leading-relaxed">
                                   {JSON.stringify(a.decisionContext.requestPayload, null, 2)}
                                 </pre>
                               </div>
                               <div>
-                                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Response Payload</p>
-                                <pre className="max-h-48 overflow-auto rounded-lg bg-background p-2.5 text-[11px] leading-relaxed">
+                                <p className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Response Payload</p>
+                                <pre className="max-h-48 overflow-auto rounded-lg bg-background p-2.5 text-sm leading-relaxed">
                                   {JSON.stringify(a.decisionContext.responsePayload, null, 2)}
                                 </pre>
                               </div>
@@ -280,7 +280,7 @@ export default function AuditLogPage() {
 function DetailField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-sm uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className={cn("font-medium", mono && "font-mono")}>{value}</p>
     </div>
   );

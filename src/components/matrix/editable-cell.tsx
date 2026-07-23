@@ -30,7 +30,7 @@ export function EditableCell({
 
   if (readOnly) {
     return (
-      <span className={cn("flex h-7 w-full items-center px-1.5 text-xs tabular-nums", invalid && "text-destructive font-medium")}>
+      <span className={cn("flex h-7 w-full items-center px-1.5 text-sm tabular-nums", invalid && "text-destructive font-medium")}>
         {formatDisplay(column, value)}
       </span>
     );
@@ -73,7 +73,7 @@ export function EditableCell({
             setEditing(false);
           }
         }}
-        className="h-7 w-full px-1.5 text-xs tabular-nums"
+        className="h-7 w-full px-1.5 text-sm tabular-nums"
       />
     );
   }
@@ -85,7 +85,7 @@ export function EditableCell({
         setEditing(true);
       }}
       className={cn(
-        "flex h-7 w-full items-center rounded-md px-1.5 text-left text-xs tabular-nums transition-colors hover:bg-accent",
+        "flex h-7 w-full items-center rounded-md px-1.5 text-left text-sm tabular-nums transition-colors hover:bg-accent",
         invalid && "bg-destructive/10 text-destructive font-medium"
       )}
     >

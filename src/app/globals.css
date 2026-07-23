@@ -152,10 +152,15 @@ body {
   overscroll-behavior: none;
 }
 
-/* Font size scale matched to Universal CRM's default (compact) density —
-   same base size and heading scale, applied to the app's main content area. */
+/* Compact heading scale matched to Universal CRM's default density, applied
+   to the app's main content area. Body sizes (text-sm/text-base and the
+   main-level default) are intentionally NOT compressed below Tailwind's own
+   values here — docs/UI_FRAMEWORK.md Section G requires a 14px minimum for
+   body text on every screen, and text-sm/.text-base overrides used to pin
+   body copy to 12-13px regardless of the Tailwind class actually used,
+   silently defeating any text-xs -> text-sm fix made elsewhere in the app. */
 main {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
 }
 main h1.text-2xl,
 main .text-2xl {
@@ -169,12 +174,6 @@ main .text-xl {
 main .text-lg {
   font-size: 0.9375rem;
   line-height: 1.25rem;
-}
-main .text-base {
-  font-size: 0.8125rem;
-}
-main .text-sm {
-  font-size: 0.75rem;
 }
 
 ::-webkit-scrollbar {

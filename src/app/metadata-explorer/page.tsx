@@ -31,11 +31,11 @@ function SectionCard({
         </span>
         <div className="flex-1">
           <p className="text-sm font-semibold">{title}</p>
-          <p className="text-[11px] text-muted-foreground">{count} configured</p>
+          <p className="text-sm text-muted-foreground">{count} configured</p>
         </div>
         <button
           onClick={() => router.push(manageHref + (manageParams ? `?${manageParams}` : ""))}
-          className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+          className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
         >
           Manage <ArrowRight className="size-3" />
         </button>
@@ -46,7 +46,7 @@ function SectionCard({
 }
 
 function EmptyRow({ label }: { label: string }) {
-  return <p className="rounded-lg border border-dashed px-3 py-4 text-center text-xs text-muted-foreground">{label}</p>;
+  return <p className="rounded-lg border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">{label}</p>;
 }
 
 export default function MetadataExplorerPage() {
@@ -67,7 +67,7 @@ export default function MetadataExplorerPage() {
         </span>
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Metadata Explorer</h1>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Every configurable entity driving this platform, in one place — the proof surface that a new industry needs
             configuration only, never code.
           </p>
@@ -86,8 +86,8 @@ export default function MetadataExplorerPage() {
                 return (
                   <div key={ind.id} className="flex items-center gap-2.5 rounded-lg border px-2.5 py-2">
                     <Icon className="size-3.5 shrink-0 text-primary" />
-                    <span className="flex-1 truncate text-xs font-medium">{ind.name}</span>
-                    <span className="text-[10px] text-muted-foreground">{ruleCount} rules · {fieldCount} fields · {matrixCount} matrices</span>
+                    <span className="flex-1 truncate text-sm font-medium">{ind.name}</span>
+                    <span className="text-sm text-muted-foreground">{ruleCount} rules · {fieldCount} fields · {matrixCount} matrices</span>
                   </div>
                 );
               })}
@@ -98,7 +98,7 @@ export default function MetadataExplorerPage() {
           <SectionCard icon={Tag} title="Categories" count={ruleCategories.length} manageHref="/settings">
             <div className="flex flex-wrap gap-1.5">
               {ruleCategories.map((c) => (
-                <Badge key={c.id} variant="secondary" className="text-[11px]">
+                <Badge key={c.id} variant="secondary" className="text-sm">
                   {c.name} · {rules.filter((r) => r.category === c.name).length}
                 </Badge>
               ))}
@@ -110,8 +110,8 @@ export default function MetadataExplorerPage() {
             <div className="space-y-1.5">
               {fieldCatalog.map((f) => (
                 <div key={f.key} className="flex items-center gap-2.5 rounded-lg border px-2.5 py-2">
-                  <span className="flex-1 truncate text-xs font-medium">{f.label}</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">{f.type}</span>
+                  <span className="flex-1 truncate text-sm font-medium">{f.label}</span>
+                  <span className="font-mono text-sm text-muted-foreground">{f.type}</span>
                 </div>
               ))}
               {fieldCatalog.length === 0 && <EmptyRow label="No fields configured yet." />}
@@ -123,10 +123,10 @@ export default function MetadataExplorerPage() {
               {ruleGroups.map((g) => (
                 <div key={g.id} className="rounded-lg border px-2.5 py-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium">{g.name}</span>
-                    <span className="text-[10px] text-muted-foreground">{rules.filter((r) => r.groupId === g.id).length} rules</span>
+                    <span className="text-sm font-medium">{g.name}</span>
+                    <span className="text-sm text-muted-foreground">{rules.filter((r) => r.groupId === g.id).length} rules</span>
                   </div>
-                  {g.description && <p className="mt-0.5 text-[10px] text-muted-foreground">{g.description}</p>}
+                  {g.description && <p className="mt-0.5 text-sm text-muted-foreground">{g.description}</p>}
                 </div>
               ))}
               {ruleGroups.length === 0 && <EmptyRow label="No rule groups configured yet." />}
@@ -137,8 +137,8 @@ export default function MetadataExplorerPage() {
             <div className="space-y-1.5">
               {ruleTemplates.map((t) => (
                 <div key={t.id} className="rounded-lg border px-2.5 py-2">
-                  <span className="text-xs font-medium">{t.name}</span>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">{t.description}</p>
+                  <span className="text-sm font-medium">{t.name}</span>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{t.description}</p>
                 </div>
               ))}
               {ruleTemplates.length === 0 && <EmptyRow label="No rule templates configured yet." />}
@@ -149,10 +149,10 @@ export default function MetadataExplorerPage() {
             <div className="space-y-1.5">
               {roles.map((r) => (
                 <div key={r.id} className="rounded-lg border px-2.5 py-2">
-                  <span className="text-xs font-medium">{r.name}</span>
+                  <span className="text-sm font-medium">{r.name}</span>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {r.capabilities.map((c) => (
-                      <Badge key={c} variant="outline" className="text-[9px]">{c}</Badge>
+                      <Badge key={c} variant="outline" className="text-sm">{c}</Badge>
                     ))}
                   </div>
                 </div>

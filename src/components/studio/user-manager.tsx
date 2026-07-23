@@ -123,7 +123,7 @@ export function UserManager() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Every named user on the roster — their Role, System Permissions, and which Rule Categories they&apos;re authorized to approve.
         </p>
         <Button size="sm" className="shrink-0 gap-1.5" onClick={startCreate}>
@@ -143,12 +143,12 @@ export function UserManager() {
                   <p className="truncate text-sm font-semibold">{user.name}</p>
                   <Badge
                     variant={user.status === "Active" ? "outline" : "secondary"}
-                    className={cn("shrink-0 text-[9px]", user.status === "Active" && "border-emerald-500/30 text-emerald-600 dark:text-emerald-400")}
+                    className={cn("shrink-0 text-sm", user.status === "Active" && "border-emerald-500/30 text-emerald-600 dark:text-emerald-400")}
                   >
                     {user.status}
                   </Badge>
                 </div>
-                <p className="truncate text-[11px] text-muted-foreground">{user.role}</p>
+                <p className="truncate text-sm text-muted-foreground">{user.role}</p>
               </div>
               <div className="flex shrink-0 flex-col gap-1">
                 <Button variant="ghost" size="icon-sm" onClick={() => startEdit(user)}>
@@ -160,7 +160,7 @@ export function UserManager() {
               </div>
             </div>
 
-            <div className="space-y-0.5 text-[11px] text-muted-foreground">
+            <div className="space-y-0.5 text-sm text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <Mail className="size-3 shrink-0" />
                 <span className="truncate">{user.email}</span>
@@ -172,28 +172,28 @@ export function UserManager() {
             </div>
 
             <div>
-              <p className="mb-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">Permissions</p>
+              <p className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Permissions</p>
               <div className="flex flex-wrap gap-1">
                 {user.permissions.length === 0 ? (
-                  <span className="text-[10px] text-muted-foreground/60">None</span>
+                  <span className="text-sm text-muted-foreground/60">None</span>
                 ) : (
                   user.permissions.map((c) => (
-                    <Badge key={c} variant="outline" className="text-[9px]">{capabilityLabel(c)}</Badge>
+                    <Badge key={c} variant="outline" className="text-sm">{capabilityLabel(c)}</Badge>
                   ))
                 )}
               </div>
             </div>
 
             <div>
-              <p className="mb-1 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="mb-1 flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 <ShieldCheck className="size-2.5" /> Approvals
               </p>
               <div className="flex flex-wrap gap-1">
                 {user.approvalCategories.length === 0 ? (
-                  <span className="text-[10px] text-muted-foreground/60">None assigned</span>
+                  <span className="text-sm text-muted-foreground/60">None assigned</span>
                 ) : (
                   user.approvalCategories.map((cat) => (
-                    <Badge key={cat} variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[9px] text-amber-700 dark:text-amber-400">
+                    <Badge key={cat} variant="outline" className="border-amber-500/30 bg-amber-500/10 text-sm text-amber-700 dark:text-amber-400">
                       {cat}
                     </Badge>
                   ))
@@ -203,7 +203,7 @@ export function UserManager() {
           </div>
         ))}
         {users.length === 0 && (
-          <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+          <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
             No users configured yet. Add one to get started.
           </p>
         )}
@@ -240,7 +240,7 @@ export function UserManager() {
                   onChange={(e) => setDraft((d) => ({ ...d, role: e.target.value }))}
                   placeholder="e.g. Credit Risk Manager"
                 />
-                <p className="text-[10.5px] text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Free-text title, shown on the roster — access is granted separately below via System Permissions, not this field.
                 </p>
               </div>
@@ -268,7 +268,7 @@ export function UserManager() {
               <Label>System Permissions</Label>
               <div className="grid grid-cols-2 gap-2 rounded-lg border p-2.5">
                 {ALL_CAPABILITIES.map((cap) => (
-                  <label key={cap} className="flex items-center gap-2 text-xs">
+                  <label key={cap} className="flex items-center gap-2 text-sm">
                     <Checkbox checked={draft.permissions.includes(cap)} onCheckedChange={() => togglePermission(cap)} />
                     {capabilityLabel(cap)}
                   </label>
@@ -278,7 +278,7 @@ export function UserManager() {
 
             <div className="space-y-1.5">
               <Label>Products</Label>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Select products this user manages. Click a product to configure category approvals for it.
               </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -293,17 +293,17 @@ export function UserManager() {
                         : "border-muted hover:border-primary/50"
                     )}
                   >
-                    <p className="text-xs font-semibold truncate">{product.name}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{product.domain}</p>
+                    <p className="text-sm font-semibold truncate">{product.name}</p>
+                    <p className="text-sm text-muted-foreground truncate">{product.domain}</p>
                   </button>
                 ))}
               </div>
               {selectedProduct && (
                 <div className="rounded-lg border bg-muted/20 p-3 mt-3">
-                  <p className="text-xs font-semibold mb-2">{products.find((p) => p.id === selectedProduct)?.name} — Approval Categories</p>
+                  <p className="text-sm font-semibold mb-2">{products.find((p) => p.id === selectedProduct)?.name} — Approval Categories</p>
                   <div className="grid grid-cols-2 gap-2">
                     {ruleCategories.map((cat) => (
-                      <label key={cat.id} className="flex items-center gap-2 text-xs">
+                      <label key={cat.id} className="flex items-center gap-2 text-sm">
                         <Checkbox checked={draft.approvalCategories.includes(cat.name)} onCheckedChange={() => toggleApprovalCategory(cat.name)} />
                         {cat.name}
                       </label>
@@ -315,12 +315,12 @@ export function UserManager() {
 
             <div className="rounded-lg border bg-muted/20 p-3">
               <Label className="text-sm">Category</Label>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
+              <p className="mt-0.5 text-sm text-muted-foreground">
                 Select the business rule categories this user is authorized to approve. A single user may approve multiple rule categories.
               </p>
               <div className="mt-2.5 grid grid-cols-2 gap-2">
                 {ruleCategories.map((cat) => (
-                  <label key={cat.id} className="flex items-center gap-2 text-xs">
+                  <label key={cat.id} className="flex items-center gap-2 text-sm">
                     <Checkbox
                       checked={draft.approvalCategories.includes(cat.name)}
                       onCheckedChange={() => toggleApprovalCategory(cat.name)}
@@ -329,7 +329,7 @@ export function UserManager() {
                   </label>
                 ))}
                 {ruleCategories.length === 0 && (
-                  <p className="col-span-2 text-[11px] text-muted-foreground">
+                  <p className="col-span-2 text-sm text-muted-foreground">
                     No rule categories configured yet — add one in Rule Categories first.
                   </p>
                 )}
