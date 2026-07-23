@@ -129,7 +129,7 @@ export default function DashboardPage() {
       <div className="flex shrink-0 items-center justify-between border-b bg-card/40 px-4 py-2.5 sm:px-5">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">{t("dashboard.title")}</h1>
-          <p className="text-xs text-muted-foreground">{t("dashboard.subtitle")}</p>
+          <p className="text-sm text-muted-foreground">{t("dashboard.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-1.5" onClick={exportSummary}>
@@ -147,7 +147,7 @@ export default function DashboardPage() {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2.5 sm:px-5">
         <div className="mx-auto max-w-350">
           {showInsights && (pendingReview > 0 || criticalDrafts > 0) && (
-            <div className="mb-4 flex items-center gap-2.5 rounded-xl border bg-accent px-3.5 py-1.5 text-xs text-accent-foreground">
+            <div className="mb-4 flex items-center gap-2.5 rounded-xl border bg-accent px-3.5 py-1.5 text-sm text-accent-foreground">
               <Sparkles className="size-4 shrink-0 text-primary" />
               <p>
                 <span className="font-semibold">Smart Insight:</span>{" "}
@@ -204,7 +204,7 @@ export default function DashboardPage() {
                       draggable
                       onDragStart={() => setDraggedId(w.id)}
                       onDragEnd={() => setDraggedId(null)}
-                      className="flex shrink-0 cursor-grab items-center justify-center gap-1.5 rounded-t-lg bg-primary/10 py-1 text-[10px] font-medium text-primary active:cursor-grabbing"
+                      className="flex shrink-0 cursor-grab items-center justify-center gap-1.5 rounded-t-lg bg-primary/10 py-1 text-sm font-medium text-primary active:cursor-grabbing"
                     >
                       <GripVertical className="size-3.5" /> Drag to reorder
                     </div>

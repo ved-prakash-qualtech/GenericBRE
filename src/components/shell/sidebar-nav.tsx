@@ -30,7 +30,7 @@ function NavLink({
   const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
 
   const linkClassName = cn(
-    "group relative flex h-9.5 items-center gap-3 rounded-lg px-2.5 text-[13px] font-medium transition-colors",
+    "group relative flex h-9.5 items-center gap-3 rounded-lg px-2.5 text-sm font-medium transition-colors",
     collapsed && "justify-center px-0",
     disabled
       ? "cursor-not-allowed text-sidebar-foreground/35"
@@ -101,7 +101,7 @@ export function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNa
     <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-2.5 py-4">
       <div className="flex flex-col gap-0.5">
         {!collapsed && (
-          <p className="px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+          <p className="px-2.5 pb-1 text-sm font-semibold uppercase tracking-wider text-sidebar-foreground/40">
             {t("nav.workspace")}
           </p>
         )}
@@ -119,7 +119,7 @@ export function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNa
       </div>
       <div className="flex flex-col gap-0.5">
         {!collapsed && (
-          <p className="px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+          <p className="px-2.5 pb-1 text-sm font-semibold uppercase tracking-wider text-sidebar-foreground/40">
             {t("nav.platform")}
           </p>
         )}

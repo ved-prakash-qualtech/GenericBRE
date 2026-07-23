@@ -67,7 +67,7 @@ export function MobileFilterButton() {
           </SheetHeader>
           <div className="space-y-5 overflow-y-auto px-4 pb-4">
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Domain</p>
+              <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Domain</p>
               <div className="flex flex-wrap gap-2">
                 {DOMAIN_OPTIONS.map((o) => (
                   <button

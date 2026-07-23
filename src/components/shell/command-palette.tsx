@@ -60,7 +60,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               {matchedRules.map((r) => (
                 <CommandItem key={r.id} onSelect={() => go(`/rule-builder?id=${r.id}`)} className="justify-between">
                   <span className="flex items-center gap-2">
-                    <CommandShortcut className="static font-mono text-[10px]">{r.id}</CommandShortcut>
+                    <CommandShortcut className="static font-mono text-sm">{r.id}</CommandShortcut>
                     {r.name}
                   </span>
                   <StatusBadge status={r.status} />

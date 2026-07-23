@@ -47,7 +47,7 @@ export function UserMenu() {
               </Avatar>
               <div className="flex flex-col">
                 <span className="text-sm font-semibold">{user.name}</span>
-                <span className="text-xs font-normal text-muted-foreground">{roleName}</span>
+                <span className="text-sm font-normal text-muted-foreground">{roleName}</span>
               </div>
             </DropdownMenuLabel>
           </DropdownMenuGroup>
