@@ -124,7 +124,7 @@ export function ProductHubGrid({
       {filtered.length === 0 && (
         <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">No products match this filter.</p>
       )}
-      <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", compact && "gap-2.5")}>
+      <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3", compact && "gap-2.5")}>
         {visible.map((p) => {
           const industry = industries.find((i) => i.id === p.domain);
           const Icon = iconForIndustry(industry?.icon) ?? Package;
