@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import {
   ArrowLeft,
   Check,
@@ -37,7 +37,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogPortal, DialogOverlay } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 function sliderValue(v: number | readonly number[]): number {
@@ -98,7 +97,7 @@ function SegmentedControl<T extends string>({
   render?: (opt: T) => React.ReactNode;
 }) {
   return (
-    <div className="flex overflow-hidden rounded-lg border text-xs">
+    <div className="flex overflow-hidden rounded-lg border text-sm">
       {options.map((opt) => (
         <button
           key={opt}
@@ -131,7 +130,7 @@ function SliderRow({
 }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex justify-between text-[11px] text-muted-foreground">
+      <div className="flex justify-between text-sm text-muted-foreground">
         <span>{label}</span>
         <span>
           {value}
@@ -157,8 +156,8 @@ function ToggleRow({
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
       <div>
-        <p className="text-xs font-medium">{label}</p>
-        <p className="text-[11px] text-muted-foreground">{desc}</p>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-sm text-muted-foreground">{desc}</p>
       </div>
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>
@@ -166,61 +165,55 @@ function ToggleRow({
 }
 
 interface AppearanceStudioProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) {
+export function AppearanceStudio({ onClose, onOpenChange }: AppearanceStudioProps = {}) {
+  const router = useRouter();
   const stored = useAppStore((s) => s.appearance);
   const setAppearance = useAppStore((s) => s.setAppearance);
   const roles = useAppStore((s) => s.roles);
   const currentUser = useAppStore((s) => s.currentUser);
   const canManageBranding = useHasCapability("config.manage");
   const [draft, setDraft] = useState<AppearanceSettings>(stored);
-  const [wasOpen, setWasOpen] = useState(open);
   const [activeTab, setActiveTab] = useState("theme");
   const [previewTab, setPreviewTab] = useState<"dashboard" | "signin">("dashboard");
   const bgInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
-  // Live Preview reflects the sandboxed draft, not the committed language —
-  // so picking a language and NOT applying yet still shows the mockup
-  // translate immediately, matching every other draft field's behavior.
   const t = useTranslateFor(draft.language as LanguageCode);
 
   const role = roles.find((r) => r.id === currentUser.role);
 
-  // Re-seed the sandboxed draft from committed prefs every time the studio
-  // opens — adjusting state during render (React's documented pattern for
-  // "reset state when a prop changes") rather than in an effect.
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) setDraft(stored);
-  }
-
-  // Safety net: snap back to a public tab if a non-admin ends up on the
-  // Branding tab (role switched mid-session, or stale state).
   if (activeTab === "branding" && !canManageBranding) {
     setActiveTab("theme");
   }
 
-  // Apply the draft straight to the DOM while the studio is open — the whole
-  // app (including the mockup below, which reads the same CSS variables)
-  // re-themes live, matching the sandboxed-draft architecture.
   useEffect(() => {
-    if (!open) return;
     applyAppearance(draft);
-  }, [draft, open]);
+  }, [draft]);
 
   const patch = (p: Partial<AppearanceSettings>) => setDraft((d) => ({ ...d, ...p }));
 
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else if (onOpenChange) {
+      onOpenChange(false);
+    } else {
+      router.push("/dashboard");
+    }
+  };
+
   const cancel = () => {
     applyAppearance(stored);
-    onOpenChange(false);
+    handleClose();
   };
   const commit = () => {
     setAppearance(draft);
     toast.success("Appearance updated", { description: "Applied across the workspace." });
-    onOpenChange(false);
+    handleClose();
   };
   const reset = () => setDraft(DEFAULT_APPEARANCE);
   const useRoleDefault = () => {
@@ -230,69 +223,53 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) cancel();
-      }}
-    >
-      <DialogPortal>
-        <DialogOverlay />
-        <DialogPrimitive.Popup
-          data-slot="appearance-studio"
-          className="fixed inset-2 z-50 flex flex-col overflow-hidden rounded-2xl bg-popover text-popover-foreground shadow-2xl ring-1 ring-foreground/10 outline-none duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 sm:inset-4 md:inset-6 lg:inset-10"
-        >
-          {/* Header */}
-          <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b bg-card/60 px-4 py-3">
-            <Button variant="ghost" size="icon-sm" onClick={cancel} aria-label="Back">
-              <ArrowLeft className="size-4" />
+    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-background text-foreground">
+      {/* Header */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b bg-card/60 px-4 py-3 sm:px-6">
+        <Button variant="ghost" size="icon-sm" onClick={cancel} aria-label="Back">
+          <ArrowLeft className="size-4" />
+        </Button>
+        <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Sparkles className="size-4" />
+        </span>
+        <p className="text-sm font-semibold tracking-tight">{t("appearance.title")}</p>
+        <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+          <span className="size-1.5 rounded-full bg-emerald-500" /> {t("appearance.livePreviewBadge")}
+        </span>
+
+        <div className="ml-auto flex items-center gap-2">
+          {role && (
+            <Button variant="outline" size="sm" onClick={useRoleDefault} className="hidden md:inline-flex">
+              Use {role.name} Default
             </Button>
-            <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Sparkles className="size-4" />
-            </span>
-            <p className="text-sm font-semibold tracking-tight">{t("appearance.title")}</p>
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-              <span className="size-1.5 rounded-full bg-emerald-500" /> {t("appearance.livePreviewBadge")}
-            </span>
+          )}
+          <Button variant="ghost" size="sm" onClick={reset} className="gap-1.5">
+            <RotateCcw className="size-3.5" /> Reset
+          </Button>
+          <Button variant="outline" size="sm" onClick={cancel}>
+            Cancel
+          </Button>
+          <Button size="sm" onClick={commit} className="gap-1.5">
+            <Check className="size-3.5" /> Apply Changes
+          </Button>
+        </div>
+      </div>
 
-            <div className="ml-auto flex items-center gap-2">
-              {role && (
-                <Button variant="outline" size="sm" onClick={useRoleDefault} className="hidden md:inline-flex">
-                  Use {role.name} Default
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={reset} className="gap-1.5">
-                <RotateCcw className="size-3.5" /> Reset
-              </Button>
-              <Button variant="outline" size="sm" onClick={cancel}>
-                Cancel
-              </Button>
-              <Button size="sm" onClick={commit} className="gap-1.5">
-                <Check className="size-3.5" /> Apply Changes
-              </Button>
-              <DialogPrimitive.Close
-                render={<Button variant="ghost" size="icon-sm" />}
-                aria-label="Close"
-              >
-                <X className="size-4" />
-              </DialogPrimitive.Close>
-            </div>
-          </div>
-
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as string)} className="flex min-h-0 flex-1 flex-col">
-            <TabsList className="mx-4 mt-3 w-fit shrink-0">
-              <TabsTrigger value="theme">{t("appearance.tabTheme")}</TabsTrigger>
-              <TabsTrigger value="colors">{t("appearance.tabColors")}</TabsTrigger>
-              <TabsTrigger value="bg">{t("appearance.tabBg")}</TabsTrigger>
-              <TabsTrigger value="display">{t("appearance.tabDisplay")}</TabsTrigger>
-              {canManageBranding && <TabsTrigger value="branding">{t("appearance.tabBranding")}</TabsTrigger>}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as string)} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row overflow-hidden">
+          <div className="w-full shrink-0 overflow-y-auto border-r p-4 sm:p-5 lg:w-96 flex flex-col gap-4">
+            <TabsList className="w-full shrink-0">
+              <TabsTrigger value="theme" className="flex-1">{t("appearance.tabTheme")}</TabsTrigger>
+              <TabsTrigger value="colors" className="flex-1">{t("appearance.tabColors")}</TabsTrigger>
+              <TabsTrigger value="bg" className="flex-1">{t("appearance.tabBg")}</TabsTrigger>
+              <TabsTrigger value="display" className="flex-1">{t("appearance.tabDisplay")}</TabsTrigger>
+              {canManageBranding && <TabsTrigger value="branding" className="flex-1">{t("appearance.tabBranding")}</TabsTrigger>}
             </TabsList>
 
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-              <div className="w-full shrink-0 overflow-y-auto border-r p-4 lg:w-96">
+            <div className="flex-1 space-y-5">
                 <TabsContent value="theme" className="space-y-5">
                   <section>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                       Color Mode
                     </p>
                     <SegmentedControl
@@ -312,8 +289,8 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
 
                   <section>
                     <div className="mb-2 flex items-center justify-between">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Themes</p>
-                      <span className="text-[11px] text-muted-foreground">{THEME_PRESETS.length} themes</span>
+                      <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Themes</p>
+                      <span className="text-sm text-muted-foreground">{THEME_PRESETS.length} themes</span>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       {THEME_PRESETS.map((t) => (
@@ -330,7 +307,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                             <span className="size-4 rounded-full border shadow-sm" style={{ backgroundColor: t.swatch }} />
                             {draft.preset === t.id && <Check className="size-3.5 text-primary" />}
                           </div>
-                          <p className="text-[11px] font-semibold leading-tight">{t.name}</p>
+                          <p className="text-sm font-semibold leading-tight">{t.name}</p>
                         </button>
                       ))}
                     </div>
@@ -338,12 +315,12 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                 </TabsContent>
 
                 <TabsContent value="colors" className="space-y-3">
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     Override individual colors on top of the selected theme. Clear a swatch to inherit from the theme again.
                   </p>
                   {CUSTOM_COLOR_ROWS.map((row) => (
                     <div key={row.key} className="flex items-center justify-between gap-3 rounded-lg border p-2.5">
-                      <Label className="text-xs">{row.label}</Label>
+                      <Label className="text-sm">{row.label}</Label>
                       <div className="flex items-center gap-2">
                         <input
                           type="color"
@@ -402,7 +379,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                   {draft.background.imageData && (
                     <div className="space-y-4 rounded-lg border p-3">
                       <div>
-                        <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">Apply To</p>
+                        <p className="mb-1.5 text-sm font-medium text-muted-foreground">Apply To</p>
                         <SegmentedControl
                           value={draft.background.target}
                           options={BG_TARGETS}
@@ -410,7 +387,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                         />
                       </div>
                       <div>
-                        <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">Display Mode</p>
+                        <p className="mb-1.5 text-sm font-medium text-muted-foreground">Display Mode</p>
                         <SegmentedControl
                           value={draft.background.displayMode}
                           options={BG_DISPLAY_MODES}
@@ -453,7 +430,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
 
                 <TabsContent value="display" className="space-y-5">
                   <section>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Language</p>
+                    <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Language</p>
                     <div className="grid grid-cols-3 gap-2">
                       {LANGUAGES.map((l) => (
                         <button
@@ -465,22 +442,22 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                             draft.language === l.code ? "border-primary bg-primary/5" : "hover:border-foreground/20"
                           )}
                         >
-                          <span className="flex w-full items-center justify-between text-xs font-medium">
+                          <span className="flex w-full items-center justify-between text-sm font-medium">
                             {l.native}
                             {draft.language === l.code && <Check className="size-3 text-primary" />}
                           </span>
-                          <span className="text-[10px] text-muted-foreground">{l.english}</span>
+                          <span className="text-sm text-muted-foreground">{l.english}</span>
                         </button>
                       ))}
                     </div>
-                    <p className="mt-1.5 text-[10.5px] text-muted-foreground/70">
+                    <p className="mt-1.5 text-sm text-muted-foreground/70">
                       Sets the page locale (&lt;html lang&gt;) for assistive tech and locale-aware formatting, and
                       translates the sidebar, header, Dashboard, and this Appearance Studio. Coverage across the
                       rest of the app is rolling out incrementally.
                     </p>
                   </section>
                   <section>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Density</p>
+                    <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Density</p>
                     <SegmentedControl
                       value={draft.density}
                       options={DENSITY_MODES}
@@ -488,7 +465,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                     />
                   </section>
                   <section>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                       Font Scale
                     </p>
                     <SegmentedControl
@@ -522,11 +499,11 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
 
                 {canManageBranding && (
                   <TabsContent value="branding" className="space-y-4">
-                    <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                       <ShieldCheck className="size-3 shrink-0" /> Organization-wide — applies for every user, not just you.
                     </p>
                     <section className="space-y-1.5">
-                      <Label className="text-xs">Organization / App Name</Label>
+                      <Label className="text-sm">Organization / App Name</Label>
                       <input
                         type="text"
                         value={draft.appName}
@@ -536,7 +513,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                       />
                     </section>
                     <section className="space-y-1.5">
-                      <Label className="text-xs">Tagline</Label>
+                      <Label className="text-sm">Tagline</Label>
                       <input
                         type="text"
                         value={draft.tagline}
@@ -546,7 +523,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                       />
                     </section>
                     <section className="space-y-1.5">
-                      <Label className="text-xs">Logo</Label>
+                      <Label className="text-sm">Logo</Label>
                       <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => logoInputRef.current?.click()}>
                           <Upload className="size-3.5" /> Upload Logo
@@ -573,20 +550,21 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={draft.logo} alt="Logo preview" className="size-12 rounded-lg border object-contain p-1" />
                       )}
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         Replaces the default brand mark in the sidebar, header, and login screen.
                       </p>
                     </section>
                   </TabsContent>
                 )}
               </div>
+            </div>
 
               {/* Live preview mockup — reads the same CSS variables applyAppearance
                   just set on <html>, so it re-themes in step with the real app. */}
               <div className="flex-1 overflow-y-auto bg-muted/20 p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("appearance.livePreviewHeading")}</p>
-                  <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("appearance.livePreviewHeading")}</p>
+                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                     <span className="size-1.5 rounded-full bg-emerald-500" /> {t("appearance.changesApplyInstantly")}
                   </span>
                 </div>
@@ -596,7 +574,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                   <button
                     onClick={() => setPreviewTab("dashboard")}
                     className={cn(
-                      "px-3 py-2 text-xs font-medium border-b-2 transition-colors",
+                      "px-3 py-2 text-sm font-medium border-b-2 transition-colors",
                       previewTab === "dashboard"
                         ? "border-primary text-primary"
                         : "border-transparent text-muted-foreground hover:text-foreground"
@@ -608,7 +586,7 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
                     <button
                       onClick={() => setPreviewTab("signin")}
                       className={cn(
-                        "px-3 py-2 text-xs font-medium border-b-2 transition-colors",
+                        "px-3 py-2 text-sm font-medium border-b-2 transition-colors",
                         previewTab === "signin"
                           ? "border-primary text-primary"
                           : "border-transparent text-muted-foreground hover:text-foreground"
@@ -908,8 +886,6 @@ export function AppearanceStudio({ open, onOpenChange }: AppearanceStudioProps) 
               </div>
             </div>
           </Tabs>
-        </DialogPrimitive.Popup>
-      </DialogPortal>
-    </Dialog>
+    </div>
   );
 }
