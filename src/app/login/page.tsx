@@ -201,9 +201,9 @@ export default function LoginPage() {
             <form className="mt-6 space-y-4" onSubmit={handleSignIn}>
               <div className="space-y-1.5">
                 <Label htmlFor="employeeId" className="font-bold text-[#0a1230]">Employee ID</Label>
-                <InputGroup className="border-[#d7deef] bg-[#eef1f8]">
+                <InputGroup className="border-[#e3e7f0] bg-white shadow-[0_1px_2px_rgba(10,18,48,0.06),0_2px_6px_rgba(10,18,48,0.08)]">
                   <InputGroupAddon>
-                    <User className="size-4 text-[#0a1230]/60" />
+                    <User className="size-4 text-[#0a1230]/80" />
                   </InputGroupAddon>
                   <InputGroupInput
                     id="employeeId"
@@ -218,9 +218,9 @@ export default function LoginPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="font-bold text-[#0a1230]">Password</Label>
-                <InputGroup className="border-[#d7deef] bg-[#eef1f8]">
+                <InputGroup className="border-[#e3e7f0] bg-white shadow-[0_1px_2px_rgba(10,18,48,0.06),0_2px_6px_rgba(10,18,48,0.08)]">
                   <InputGroupAddon>
-                    <Lock className="size-4 text-[#0a1230]/60" />
+                    <Lock className="size-4 text-[#0a1230]/80" />
                   </InputGroupAddon>
                   <InputGroupInput
                     id="password"
@@ -235,7 +235,7 @@ export default function LoginPage() {
                       aria-label={showPassword ? "Hide password" : "Show password"}
                       onClick={() => setShowPassword((s) => !s)}
                     >
-                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      {showPassword ? <EyeOff className="size-4 text-[#0a1230]/80" /> : <Eye className="size-4 text-[#0a1230]/80" />}
                     </InputGroupButton>
                   </InputGroupAddon>
                 </InputGroup>
