@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowLeft, Rocket } from "lucide-react";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { useAppStore, useHasCapability } from "@/lib/store";
 import { getMappedRules } from "@/lib/product-rule-engine";
 import { buildSampleRequestJson } from "@/lib/sample-json";
@@ -139,6 +141,17 @@ export default function ProductWorkspacePage() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 flex-col gap-3 border-b bg-card/40 px-5 py-3.5 sm:px-6">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link href="/products" />}>Products</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="truncate">{product.name}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="size-8 shrink-0" onClick={() => router.push("/products")}>
             <ArrowLeft className="size-4" />

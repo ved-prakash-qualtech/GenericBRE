@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -58,6 +59,7 @@ import { TemplatePicker } from "@/components/rule-builder/template-picker";
 import { SampleJsonPanel } from "@/components/rule-builder/sample-json-panel";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { cn } from "@/lib/utils";
 
 function nextRuleId(existing: BusinessRule[]) {
@@ -608,41 +610,54 @@ function RuleBuilderContent() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b bg-card/40 px-5 py-3 sm:px-6">
-        <Button variant="ghost" size="icon" className="size-8" onClick={() => router.push("/repository")}>
-          <ArrowLeft className="size-4" />
-        </Button>
-        <div className="mr-auto">
-          <h1 className="text-base font-semibold tracking-tight">{existingRule ? `Edit Rule · ${rule.id}` : "Create New Rule"}</h1>
-          <p className="text-sm text-muted-foreground">No-code visual rule configuration — standalone, reusable across any Product</p>
+      <div className="flex shrink-0 flex-col gap-2 border-b bg-card/40 px-5 py-3 sm:px-6">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link href="/repository" />}>Rule Repository</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="truncate">{existingRule ? rule.id : "New Rule"}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="ghost" size="icon" className="size-8" onClick={() => router.push("/repository")}>
+            <ArrowLeft className="size-4" />
+          </Button>
+          <div className="mr-auto">
+            <h1 className="text-base font-semibold tracking-tight">{existingRule ? `Edit Rule · ${rule.id}` : "Create New Rule"}</h1>
+            <p className="text-sm text-muted-foreground">No-code visual rule configuration — standalone, reusable across any Product</p>
+          </div>
+          {Object.keys(errors).length > 0 && (
+            <span className="flex items-center gap-1.5 text-sm text-destructive">
+              <AlertTriangle className="size-3.5" /> Fix validation errors to save
+            </span>
+          )}
+          <Button variant="ghost" size="icon-sm" title="Undo (Ctrl+Z)" onClick={undo}>
+            <Undo2 className="size-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon-sm" title="Redo (Ctrl+Shift+Z)" onClick={redo}>
+            <Redo2 className="size-3.5" />
+          </Button>
+          {existingRule && (
+            <Button variant="ghost" size="sm" className="gap-1.5" onClick={handleDuplicate}>
+              <Copy className="size-3.5" /> Duplicate
+            </Button>
+          )}
+          {!existingRule && (
+            <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setTemplatePickerOpen(true)}>
+              <LayoutTemplate className="size-3.5" /> Use Template
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSaveDraft} title="Save Draft (Ctrl+S)">
+            <Save className="size-3.5" /> Save Draft
+          </Button>
+          <Button size="sm" className="gap-1.5" onClick={handleSubmitForReview}>
+            <FlaskConical className="size-3.5" /> Submit for Review
+          </Button>
         </div>
-        {Object.keys(errors).length > 0 && (
-          <span className="flex items-center gap-1.5 text-sm text-destructive">
-            <AlertTriangle className="size-3.5" /> Fix validation errors to save
-          </span>
-        )}
-        <Button variant="ghost" size="icon-sm" title="Undo (Ctrl+Z)" onClick={undo}>
-          <Undo2 className="size-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon-sm" title="Redo (Ctrl+Shift+Z)" onClick={redo}>
-          <Redo2 className="size-3.5" />
-        </Button>
-        {existingRule && (
-          <Button variant="ghost" size="sm" className="gap-1.5" onClick={handleDuplicate}>
-            <Copy className="size-3.5" /> Duplicate
-          </Button>
-        )}
-        {!existingRule && (
-          <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setTemplatePickerOpen(true)}>
-            <LayoutTemplate className="size-3.5" /> Use Template
-          </Button>
-        )}
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSaveDraft} title="Save Draft (Ctrl+S)">
-          <Save className="size-3.5" /> Save Draft
-        </Button>
-        <Button size="sm" className="gap-1.5" onClick={handleSubmitForReview}>
-          <FlaskConical className="size-3.5" /> Submit for Review
-        </Button>
       </div>
 
       <TemplatePicker
