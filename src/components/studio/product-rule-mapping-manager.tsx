@@ -75,10 +75,10 @@ export function MappedRulesReorder({
           <ListOrdered className="size-3.5" />
         </span>
         <div className="min-w-0">
-          <p className="text-xs font-semibold">Execution Sequence</p>
-          <p className="text-[10.5px] text-muted-foreground">Drag the grip handle to reorder — runs top to bottom</p>
+          <p className="text-sm font-semibold">Execution Sequence</p>
+          <p className="text-sm text-muted-foreground">Drag the grip handle to reorder — runs top to bottom</p>
         </div>
-        <Badge variant="secondary" className="ml-auto shrink-0 text-[9px]">{ordered.length} rule{ordered.length === 1 ? "" : "s"}</Badge>
+        <Badge variant="secondary" className="ml-auto h-6 shrink-0 text-sm">{ordered.length} rule{ordered.length === 1 ? "" : "s"}</Badge>
       </div>
       <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto p-2.5">
         {ordered.map((r, i) => (
@@ -87,7 +87,7 @@ export function MappedRulesReorder({
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => handleDrop(r.id)}
             className={cn(
-              "flex select-none items-center gap-2.5 rounded-lg border bg-background px-2.5 py-2 text-xs transition-colors",
+              "flex select-none items-center gap-2.5 rounded-lg border bg-background px-2.5 py-2 text-sm transition-colors",
               draggedId === r.id ? "opacity-50" : "hover:border-primary/40 hover:shadow-sm"
             )}
           >
@@ -106,9 +106,9 @@ export function MappedRulesReorder({
             <span className="flex size-5.5 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-[10px] font-bold text-primary">
               {i + 1}
             </span>
-            <span className="w-16 shrink-0 font-mono text-[10px] text-muted-foreground">{r.id}</span>
+            <span className="w-16 shrink-0 font-mono text-sm text-muted-foreground">{r.id}</span>
             <span className="min-w-0 flex-1 truncate font-medium">{r.name}</span>
-            <Badge variant="secondary" className="shrink-0 text-[9px]">{r.category || "Uncategorized"}</Badge>
+            <Badge variant="secondary" className="h-6 shrink-0 text-sm">{r.category || "Uncategorized"}</Badge>
           </div>
         ))}
       </div>
@@ -202,7 +202,7 @@ export function MappedRulesChecklist({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search rules by name or ID..."
-              className="h-8 bg-background pl-8 text-xs"
+              className="h-8 bg-background pl-8 text-sm"
             />
           </div>
           <MultiSelect
@@ -211,14 +211,14 @@ export function MappedRulesChecklist({
             selected={categoryFilters}
             onChange={setCategoryFilters}
           />
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 bg-background text-xs" onClick={toggleSelectAllFiltered}>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 bg-background text-sm" onClick={toggleSelectAllFiltered}>
             {allFilteredSelected ? <Square className="size-3.5" /> : <CheckSquare className="size-3.5" />}
             {allFilteredSelected ? "Clear filtered" : "Select all filtered"}
           </Button>
           <Button
             variant={showAllDomains ? "secondary" : "outline"}
             size="sm"
-            className={cn("h-8 gap-1.5 text-xs", showAllDomains ? "border-primary/50 text-primary" : "bg-background")}
+            className={cn("h-8 gap-1.5 text-sm", showAllDomains ? "border-primary/50 text-primary" : "bg-background")}
             onClick={() => setShowAllDomains((v) => !v)}
             title={`By default only ${product.domain} rules are shown — this product's own domain`}
           >
@@ -226,7 +226,7 @@ export function MappedRulesChecklist({
           </Button>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between px-3.5 py-2 text-[11px] text-muted-foreground">
+        <div className="flex shrink-0 items-center justify-between px-3.5 py-2 text-sm text-muted-foreground">
           <span>
             <span className="font-semibold text-foreground">{activeSelection.size}</span> rule{activeSelection.size === 1 ? "" : "s"} mapped to{" "}
             <span className="font-semibold text-foreground">{product.name}</span>
@@ -235,7 +235,7 @@ export function MappedRulesChecklist({
         </div>
 
         {crossDomainMappedCount > 0 && (
-          <div className="mx-3.5 mb-3 flex shrink-0 items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+          <div className="mx-3.5 mb-3 flex shrink-0 items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
             <ShieldAlert className="size-3.5 shrink-0" />
             <span>
               <span className="font-semibold">{crossDomainMappedCount}</span> mapped rule{crossDomainMappedCount === 1 ? "" : "s"} outside this
@@ -246,7 +246,7 @@ export function MappedRulesChecklist({
         )}
 
         <div className="mx-3.5 mb-3.5 flex min-h-0 flex-1 flex-col rounded-lg border overflow-hidden">
-          <div className="flex shrink-0 items-center gap-3 bg-muted/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b select-none">
+          <div className="flex shrink-0 items-center gap-3 bg-muted/50 px-3 py-2 text-sm font-bold uppercase tracking-wider text-muted-foreground border-b select-none">
             <div className="flex items-center">
               <Checkbox checked={allFilteredSelected} onCheckedChange={toggleSelectAllFiltered} />
             </div>
@@ -262,23 +262,23 @@ export function MappedRulesChecklist({
                 <label
                   key={r.id}
                   className={cn(
-                    "flex cursor-pointer items-center gap-3 px-3 py-2 text-xs transition-colors hover:bg-primary/5",
+                    "flex cursor-pointer items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-primary/5",
                     activeSelection.has(r.id) ? "bg-primary/5" : i % 2 === 1 ? "bg-muted/20" : ""
                   )}
                 >
                   <Checkbox checked={activeSelection.has(r.id)} onCheckedChange={() => toggleRule(r.id)} />
-                  <span className="w-16 shrink-0 font-mono text-[10px] text-muted-foreground">{r.id}</span>
+                  <span className="w-16 shrink-0 font-mono text-sm text-muted-foreground">{r.id}</span>
                   <span className="min-w-0 flex-1 truncate font-medium">{r.name}</span>
                   <div className="w-24 shrink-0 flex justify-center">
-                    <Badge variant="secondary" className="text-[9px]">{r.category || "Uncategorized"}</Badge>
+                    <Badge variant="secondary" className="h-6 text-sm">{r.category || "Uncategorized"}</Badge>
                   </div>
                   <div className="w-20 shrink-0 flex justify-center">
-                    <Badge variant="outline" className="text-[9px]">{r.domain}</Badge>
+                    <Badge variant="outline" className="h-6 text-sm">{r.domain}</Badge>
                   </div>
                 </label>
               ))}
               {filteredRules.length === 0 && (
-                <p className="p-6 text-center text-[11px] text-muted-foreground">No rules match this filter.</p>
+                <p className="p-6 text-center text-sm text-muted-foreground">No rules match this filter.</p>
               )}
             </div>
           </ScrollArea>
@@ -289,7 +289,7 @@ export function MappedRulesChecklist({
         "flex items-center justify-end gap-2.5 rounded-xl border px-3.5 py-2.5 transition-colors",
         dirty ? "border-primary/30 bg-primary/5" : "bg-card"
       )}>
-        {dirty && <span className="text-[11px] font-medium text-primary">Unsaved changes</span>}
+        {dirty && <span className="text-sm font-medium text-primary">Unsaved changes</span>}
         <Button
           size="sm"
           className="gap-1.5"
@@ -341,7 +341,7 @@ function ProductSelector({
     return (
       <div className="rounded-lg border border-dashed p-6 text-center">
         <Package className="mx-auto mb-2 size-6 text-muted-foreground/40" />
-        <p className="text-[11px] text-muted-foreground">No products yet — add one in Product Master first.</p>
+        <p className="text-sm text-muted-foreground">No products yet — add one in Product Master first.</p>
       </div>
     );
   }
@@ -352,7 +352,7 @@ function ProductSelector({
     return (
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-0.5">
-          <p className="text-xs font-semibold text-muted-foreground">Select Product</p>
+          <p className="text-sm font-semibold text-muted-foreground">Select Product</p>
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -360,16 +360,16 @@ function ProductSelector({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search products..."
-                className="h-7 w-44 pl-8 text-xs"
+                className="h-7 w-44 pl-8 text-sm"
               />
             </div>
-            <Badge variant="secondary" className="text-[9px]">{filtered.length} of {products.length}</Badge>
+            <Badge variant="secondary" className="h-6 text-sm">{filtered.length} of {products.length}</Badge>
           </div>
         </div>
         {filtered.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-center">
             <Search className="mx-auto mb-2 size-6 text-muted-foreground/40" />
-            <p className="text-[11px] text-muted-foreground">No products match this search.</p>
+            <p className="text-sm text-muted-foreground">No products match this search.</p>
           </div>
         ) : (
           <div className="flex flex-wrap gap-2.5">
@@ -397,8 +397,8 @@ function ProductSelector({
                     <Icon className="size-4" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold whitespace-nowrap">{p.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{count} rule{count === 1 ? "" : "s"}</p>
+                    <p className="text-sm font-semibold whitespace-nowrap">{p.name}</p>
+                    <p className="text-sm text-muted-foreground">{count} rule{count === 1 ? "" : "s"}</p>
                   </div>
                 </button>
               );
@@ -427,8 +427,8 @@ function ProductSelector({
   return (
     <div className="space-y-2.5">
       <div className="flex items-center justify-between px-0.5">
-        <p className="text-xs font-semibold text-muted-foreground">Select Product</p>
-        <Badge variant="secondary" className="text-[9px]">{products.length} products</Badge>
+        <p className="text-sm font-semibold text-muted-foreground">Select Product</p>
+        <Badge variant="secondary" className="h-6 text-sm">{products.length} products</Badge>
       </div>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger render={<Button variant="outline" className="h-auto w-full justify-between gap-2 px-3 py-2 sm:w-auto sm:min-w-80" />}>
@@ -442,7 +442,7 @@ function ProductSelector({
               </span>
               <span className="min-w-0 text-left">
                 <span className="block truncate text-sm font-semibold">{selected.name}</span>
-                <span className="block truncate text-[10.5px] text-muted-foreground">
+                <span className="block truncate text-sm text-muted-foreground">
                   {selected.code} · {mappedCount(selected.id)} rule{mappedCount(selected.id) === 1 ? "" : "s"}
                 </span>
               </span>
@@ -463,7 +463,7 @@ function ProductSelector({
                     <CommandItem key={p.id} value={`${p.name} ${p.code}`} onSelect={() => pick(p)} className="gap-2.5">
                       <Clock className="size-3.5 shrink-0 text-muted-foreground" />
                       <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                      <Badge variant="outline" className="shrink-0 text-[9px]">{mappedCount(p.id)}</Badge>
+                      <Badge variant="outline" className="h-6 shrink-0 text-sm">{mappedCount(p.id)}</Badge>
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -476,8 +476,8 @@ function ProductSelector({
                       <Check className={cn("size-3.5 shrink-0", selected?.id === p.id ? "opacity-100" : "opacity-0")} />
                       <Icon className="size-3.5 shrink-0 text-muted-foreground" />
                       <span className="min-w-0 flex-1 truncate">{p.name}</span>
-                      <Badge variant="outline" className="shrink-0 text-[9px]">{p.domain}</Badge>
-                      <span className="w-6 shrink-0 text-right text-[10px] text-muted-foreground">{mappedCount(p.id)}</span>
+                      <Badge variant="outline" className="h-6 shrink-0 text-sm">{p.domain}</Badge>
+                      <span className="w-6 shrink-0 text-right text-sm text-muted-foreground">{mappedCount(p.id)}</span>
                     </CommandItem>
                   );
                 })}
@@ -541,7 +541,7 @@ export function ProductRuleMappingManager() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">{selectedProduct.name}</p>
-              <p className="text-[10.5px] text-muted-foreground">Configure which rules execute and their sequence.</p>
+              <p className="text-sm text-muted-foreground">Configure which rules execute and their sequence.</p>
             </div>
           </div>
 

@@ -145,7 +145,7 @@ export function ProductManager() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Configurable product/scheme master — a client can offer many. Which rules apply to each is configured in
           Product-Rule Mapping, not here.
         </p>
@@ -161,7 +161,7 @@ export function ProductManager() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or code..."
-            className="h-8 pl-8 text-xs"
+            className="h-8 pl-8 text-sm"
           />
         </div>
         <MultiSelect
@@ -169,7 +169,7 @@ export function ProductManager() {
           options={industries.map((i) => ({ value: i.id, label: i.name }))}
           selected={domainFilter}
           onChange={setDomainFilter}
-          className="h-8 text-xs"
+          className="h-8 text-sm"
         />
         <MultiSelect
           label="Status"
@@ -179,12 +179,12 @@ export function ProductManager() {
           ]}
           selected={statusFilter}
           onChange={setStatusFilter}
-          className="h-8 text-xs"
+          className="h-8 text-sm"
         />
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={exportCsv} disabled={filteredProducts.length === 0}>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm" onClick={exportCsv} disabled={filteredProducts.length === 0}>
           <Download className="size-3.5" /> Export CSV
         </Button>
-        <span className="text-[11px] text-muted-foreground">{filteredProducts.length} of {products.length}</span>
+        <span className="text-sm text-muted-foreground">{filteredProducts.length} of {products.length}</span>
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -196,11 +196,11 @@ export function ProductManager() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <p className="truncate text-sm font-semibold">{p.name}</p>
-                <Badge variant={p.status === "Active" ? "default" : "secondary"} className="shrink-0 text-[9px]">{p.status}</Badge>
+                <Badge variant={p.status === "Active" ? "default" : "secondary"} className="h-6 shrink-0 text-sm">{p.status}</Badge>
               </div>
-              <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{p.code} · {industries.find((i) => i.id === p.domain)?.name ?? p.domain}</p>
-              <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{p.description || "No description"}</p>
-              <p className="mt-1 text-[10px] font-medium text-muted-foreground/70">
+              <p className="mt-0.5 font-mono text-sm text-muted-foreground">{p.code} · {industries.find((i) => i.id === p.domain)?.name ?? p.domain}</p>
+              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{p.description || "No description"}</p>
+              <p className="mt-1 text-sm font-medium text-muted-foreground/70">
                 {mappedCount(p.id)} rule{mappedCount(p.id) === 1 ? "" : "s"} mapped
               </p>
             </div>
@@ -230,7 +230,7 @@ export function ProductManager() {
           </div>
         ))}
         {filteredProducts.length === 0 && (
-          <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+          <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
             {products.length === 0 ? "No products configured yet. Add one to get started." : "No products match this filter."}
           </p>
         )}
@@ -261,7 +261,7 @@ export function ProductManager() {
                   disabled={editing?.publishStatus === "Published"}
                 />
                 {editing?.publishStatus === "Published" && (
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     Stable API identifier — not editable once published, to avoid breaking existing integrations.
                   </p>
                 )}

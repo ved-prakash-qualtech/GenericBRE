@@ -22,7 +22,7 @@ export default function ProductsPage() {
       <div className="flex shrink-0 items-center justify-between border-b bg-card/40 px-5 py-3.5 sm:px-6">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Products</h1>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Every product&apos;s rules, sequencing, sample data, simulation and API contract in one workspace.
           </p>
         </div>

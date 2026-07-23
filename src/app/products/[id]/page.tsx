@@ -146,15 +146,15 @@ export default function ProductWorkspacePage() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <h1 className="truncate text-lg font-semibold tracking-tight">{product.name}</h1>
-              <Badge variant="outline" className="shrink-0 font-mono text-[9px]">{product.code}</Badge>
-              <Badge variant={product.status === "Active" ? "default" : "secondary"} className="shrink-0 text-[9px]">
+              <Badge variant="outline" className="h-6 shrink-0 font-mono text-sm">{product.code}</Badge>
+              <Badge variant={product.status === "Active" ? "default" : "secondary"} className="h-6 shrink-0 text-sm">
                 {product.status}
               </Badge>
-              <Badge variant={published ? "default" : "secondary"} className="shrink-0 text-[9px]">
+              <Badge variant={published ? "default" : "secondary"} className="h-6 shrink-0 text-sm">
                 {product.publishStatus ?? "Draft"}
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {industries.find((i) => i.id === product.domain)?.name ?? product.domain}
             </p>
           </div>
@@ -209,7 +209,7 @@ export default function ProductWorkspacePage() {
                 <div className="space-y-1.5 rounded-xl border bg-card p-3.5">
                   <Label>Code</Label>
                   <Input value={draft.code} disabled className="font-mono" />
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     Stable API identifier — not editable here to avoid breaking existing integrations.
                   </p>
                 </div>
@@ -234,7 +234,7 @@ export default function ProductWorkspacePage() {
                     <SelectItem value="Inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-[10px] text-muted-foreground">Controls execution eligibility — separate from Publish status above.</p>
+                <p className="text-sm text-muted-foreground">Controls execution eligibility — separate from Publish status above.</p>
               </div>
               <div className="space-y-1.5 rounded-xl border bg-card p-3.5">
                 <Label>Description</Label>

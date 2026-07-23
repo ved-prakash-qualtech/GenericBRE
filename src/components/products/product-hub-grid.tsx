@@ -79,7 +79,7 @@ export function ProductHubGrid({
 
   if (base.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
+      <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
         No active products yet — add one in Configuration Studio → Product Master.
       </p>
     );
@@ -95,7 +95,7 @@ export function ProductHubGrid({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name or code..."
-              className="h-8 pl-8 text-xs"
+              className="h-8 pl-8 text-sm"
             />
           </div>
           <MultiSelect
@@ -103,7 +103,7 @@ export function ProductHubGrid({
             options={industries.map((i) => ({ value: i.id, label: i.name }))}
             selected={domainFilter}
             onChange={setDomainFilter}
-            className="h-8 text-xs"
+            className="h-8 text-sm"
           />
           <MultiSelect
             label="Status"
@@ -113,16 +113,16 @@ export function ProductHubGrid({
             ]}
             selected={statusFilter}
             onChange={setStatusFilter}
-            className="h-8 text-xs"
+            className="h-8 text-sm"
           />
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={exportCsv} disabled={filtered.length === 0}>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm" onClick={exportCsv} disabled={filtered.length === 0}>
             <Download className="size-3.5" /> Export CSV
           </Button>
-          <span className="text-[11px] text-muted-foreground">{filtered.length} of {base.length}</span>
+          <span className="text-sm text-muted-foreground">{filtered.length} of {base.length}</span>
         </div>
       )}
       {filtered.length === 0 && (
-        <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">No products match this filter.</p>
+        <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">No products match this filter.</p>
       )}
       <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", compact && "gap-2.5")}>
         {visible.map((p) => {
@@ -174,7 +174,7 @@ export function ProductHubGrid({
                   <Icon className={compact ? "size-3.5" : "size-4"} />
                 </span>
                 {/* One status badge — Inactive takes precedence since it overrides publish state at a glance. */}
-                <Badge variant={p.status === "Inactive" ? "outline" : published ? "default" : "secondary"} className="shrink-0 text-[9px]">
+                <Badge variant={p.status === "Inactive" ? "outline" : published ? "default" : "secondary"} className="h-6 shrink-0 text-sm">
                   {p.status === "Inactive" ? "Inactive" : (p.publishStatus ?? "Draft")}
                 </Badge>
                 {!compact && (
@@ -192,15 +192,15 @@ export function ProductHubGrid({
 
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{p.name}</p>
-                <p className="truncate font-mono text-[10px] text-muted-foreground">{p.code}</p>
+                <p className="truncate font-mono text-sm text-muted-foreground">{p.code}</p>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>
                   <span className="font-semibold text-foreground">{mappedCount}</span> rule{mappedCount === 1 ? "" : "s"}
                   {compact && <span className="text-muted-foreground/70"> · {lastUpdatedLabel}</span>}
                 </span>
-                {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-1.5 py-0 text-[9px]" />}
+                {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-1.5 py-0 text-sm" />}
               </div>
 
               {!compact && statusDots.length > 0 && (
@@ -209,20 +209,20 @@ export function ProductHubGrid({
                 </div>
               )}
 
-              {!compact && <p className="text-[10px] text-muted-foreground/70">{lastUpdatedLabel}</p>}
+              {!compact && <p className="text-sm text-muted-foreground/70">{lastUpdatedLabel}</p>}
 
               <div className="grid grid-cols-2 gap-1.5" onClick={(e) => e.stopPropagation()}>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 gap-1 text-[11px]"
+                  className="h-7 gap-1 text-sm"
                   onClick={() => onConfigure(p)}
                 >
                   <Settings2 className="size-3" /> Configure
                 </Button>
                 <Button
                   size="sm"
-                  className="h-7 gap-1 text-[11px]"
+                  className="h-7 gap-1 text-sm"
                   onClick={() => onRunSimulation(p)}
                 >
                   <PlayCircle className="size-3" /> Simulate
