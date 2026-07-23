@@ -37,12 +37,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative flex h-full w-full">
+      <a
+        href="#main-content"
+        className="fixed top-2 left-2 z-[60] -translate-y-16 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground opacity-0 shadow-lg transition-transform focus:translate-y-0 focus:opacity-100"
+      >
+        Skip to main content
+      </a>
       <Sidebar />
       <MobileNav open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onOpenMobileNav={() => setMobileNavOpen(true)} />
-        <main className="relative min-h-0 flex-1 overflow-hidden">
+        <main id="main-content" tabIndex={-1} className="relative min-h-0 flex-1 overflow-hidden outline-none">
           <div className="bg-scoped-layer bg-scoped-layer--dashboard" />
           <AnimatePresence mode="wait" initial={false}>
             <motion.div

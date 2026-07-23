@@ -60,27 +60,34 @@ function NavLink({
     </>
   );
 
+  // Disabled items render as an inert span, not a real link — an anchor with
+  // href="#" is still announced and focusable by screen readers even with
+  // aria-disabled, which misrepresents a "not built yet" nav entry as a
+  // working link.
+  const renderTarget = disabled ? (
+    <span aria-disabled="true" tabIndex={-1} className={linkClassName} />
+  ) : (
+    <Link href={href} aria-current={active ? "page" : undefined} onClick={handleClick} className={linkClassName} />
+  );
+
   if (collapsed) {
     return (
       <Tooltip>
-        <TooltipTrigger
-          render={
-            <Link href={disabled ? "#" : href} aria-disabled={disabled} onClick={handleClick} className={linkClassName} />
-          }
-        >
-          {linkContent}
-        </TooltipTrigger>
+        <TooltipTrigger render={renderTarget}>{linkContent}</TooltipTrigger>
         <TooltipContent side="right">{label}{disabled ? " (Phase 2)" : ""}</TooltipContent>
       </Tooltip>
     );
   }
 
-  const link = (
-    <Link href={disabled ? "#" : href} aria-disabled={disabled} onClick={handleClick} className={linkClassName}>
+  return disabled ? (
+    <span aria-disabled="true" tabIndex={-1} className={linkClassName}>
+      {linkContent}
+    </span>
+  ) : (
+    <Link href={href} aria-current={active ? "page" : undefined} onClick={handleClick} className={linkClassName}>
       {linkContent}
     </Link>
   );
-  return link;
 }
 
 export function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
