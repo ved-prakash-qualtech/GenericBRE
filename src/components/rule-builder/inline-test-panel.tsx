@@ -79,12 +79,12 @@ export function InlineTestPanel({
 
   return (
     <div className="rounded-xl border bg-card p-4">
-      <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold">
+      <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
         <FlaskConical className="size-3.5 text-primary" /> Inline Rule Testing
       </div>
 
       {fieldKeys.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Add conditions above to enable inline testing.</p>
+        <p className="text-sm text-muted-foreground">Add conditions above to enable inline testing.</p>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2.5">
@@ -92,7 +92,7 @@ export function InlineTestPanel({
               const field = getField(fieldCatalog, key);
               return (
                 <div key={key} className="space-y-1">
-                  <label className="text-[11px] text-muted-foreground">{field?.label ?? key}</label>
+                  <label className="text-sm text-muted-foreground">{field?.label ?? key}</label>
                   {field?.type === "boolean" ? (
                     <Select items={{ true: "Yes", false: "No" }} value={values[key]} onValueChange={(v) => setValues((s) => ({ ...s, [key]: v as string }))}>
                       <SelectTrigger size="sm" className="h-8 w-full"><SelectValue placeholder="Select..." /></SelectTrigger>
@@ -115,7 +115,7 @@ export function InlineTestPanel({
                       type={field?.type === "number" || field?.type === "currency" ? "number" : field?.type === "date" ? "date" : "text"}
                       value={values[key] ?? ""}
                       onChange={(e) => setValues((s) => ({ ...s, [key]: e.target.value }))}
-                      className="h-8 text-xs"
+                      className="h-8 text-sm"
                     />
                   )}
                 </div>
@@ -131,7 +131,7 @@ export function InlineTestPanel({
             <div className="mt-3 space-y-2 border-t pt-3">
               <div
                 className={cn(
-                  "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold",
+                  "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-semibold",
                   result.passed ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 text-red-600 dark:text-red-400"
                 )}
               >
@@ -148,7 +148,7 @@ export function InlineTestPanel({
               </div>
               <div className="space-y-1">
                 {result.details.map((d, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1 text-[11px]">
+                  <div key={i} className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1 text-sm">
                     <span>
                       {d.field} {d.operator} {d.expected}
                     </span>
@@ -162,7 +162,7 @@ export function InlineTestPanel({
               {Object.keys(result.outputs).length > 0 && (
                 <div className="space-y-1">
                   {Object.entries(result.outputs).map(([field, out]) => (
-                    <div key={field} className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1 text-[11px]">
+                    <div key={field} className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1 text-sm">
                       <span className="font-mono">{field}</span>
                       {out.error ? (
                         <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
