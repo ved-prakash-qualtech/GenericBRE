@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Copy, Trash2, Download, Upload, AlertTriangle, CheckCircle2, MoreVertical } from "lucide-react";
+import { Plus, Copy, Trash2, Download, Upload, AlertTriangle, CheckCircle2, MoreVertical, Grid3x3 } from "lucide-react";
 import { DecisionMatrix, MatrixRow } from "@/lib/types";
 import { useAppStore, useHasCapability } from "@/lib/store";
 import { validateMatrix, MatrixIssue } from "@/lib/matrix-lookup";
@@ -16,6 +16,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 let rowSeq = 5000;
@@ -31,11 +41,12 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
   const currentUser = useAppStore((s) => s.currentUser);
   const canEdit = useHasCapability("rule.edit");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const handleDeleteMatrix = () => {
-    if (!window.confirm(`Delete "${matrix.name}"? This removes all ${matrix.rows.length} row(s). This can't be undone.`)) return;
     deleteMatrix(matrix.id);
     toast.success(`"${matrix.name}" deleted.`);
+    setDeleteConfirmOpen(false);
   };
 
   const issues = useMemo(() => validateMatrix(matrix), [matrix]);
@@ -57,26 +68,38 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
   const handleImport = (file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const text = String(reader.result ?? "");
-      const lines = text.trim().split(/\r?\n/);
-      if (lines.length < 2) return;
-      const headers = lines[0].split(",").map((h) => h.trim());
-      const rows: MatrixRow[] = lines.slice(1).map((line, i) => {
-        const cells = line.split(",");
-        const values: MatrixRow["values"] = {};
-        headers.forEach((h, idx) => {
-          const col = matrix.columns.find((c) => c.label === h || c.key === h);
-          if (col) {
-            const raw = cells[idx]?.trim() ?? "";
-            values[col.key] = col.type === "text" || col.type === "select" ? raw : Number(raw);
-          }
+      try {
+        const text = String(reader.result ?? "");
+        const lines = text.trim().split(/\r?\n/);
+        if (lines.length < 2) {
+          toast.error("Import failed", { description: "The CSV needs a header row plus at least one data row." });
+          return;
+        }
+        const headers = lines[0].split(",").map((h) => h.trim());
+        if (!headers.some((h) => matrix.columns.some((c) => c.label === h || c.key === h))) {
+          toast.error("Import failed", { description: "None of the CSV columns match this matrix's columns." });
+          return;
+        }
+        const rows: MatrixRow[] = lines.slice(1).map((line, i) => {
+          const cells = line.split(",");
+          const values: MatrixRow["values"] = {};
+          headers.forEach((h, idx) => {
+            const col = matrix.columns.find((c) => c.label === h || c.key === h);
+            if (col) {
+              const raw = cells[idx]?.trim() ?? "";
+              values[col.key] = col.type === "text" || col.type === "select" ? raw : Number(raw);
+            }
+          });
+          return { id: `IMP${Date.now()}${i}`, values };
         });
-        return { id: `IMP${Date.now()}${i}`, values };
-      });
-      updateMatrixRows(matrix.id, rows);
-      logAudit({ user: currentUser.name, action: "Imported Matrix", entity: "DecisionMatrix", entityId: matrix.id, details: `Imported ${rows.length} rows from CSV.` });
-      toast.success(`Imported ${rows.length} rows`, { description: matrix.name });
+        updateMatrixRows(matrix.id, rows);
+        logAudit({ user: currentUser.name, action: "Imported Matrix", entity: "DecisionMatrix", entityId: matrix.id, details: `Imported ${rows.length} rows from CSV.` });
+        toast.success(`Imported ${rows.length} rows`, { description: matrix.name });
+      } catch {
+        toast.error("Import failed", { description: "Couldn't parse that file as CSV." });
+      }
     };
+    reader.onerror = () => toast.error("Import failed", { description: "Couldn't read the selected file." });
     reader.readAsText(file);
   };
 
@@ -127,7 +150,7 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
               <MoreVertical className="size-3.5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem variant="destructive" onClick={handleDeleteMatrix}>
+              <DropdownMenuItem variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>
                 <Trash2 className="size-3.5" /> Delete Matrix
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -161,6 +184,20 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {matrix.rows.length === 0 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={matrix.columns.length + 1} className="h-32 text-center text-sm text-muted-foreground">
+                  <div className="flex flex-col items-center gap-2">
+                    <Grid3x3 className="size-6 text-muted-foreground/40" />
+                    {canEdit ? (
+                      <span>No rows yet — click &quot;Add Row&quot; above to add the first slab.</span>
+                    ) : (
+                      <span>This matrix has no rows configured yet.</span>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
             {matrix.rows.map((row) => (
               <TableRow key={row.id} className={cn(issueRowIds.has(row.id) && "bg-destructive/[0.04]")}>
                 {matrix.columns.map((c) => (
@@ -196,6 +233,23 @@ export function MatrixGrid({ matrix }: { matrix: DecisionMatrix }) {
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-destructive" /> Delete &quot;{matrix.name}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {`This removes all ${matrix.rows.length} row${matrix.rows.length === 1 ? "" : "s"} in this matrix. This can't be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteMatrix}>Delete Permanently</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
