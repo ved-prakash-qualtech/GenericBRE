@@ -32,9 +32,21 @@ interface DataTableProps<TData, TValue> {
   onSelectionChange?: (rows: TData[]) => void;
   /** Bump this (e.g. a counter) to clear the current row selection imperatively — used after a bulk action completes. */
   resetSelectionSignal?: number;
+  toolbar?: React.ReactNode;
+  leftToolbar?: React.ReactNode;
+  rightToolbar?: React.ReactNode;
 }
 
-export function DataTable<TData, TValue>({ columns, data, getRowId, onSelectionChange, resetSelectionSignal }: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({
+  columns,
+  data,
+  getRowId,
+  onSelectionChange,
+  resetSelectionSignal,
+  toolbar,
+  leftToolbar,
+  rightToolbar,
+}: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -68,30 +80,36 @@ export function DataTable<TData, TValue>({ columns, data, getRowId, onSelectionC
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b px-3 py-2">
-        <p className="px-1 text-xs text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} rule{table.getFilteredRowModel().rows.length !== 1 ? "s" : ""}
-        </p>
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
-            <Columns3 className="size-3.5" /> Columns
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            {table
-              .getAllColumns()
-              .filter((c) => c.getCanHide())
-              .map((c) => (
-                <DropdownMenuCheckboxItem
-                  key={c.id}
-                  checked={c.getIsVisible()}
-                  onCheckedChange={(v) => c.toggleVisibility(!!v)}
-                  className="capitalize"
-                >
-                  {c.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="px-1 text-sm text-muted-foreground whitespace-nowrap">
+            {table.getFilteredRowModel().rows.length} rule{table.getFilteredRowModel().rows.length !== 1 ? "s" : ""}
+          </p>
+          {leftToolbar ?? toolbar}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {rightToolbar}
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1.5" />}>
+              <Columns3 className="size-3.5" /> Columns
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {table
+                .getAllColumns()
+                .filter((c) => c.getCanHide())
+                .map((c) => (
+                  <DropdownMenuCheckboxItem
+                    key={c.id}
+                    checked={c.getIsVisible()}
+                    onCheckedChange={(v) => c.toggleVisibility(!!v)}
+                    className="capitalize"
+                  >
+                    {c.id}
+                  </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
@@ -100,7 +118,7 @@ export function DataTable<TData, TValue>({ columns, data, getRowId, onSelectionC
             {table.getHeaderGroups().map((hg) => (
               <TableRow key={hg.id} className="hover:bg-transparent">
                 {hg.headers.map((header) => (
-                  <TableHead key={header.id} style={{ width: header.getSize() }} className="text-xs font-semibold text-muted-foreground">
+                  <TableHead key={header.id} style={{ width: header.getSize() }} className="text-sm font-semibold text-muted-foreground">
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
@@ -110,9 +128,9 @@ export function DataTable<TData, TValue>({ columns, data, getRowId, onSelectionC
           <TableBody>
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="text-[13px]">
+                <TableRow key={row.id} className="text-sm">
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    <TableCell key={cell.id} className="py-2">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>
               ))
@@ -129,7 +147,7 @@ export function DataTable<TData, TValue>({ columns, data, getRowId, onSelectionC
 
       <div className="flex items-center justify-between border-t px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Rows per page</span>
+          <span className="text-sm text-muted-foreground">Rows per page</span>
           <Select
             value={String(table.getState().pagination.pageSize)}
             onValueChange={(v) => table.setPageSize(Number(v))}
@@ -147,7 +165,7 @@ export function DataTable<TData, TValue>({ columns, data, getRowId, onSelectionC
           </Select>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             Page {table.getState().pagination.pageIndex + 1} of {Math.max(1, table.getPageCount())}
           </span>
           <div className="flex gap-1">

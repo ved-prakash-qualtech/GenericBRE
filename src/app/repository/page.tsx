@@ -287,7 +287,7 @@ function RepositoryContent() {
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-card/40 px-5 py-3.5 sm:px-6">
         <div className="mr-auto">
           <h1 className="text-lg font-semibold tracking-tight">Rule Repository</h1>
-          <p className="text-xs text-muted-foreground">Searchable catalogue of every configured business rule</p>
+          <p className="text-sm text-muted-foreground">Searchable catalogue of every configured business rule</p>
         </div>
         <input
           ref={importRef}
@@ -335,54 +335,10 @@ function RepositoryContent() {
         )}
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-5 py-2.5 sm:px-6">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search rules by name or ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-64 pl-8"
-          />
-        </div>
-        <MultiSelect
-          label="Domain"
-          options={industries.map((i) => ({ value: i.id, label: i.name }))}
-          selected={domains}
-          onChange={setDomains}
-        />
-        <MultiSelect
-          label="Status"
-          options={[
-            { value: "Active", label: "Active" },
-            { value: "Testing", label: "Testing" },
-            { value: "Draft", label: "Draft" },
-            { value: "Inactive", label: "Inactive" },
-            { value: "Archived", label: "Archived" },
-          ]}
-          selected={statuses}
-          onChange={setStatuses}
-        />
-        <MultiSelect
-          label="Category"
-          options={ruleCategories.map((c) => ({ value: c.name, label: c.name }))}
-          selected={categoryFilters}
-          onChange={setCategoryFilters}
-        />
-        {/* Owner filter removed — FUTURE: restore when Owner is reintroduced */}
-        {/* Rule Group filter removed — Rule Group is no longer a filter dimension */}
-        {/* Environment filter removed — FUTURE: restore when environment promotion is reintroduced */}
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearAll} className="text-xs">
-            Clear all
-          </Button>
-        )}
-      </div>
-
       {conflicts.length > 0 && (
         <div className="flex shrink-0 flex-col gap-1 border-b bg-destructive/5 px-5 py-2.5 sm:px-6">
           {conflicts.slice(0, 3).map((c, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs text-destructive">
+            <div key={i} className="flex items-start gap-2 text-sm text-destructive">
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
               <span>
                 <span className="font-semibold">Possible conflict:</span> {c.ruleAId} vs {c.ruleBId} — {c.reason}
@@ -390,21 +346,21 @@ function RepositoryContent() {
             </div>
           ))}
           {conflicts.length > 3 && (
-            <p className="pl-5.5 text-[11px] text-destructive/70">+{conflicts.length - 3} more possible conflict(s).</p>
+            <p className="pl-5.5 text-sm text-destructive/70">+{conflicts.length - 3} more possible conflict(s).</p>
           )}
         </div>
       )}
 
       {selectedRows.length > 0 && (
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-primary/5 px-5 py-2 sm:px-6">
-          <span className="text-xs font-semibold">
+          <span className="text-sm font-semibold">
             {selectedRows.length} rule{selectedRows.length === 1 ? "" : "s"} selected
           </span>
           {canEdit && (
             <Button
               variant="outline"
               size="sm"
-              className="h-7 text-xs"
+              className="h-7 text-sm"
               onClick={() => runBulk("Submitted for review", (r) => (r.status === "Draft" ? submitForReview(r.id) : { ok: false, reason: "Not a Draft rule" }))}
             >
               Submit for Review
@@ -414,7 +370,7 @@ function RepositoryContent() {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 text-xs"
+              className="h-7 text-sm"
               onClick={() => runBulk("Archived", (r) => (r.status !== "Archived" ? setRuleStatus(r.id, "Archived") : { ok: false, reason: "Already archived" }))}
             >
               Archive
@@ -424,7 +380,7 @@ function RepositoryContent() {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 text-xs text-destructive hover:text-destructive"
+              className="h-7 text-sm text-destructive hover:text-destructive"
               onClick={() => runBulk("Deleted", (r) => deleteRule(r.id))}
             >
               Delete
@@ -444,6 +400,50 @@ function RepositoryContent() {
           getRowId={(r) => r.id}
           onSelectionChange={setSelectedRows}
           resetSelectionSignal={resetSelectionSignal}
+          leftToolbar={
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search rules by name or ID..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 w-72 pl-8 text-sm sm:w-80"
+              />
+            </div>
+          }
+          rightToolbar={
+            <>
+              <MultiSelect
+                label="Domain"
+                options={industries.map((i) => ({ value: i.id, label: i.name }))}
+                selected={domains}
+                onChange={setDomains}
+              />
+              <MultiSelect
+                label="Status"
+                options={[
+                  { value: "Active", label: "Active" },
+                  { value: "Testing", label: "Testing" },
+                  { value: "Draft", label: "Draft" },
+                  { value: "Inactive", label: "Inactive" },
+                  { value: "Archived", label: "Archived" },
+                ]}
+                selected={statuses}
+                onChange={setStatuses}
+              />
+              <MultiSelect
+                label="Category"
+                options={ruleCategories.map((c) => ({ value: c.name, label: c.name }))}
+                selected={categoryFilters}
+                onChange={setCategoryFilters}
+              />
+              {hasFilters && (
+                <Button variant="ghost" size="sm" onClick={clearAll} className="h-8 px-2 text-sm">
+                  Clear all
+                </Button>
+              )}
+            </>
+          }
         />
       </div>
 
@@ -461,7 +461,7 @@ function RepositoryContent() {
               rules already Active. You can still approve — this is advisory, not a hard block.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <ul className="space-y-1.5 rounded-lg border bg-destructive/5 p-2.5 text-xs">
+          <ul className="space-y-1.5 rounded-lg border bg-destructive/5 p-2.5 text-sm">
             {approvalConfirm?.conflicts.map((c, i) => (
               <li key={i} className="text-destructive">
                 {c.ruleAId} vs {c.ruleBId} — {c.reason}
