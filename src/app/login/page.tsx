@@ -195,15 +195,15 @@ export default function LoginPage() {
       >
         <div className="w-full max-w-[30rem]">
           <div className="rounded-2xl border bg-card p-6 shadow-sm sm:p-8">
-            <h2 className="text-2xl font-semibold tracking-tight text-[#0a1230]">Welcome Back</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-[#0a1230]">Welcome Back</h2>
             <p className="mt-1 text-sm text-[#0a1230]/70">Sign in to your {appName} account</p>
 
             <form className="mt-6 space-y-4" onSubmit={handleSignIn}>
               <div className="space-y-1.5">
-                <Label htmlFor="employeeId" className="text-[#0a1230]">Employee ID</Label>
-                <InputGroup>
+                <Label htmlFor="employeeId" className="font-bold text-[#0a1230]">Employee ID</Label>
+                <InputGroup className="border-[#d7deef] bg-[#eef1f8]">
                   <InputGroupAddon>
-                    <User className="size-4" />
+                    <User className="size-4 text-[#0a1230]/60" />
                   </InputGroupAddon>
                   <InputGroupInput
                     id="employeeId"
@@ -217,10 +217,10 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-[#0a1230]">Password</Label>
-                <InputGroup>
+                <Label htmlFor="password" className="font-bold text-[#0a1230]">Password</Label>
+                <InputGroup className="border-[#d7deef] bg-[#eef1f8]">
                   <InputGroupAddon>
-                    <Lock className="size-4" />
+                    <Lock className="size-4 text-[#0a1230]/60" />
                   </InputGroupAddon>
                   <InputGroupInput
                     id="password"
