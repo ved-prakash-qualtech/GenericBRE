@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   Building2,
   Users,
+  KeyRound,
   Sliders,
   LayoutTemplate,
   Compass,
@@ -99,6 +100,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Access",
     items: [
+      { id: "roles", label: "Roles", icon: KeyRound },
       { id: "users", label: "User Management", icon: Users },
     ],
   },

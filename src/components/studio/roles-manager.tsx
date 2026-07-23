@@ -102,7 +102,7 @@ export function RolesManager() {
           Every role and its demo persona shown on the &quot;Switch Role&quot; picker — add one here and it appears immediately, no code changes.
         </p>
         <Button size="sm" className="shrink-0 gap-1.5" onClick={startCreate}>
-          <Plus className="size-3.5" /> Add User
+          <Plus className="size-3.5" /> Add Role
         </Button>
       </div>
 
@@ -144,7 +144,7 @@ export function RolesManager() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit User" : "Add User"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Role" : "Add Role"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -190,7 +190,7 @@ export function RolesManager() {
           </div>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <Button onClick={save}>{editing ? "Save Changes" : "Add User"}</Button>
+            <Button onClick={save}>{editing ? "Save Changes" : "Add Role"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
