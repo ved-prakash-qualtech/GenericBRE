@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -135,7 +135,7 @@ export function MappedRulesChecklist({
   const saveProductRuleMapping = useAppStore((s) => s.saveProductRuleMapping);
   const canManage = useHasCapability("config.manage");
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
   const [selection, setSelection] = useState<Set<string> | null>(null);
   // Cross-domain mapping (e.g. an Insurance rule mapped to a Lending product)
   // is rarely intentional and silently meaningless at execution time — hide
@@ -158,11 +158,11 @@ export function MappedRulesChecklist({
     const q = search.trim().toLowerCase();
     return rules.filter((r) => {
       if (!showAllDomains && r.domain !== product.domain) return false;
-      if (categoryFilter && r.category !== categoryFilter) return false;
+      if (categoryFilters.length && !categoryFilters.includes(r.category)) return false;
       if (q && !r.name.toLowerCase().includes(q) && !r.id.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [rules, search, categoryFilter, showAllDomains, product.domain]);
+  }, [rules, search, categoryFilters, showAllDomains, product.domain]);
 
   const toggleRule = (ruleId: string) => {
     const next = new Set(activeSelection);
@@ -205,15 +205,12 @@ export function MappedRulesChecklist({
               className="h-8 bg-background pl-8 text-xs"
             />
           </div>
-          <Select value={categoryFilter || "__all__"} onValueChange={(v) => setCategoryFilter(v === "__all__" ? "" : (v as string))}>
-            <SelectTrigger size="sm" className="h-8 w-44 bg-background"><SelectValue placeholder="All categories" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All categories</SelectItem>
-              {ruleCategories.map((c) => (
-                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MultiSelect
+            label="Category"
+            options={ruleCategories.map((c) => ({ value: c.name, label: c.name }))}
+            selected={categoryFilters}
+            onChange={setCategoryFilters}
+          />
           <Button variant="outline" size="sm" className="h-8 gap-1.5 bg-background text-xs" onClick={toggleSelectAllFiltered}>
             {allFilteredSelected ? <Square className="size-3.5" /> : <CheckSquare className="size-3.5" />}
             {allFilteredSelected ? "Clear filtered" : "Select all filtered"}
