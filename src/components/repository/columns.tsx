@@ -76,7 +76,7 @@ export function buildColumns(actions: RepositoryActions, context: RepositoryColu
     {
       accessorKey: "id",
       header: ({ column }) => <SortHeader label="Rule ID" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} />,
-      cell: ({ row }) => <span className="font-mono text-xs font-medium">{row.original.id}</span>,
+      cell: ({ row }) => <span className="font-mono text-sm font-medium">{row.original.id}</span>,
       size: 90,
     },
     {
@@ -105,9 +105,9 @@ export function buildColumns(actions: RepositoryActions, context: RepositoryColu
       cell: ({ row }) => {
         const group = context.ruleGroups.find((g) => g.id === row.original.groupId);
         return group ? (
-          <span className="text-xs text-muted-foreground">{group.name}</span>
+          <span className="text-sm text-muted-foreground">{group.name}</span>
         ) : (
-          <span className="text-xs text-muted-foreground/50">—</span>
+          <span className="text-sm text-muted-foreground/50">—</span>
         );
       },
       size: 160,
@@ -131,7 +131,7 @@ export function buildColumns(actions: RepositoryActions, context: RepositoryColu
       accessorKey: "updatedAt",
       header: ({ column }) => <SortHeader label="Updated" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")} />,
       cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {formatDistanceToNow(new Date(row.original.updatedAt), { addSuffix: true })}
         </span>
       ),
