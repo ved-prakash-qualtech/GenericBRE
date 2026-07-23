@@ -82,42 +82,72 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="grid h-full grid-cols-1 overflow-y-auto lg:grid-cols-2 lg:overflow-hidden">
-      {/* Left — branding panel */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-sidebar px-10 py-10 text-sidebar-foreground lg:flex xl:px-14">
+    <div className="grid h-full grid-cols-1 overflow-y-auto md:grid-cols-2 md:overflow-hidden">
+      {/* Compact brand banner — mobile only (<768px). Replaces the old
+          logo-only fallback so the trust story survives on phones instead
+          of vanishing entirely. */}
+      <div className="flex flex-col gap-3 border-b bg-sidebar px-5 py-4 text-sidebar-foreground md:hidden">
+        <div className="flex items-center gap-2.5">
+          <LogoMark className="size-8" />
+          <div>
+            <p className="text-sm font-semibold tracking-tight">{appName}</p>
+            <p className="text-sm text-sidebar-foreground/85">{tagline}</p>
+          </div>
+        </div>
+        <div className="flex gap-4 text-sm text-sidebar-foreground/90">
+          <span>
+            <span className="font-semibold text-sidebar-primary">{totalRules}</span> Total Rules
+          </span>
+          <span>
+            <span className="font-semibold text-sidebar-primary">{activeRules}</span> Active
+          </span>
+        </div>
+      </div>
+
+      {/* Left — branding panel. Full detail from desktop (lg, ≥1024px);
+          a condensed logo + hero + stat-row subset from tablet (md,
+          ≥768px) — the lifecycle stepper and capability grid step in only
+          at lg so the panel degrades gracefully instead of disappearing. */}
+      <div
+        className="relative hidden flex-col justify-between overflow-hidden px-6 py-6 text-sidebar-foreground md:flex md:px-8 md:py-8 lg:px-10 lg:py-10 xl:px-14"
+        style={{
+          background:
+            "linear-gradient(135deg, color-mix(in oklch, var(--sidebar) 88%, black 12%) 0%, var(--sidebar) 45%, color-mix(in oklch, var(--sidebar) 78%, var(--sidebar-primary) 22%) 100%)",
+        }}
+      >
         <div>
           <div className="flex items-center gap-3">
             <LogoMark className="size-10" />
             <div>
               <p className="text-lg font-semibold tracking-tight">{appName}</p>
-              <p className="text-xs text-sidebar-foreground/60">{tagline}</p>
+              <p className="text-sm text-sidebar-foreground/85">{tagline}</p>
             </div>
           </div>
 
-          <h1 className="mt-10 max-w-md text-2xl font-semibold tracking-tight text-balance">
+          <h1 className="mt-10 max-w-md text-xl font-semibold tracking-tight text-balance">
             One decision platform for every industry.
           </h1>
-          <p className="mt-2 max-w-sm text-sm text-sidebar-foreground/60">
+          <p className="mt-2 max-w-sm text-sm text-sidebar-foreground/85">
             Configure once, evaluate everywhere — no code required to add an industry, a rule, or a workflow.
           </p>
 
           <div className="mt-8 grid max-w-sm grid-cols-3 gap-3">
-            <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-3 text-center">
+            <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-3 text-center shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_10px_24px_-8px_rgba(0,0,0,0.65)]">
               <p className="text-xl font-semibold text-sidebar-primary">{totalRules}</p>
-              <p className="text-[11px] text-sidebar-foreground/55">Total Rules</p>
+              <p className="text-sm text-sidebar-foreground/80">Total Rules</p>
             </div>
-            <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-3 text-center">
+            <div className="rounded-xl border border-sidebar-primary/40 bg-sidebar-primary/10 p-3 text-center shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1),0_10px_24px_-6px_rgba(0,0,0,0.65)]">
               <p className="text-xl font-semibold text-sidebar-primary">{activeRules}</p>
-              <p className="text-[11px] text-sidebar-foreground/55">Active Rules</p>
+              <p className="text-sm text-sidebar-foreground/90">Active Rules</p>
             </div>
-            <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-3 text-center">
+            <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-3 text-center shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08),0_10px_24px_-8px_rgba(0,0,0,0.65)]">
               <p className="text-xl font-semibold text-sidebar-primary">{simulationsRun}</p>
-              <p className="text-[11px] text-sidebar-foreground/55">Simulations</p>
+              <p className="text-sm text-sidebar-foreground/80">Simulations</p>
             </div>
           </div>
 
-          <div className="mt-8 max-w-sm">
-            <p className="mb-2.5 text-[10.5px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+          <div className="mt-8 hidden max-w-sm lg:block">
+            <p className="mb-2.5 text-sm font-semibold uppercase tracking-wider text-sidebar-foreground/70">
               Rule Lifecycle
             </p>
             <div className="flex items-center">
@@ -128,12 +158,12 @@ export default function LoginPage() {
                       className={`flex size-6 items-center justify-center rounded-full text-[10px] font-semibold ${
                         i === 2
                           ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                          : "bg-sidebar-accent text-sidebar-foreground/60"
+                          : "bg-sidebar-accent text-sidebar-foreground/85"
                       }`}
                     >
                       {i + 1}
                     </span>
-                    <span className="text-[10px] text-sidebar-foreground/55">{stage}</span>
+                    <span className="text-sm text-sidebar-foreground/80">{stage}</span>
                   </div>
                   {i < LIFECYCLE_STAGES.length - 1 && <div className="mx-1 h-px flex-1 bg-sidebar-border" />}
                 </div>
@@ -142,110 +172,118 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="grid max-w-md grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="hidden max-w-xl gap-x-4 gap-y-2.5 lg:grid lg:grid-cols-[repeat(auto-fit,minmax(15.5rem,1fr))]">
           {CAPABILITIES.map((cap) => (
-            <div key={cap.label} className="flex items-start gap-2">
-              <cap.icon className="mt-0.5 size-3.5 shrink-0 text-sidebar-primary" />
-              <p className="text-[11.5px] leading-snug text-sidebar-foreground/70">{cap.label}</p>
+            <div key={cap.label} className="flex items-center gap-2">
+              <cap.icon className="size-3.5 shrink-0 text-sidebar-primary" />
+              <p className="text-sm whitespace-nowrap text-sidebar-foreground/90">{cap.label}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Right — sign-in form */}
-      <div className="flex flex-col items-center justify-center gap-8 bg-background px-6 py-10 sm:px-10">
-        <div className="w-full max-w-sm">
-          <div className="mb-7 lg:hidden">
-            <div className="flex items-center gap-2.5">
-              <LogoMark className="size-8" />
-              <p className="text-base font-semibold tracking-tight">{appName}</p>
-            </div>
-          </div>
+      {/* Right — sign-in card. Bounded, elevated container (the established
+          rounded-xl/border/bg-card pattern used elsewhere in the app) so
+          the credential form reads as the page's secure surface, with a
+          single visually dominant CTA. */}
+      <div
+        className="flex flex-col items-center justify-center px-6 py-10 sm:px-10 md:py-12"
+        style={{
+          background:
+            "radial-gradient(800px 600px at 100% 0%, #eef3ff 0%, transparent 60%), radial-gradient(600px 500px at 0% 100%, #fff4e0 0%, transparent 60%), #fbfcff",
+        }}
+      >
+        <div className="w-full max-w-[30rem]">
+          <div className="rounded-2xl border bg-card p-6 shadow-sm sm:p-8">
+            <h2 className="text-2xl font-semibold tracking-tight text-[#0a1230]">Welcome Back</h2>
+            <p className="mt-1 text-sm text-[#0a1230]/70">Sign in to your {appName} account</p>
 
-          <h2 className="text-xl font-semibold tracking-tight">Welcome Back</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in to your {appName} account</p>
+            <form className="mt-6 space-y-4" onSubmit={handleSignIn}>
+              <div className="space-y-1.5">
+                <Label htmlFor="employeeId" className="text-[#0a1230]">Employee ID</Label>
+                <InputGroup>
+                  <InputGroupAddon>
+                    <User className="size-4" />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    id="employeeId"
+                    placeholder="EMP-0001"
+                    value={employeeId}
+                    onChange={(e) => setEmployeeId(e.target.value)}
+                    autoComplete="username"
+                    autoFocus
+                  />
+                </InputGroup>
+              </div>
 
-          <form className="mt-6 space-y-4" onSubmit={handleSignIn}>
-            <div className="space-y-1.5">
-              <Label htmlFor="employeeId">Employee ID</Label>
-              <InputGroup>
-                <InputGroupAddon>
-                  <User className="size-4" />
-                </InputGroupAddon>
-                <InputGroupInput
-                  id="employeeId"
-                  placeholder="EMP-0001"
-                  value={employeeId}
-                  onChange={(e) => setEmployeeId(e.target.value)}
-                  autoComplete="username"
-                />
-              </InputGroup>
-            </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-[#0a1230]">Password</Label>
+                <InputGroup>
+                  <InputGroupAddon>
+                    <Lock className="size-4" />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      onClick={() => setShowPassword((s) => !s)}
+                    >
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
+              </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <InputGroup>
-                <InputGroupAddon>
-                  <Lock className="size-4" />
-                </InputGroupAddon>
-                <InputGroupInput
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                />
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    onClick={() => setShowPassword((s) => !s)}
-                  >
-                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </InputGroup>
-            </div>
+              {error && (
+                <p role="alert" aria-live="polite" className="flex items-center gap-1.5 text-sm text-destructive">
+                  <AlertTriangle className="size-3.5 shrink-0" /> {error}
+                </p>
+              )}
 
-            {error && (
-              <p className="flex items-center gap-1.5 text-xs text-destructive">
-                <AlertTriangle className="size-3.5 shrink-0" /> {error}
-              </p>
-            )}
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm text-[#0a1230]">
+                  <Checkbox checked={rememberMe} onCheckedChange={(v) => setRememberMe(!!v)} />
+                  Remember me
+                </label>
+                <button
+                  type="button"
+                  onClick={() => toast.info("Contact your administrator to reset your password.")}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Checkbox checked={rememberMe} onCheckedChange={(v) => setRememberMe(!!v)} />
-                Remember me
-              </label>
+              <Button type="submit" size="lg" className="w-full font-semibold shadow-sm">
+                Sign In
+              </Button>
+            </form>
+
+            <div className="mt-5 text-center text-sm text-[#0a1230]/70">
+              Need Demo Access?{" "}
               <button
-                type="button"
-                onClick={() => toast.info("Contact your administrator to reset your password.")}
-                className="text-xs font-medium text-primary hover:underline"
+                onClick={() => setPickerOpen(true)}
+                className="font-medium text-[#0a1230] underline-offset-2 hover:underline"
               >
-                Forgot password?
+                Enter Demo Mode
               </button>
             </div>
 
-            <Button type="submit" className="w-full">
-              Sign In
-            </Button>
-          </form>
-
-          <div className="mt-5 text-center text-xs text-muted-foreground">
-            Need Demo Access?{" "}
-            <button onClick={() => setPickerOpen(true)} className="font-semibold text-primary hover:underline">
-              Enter Demo Mode
-            </button>
-          </div>
-
-          <div className="mt-7 grid grid-cols-2 gap-x-4 gap-y-2.5 border-t pt-5">
-            {TRUST_BADGES.map((badge) => (
-              <div key={badge.label} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <badge.icon className="size-3.5 text-primary/70" />
-                {badge.label}
-              </div>
-            ))}
+            <div className="mt-6 grid gap-x-3 gap-y-2.5 border-t pt-5 [grid-template-columns:repeat(auto-fit,minmax(11.5rem,1fr))]">
+              {TRUST_BADGES.map((badge) => (
+                <div key={badge.label} className="flex items-center gap-1.5 text-sm whitespace-nowrap text-[#0a1230]/80">
+                  <badge.icon className="size-3.5 shrink-0 text-primary/70" />
+                  {badge.label}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
