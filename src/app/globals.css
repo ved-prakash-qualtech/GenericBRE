@@ -152,6 +152,33 @@ body {
   overscroll-behavior: none;
 }
 
+/* Chrome/Edge paint a persistent yellow/blue tint behind autofilled or
+   password-manager-suggested fields via an internal UA style that a plain
+   background-color utility can't override — the standard fix is an inset
+   box-shadow the size of the field, painted in the color we actually want,
+   plus a long transition delay so the browser's own repaint never gets a
+   chance to show through. Scoped to .login-input so it only affects the
+   sign-in form's fields, not every input in the app. */
+.login-input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset;
+  -webkit-text-fill-color: #0a1230;
+  caret-color: #0a1230;
+  transition: background-color 9999s ease-in-out 0s;
+}
+.login-input:-webkit-autofill:hover {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset;
+}
+.login-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset;
+}
+.login-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset;
+}
+.login-input:autofill {
+  background: transparent;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 /* Compact heading scale matched to Universal CRM's default density, applied
    to the app's main content area. Body sizes (text-sm/text-base and the
    main-level default) are intentionally NOT compressed below Tailwind's own
