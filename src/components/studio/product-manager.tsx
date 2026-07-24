@@ -140,7 +140,7 @@ export function ProductManager() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name or code..."
-              className="h-8 pl-8 text-xs"
+              className="h-9 pl-8 text-sm"
             />
           </div>
           <MultiSelect
@@ -148,7 +148,7 @@ export function ProductManager() {
             options={industries.map((i) => ({ value: i.id, label: i.name }))}
             selected={domainFilter}
             onChange={setDomainFilter}
-            className="h-8 text-xs"
+            className="h-9 text-sm"
           />
           <MultiSelect
             label="Status"
@@ -158,12 +158,12 @@ export function ProductManager() {
             ]}
             selected={statusFilter}
             onChange={setStatusFilter}
-            className="h-8 text-xs"
+            className="h-9 text-sm"
           />
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs shadow-2xs" onClick={exportCsv} disabled={filteredProducts.length === 0}>
+          <Button variant="outline" size="sm" className="h-9 gap-1.5 text-sm shadow-2xs" onClick={exportCsv} disabled={filteredProducts.length === 0}>
             <Download className="size-3.5" /> Export CSV
           </Button>
-          <span className="text-xs text-muted-foreground">{filteredProducts.length} of {products.length}</span>
+          <span className="text-sm text-muted-foreground">{filteredProducts.length} of {products.length}</span>
         </div>
 
         {canCreate && (
@@ -174,7 +174,7 @@ export function ProductManager() {
       </div>
 
       {/* Product Cards Grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filteredProducts.map((p) => {
           const industry = industries.find((i) => i.id === p.domain);
           const Icon = iconForIndustry(industry?.icon) ?? Package;
@@ -191,11 +191,11 @@ export function ProductManager() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <p className="truncate text-sm font-semibold tracking-tight text-foreground">{p.name}</p>
-                        <Badge variant={p.status === "Active" ? "default" : "secondary"} className="h-5 shrink-0 px-1.5 text-[10px] font-medium">
+                        <Badge variant={p.status === "Active" ? "default" : "secondary"} className="h-5 shrink-0 px-1.5 text-sm font-medium">
                           {p.status}
                         </Badge>
                       </div>
-                      <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
+                      <p className="mt-0.5 truncate font-mono text-sm text-muted-foreground">
                         {p.code} · {industry?.name ?? p.domain}
                       </p>
                     </div>
@@ -227,16 +227,16 @@ export function ProductManager() {
                   </div>
                 </div>
 
-                <p className="mt-2.5 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                <p className="mt-2.5 line-clamp-2 text-sm text-muted-foreground leading-relaxed">
                   {p.description || "No description provided"}
                 </p>
               </div>
 
-              <div className="mt-3.5 flex items-center justify-between border-t pt-2.5 text-xs text-muted-foreground">
+              <div className="mt-3.5 flex items-center justify-between border-t pt-2.5 text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">
                   {count} rule{count === 1 ? "" : "s"} mapped
                 </span>
-                <span className="text-[10px] font-mono text-muted-foreground/60">{p.publishStatus ?? "Draft"}</span>
+                <span className="text-sm font-mono text-muted-foreground/60">{p.publishStatus ?? "Draft"}</span>
               </div>
             </div>
           );
@@ -245,7 +245,7 @@ export function ProductManager() {
           <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
             <Package className="size-8 text-muted-foreground/50 mb-2" />
             <p className="text-sm font-medium text-foreground">No products found</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {products.length === 0 ? "No products configured yet. Add one to get started." : "No products match this filter."}
             </p>
           </div>

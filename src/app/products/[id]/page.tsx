@@ -159,15 +159,15 @@ export default function ProductWorkspacePage() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">{product.name}</h1>
-              <Badge variant="outline" className="h-5 shrink-0 font-mono text-xs bg-muted/30">{product.code}</Badge>
-              <Badge variant={product.status === "Active" ? "default" : "secondary"} className="h-5 shrink-0 text-xs font-medium">
+              <Badge variant="outline" className="h-5 shrink-0 font-mono text-sm bg-muted/30">{product.code}</Badge>
+              <Badge variant={product.status === "Active" ? "default" : "secondary"} className="h-5 shrink-0 text-sm font-medium">
                 {product.status}
               </Badge>
-              <Badge variant={published ? "default" : "secondary"} className="h-5 shrink-0 text-xs font-medium">
+              <Badge variant={published ? "default" : "secondary"} className="h-5 shrink-0 text-sm font-medium">
                 {product.publishStatus ?? "Draft"}
               </Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-sm text-muted-foreground mt-0.5">
               {industries.find((i) => i.id === product.domain)?.name ?? product.domain}
             </p>
           </div>
@@ -213,26 +213,26 @@ export default function ProductWorkspacePage() {
             <div className="max-w-2xl p-5 sm:p-6">
               <div className="rounded-xl border bg-card p-5 space-y-4 shadow-2xs">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Product Name *</Label>
+                  <Label className="text-sm">Product Name *</Label>
                   <Input
                     value={draft.name}
                     onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                    className="text-xs"
+                    className="text-sm"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Product Code</Label>
-                    <Input value={draft.code} disabled className="font-mono text-xs bg-muted/40" />
-                    <p className="text-[11px] text-muted-foreground/80 leading-tight">
+                    <Label className="text-sm">Product Code</Label>
+                    <Input value={draft.code} disabled className="font-mono text-sm bg-muted/40" />
+                    <p className="text-sm text-muted-foreground/80 leading-tight">
                       Stable API identifier — non-editable to prevent breaking active API integrations.
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Domain</Label>
+                    <Label className="text-sm">Domain</Label>
                     <Select value={draft.domain} onValueChange={(v) => setDraft({ ...draft, domain: (v as string) ?? draft.domain })}>
-                      <SelectTrigger className="w-full text-xs"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {industries.map((i) => (
                           <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
@@ -243,26 +243,26 @@ export default function ProductWorkspacePage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Status</Label>
+                  <Label className="text-sm">Status</Label>
                   <Select value={draft.status} onValueChange={(v) => setDraft({ ...draft, status: (v as "Active" | "Inactive") ?? draft.status })}>
-                    <SelectTrigger className="w-full text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Active">Active</SelectItem>
                       <SelectItem value="Inactive">Inactive</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-[11px] text-muted-foreground/80 leading-tight">
+                  <p className="text-sm text-muted-foreground/80 leading-tight">
                     Controls execution eligibility — separate from the Publish lifecycle status.
                   </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Description</Label>
+                  <Label className="text-sm">Description</Label>
                   <Textarea
                     value={draft.description ?? ""}
                     onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                     placeholder="Product summary and business scope..."
-                    className="min-h-20 text-xs leading-relaxed"
+                    className="min-h-20 text-sm leading-relaxed"
                   />
                 </div>
 
