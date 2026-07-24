@@ -124,7 +124,7 @@ export function buildColumns(actions: RepositoryActions, context: RepositoryColu
     // {
     //   accessorKey: "owner",
     //   header: "Owner",
-    //   cell: ({ row }) => <span className="text-xs text-muted-foreground">{row.original.owner}</span>,
+    //   cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.owner}</span>,
     //   size: 170,
     // },
     {

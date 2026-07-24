@@ -56,7 +56,7 @@ export function ProductSelector({
 
   if (active.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
+      <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
         No active products yet — add one in Configuration Studio → Product Master.
       </p>
     );
@@ -105,12 +105,12 @@ export function ProductSelector({
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <p className="truncate text-sm font-semibold">{selected.name}</p>
-                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{selected.code}</span>
-                  <Badge variant={canCall ? "default" : "secondary"} className="shrink-0 text-[9px]">
+                  <span className="shrink-0 font-mono text-sm text-muted-foreground">{selected.code}</span>
+                  <Badge variant={canCall ? "default" : "secondary"} className="shrink-0 text-sm">
                     {selected.publishStatus ?? "Draft"}
                   </Badge>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
                   <span>{selectedIndustry?.name ?? selected.domain}</span>
                   <span>
                     <span className="font-semibold text-foreground">{mappedCount}</span> mapped rule{mappedCount === 1 ? "" : "s"}
@@ -121,7 +121,7 @@ export function ProductSelector({
                   </span>
                 </div>
                 {canCall && (
-                  <div className="flex items-center gap-1.5 font-mono text-[10.5px] text-muted-foreground/80">
+                  <div className="flex items-center gap-1.5 font-mono text-sm text-muted-foreground/80">
                     <Globe className="size-3 shrink-0" />
                     POST /api/decision · productId: &quot;{selected.code}&quot;
                   </div>
@@ -149,7 +149,7 @@ export function ProductSelector({
               options={industries.map((i) => ({ value: i.id, label: i.name }))}
               selected={industryFilter}
               onChange={setIndustryFilter}
-              className="h-8 flex-1 text-xs"
+              className="h-8 flex-1 text-sm"
             />
             <MultiSelect
               label="Status"
@@ -159,7 +159,7 @@ export function ProductSelector({
               ]}
               selected={statusFilter}
               onChange={setStatusFilter}
-              className="h-8 flex-1 text-xs"
+              className="h-8 flex-1 text-sm"
             />
           </div>
 
@@ -186,7 +186,7 @@ export function ProductSelector({
               </CommandGroup>
             </CommandList>
             {filtered.length > RESULT_CAP && (
-              <p className="border-t px-3 py-2 text-center text-[10.5px] text-muted-foreground">
+              <p className="border-t px-3 py-2 text-center text-sm text-muted-foreground">
                 Showing {RESULT_CAP} of {filtered.length} matches — refine your search to narrow the list.
               </p>
             )}
@@ -227,13 +227,13 @@ function ProductRow({
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="truncate text-xs font-semibold text-foreground">{product.name}</span>
-          <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{product.code}</span>
-          <Badge variant={published ? "default" : "secondary"} className="shrink-0 text-[9px]">
+          <span className="truncate text-sm font-semibold text-foreground">{product.name}</span>
+          <span className="shrink-0 font-mono text-sm text-muted-foreground">{product.code}</span>
+          <Badge variant={published ? "default" : "secondary"} className="shrink-0 text-sm">
             {product.publishStatus ?? "Draft"}
           </Badge>
         </div>
-        <div className="flex flex-wrap items-center gap-x-2.5 text-[10.5px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-2.5 text-sm text-muted-foreground">
           <span>{industry?.name ?? product.domain}</span>
           <span>{mappedCount} mapped rule{mappedCount === 1 ? "" : "s"}</span>
           <span>{product.lastPublishedAt ? new Date(product.lastPublishedAt).toLocaleDateString() : "Not published"}</span>

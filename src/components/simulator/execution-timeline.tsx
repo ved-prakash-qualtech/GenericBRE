@@ -53,22 +53,22 @@ function TimelineStep({ step, index }: { step: TraceStep; index: number }) {
             hasDetails && "hover:bg-accent/50"
           )}
         >
-          <span className="font-mono text-xs text-muted-foreground">{step.ruleId}</span>
-          <span className="truncate text-[13px] font-medium">{step.ruleName}</span>
+          <span className="font-mono text-sm text-muted-foreground">{step.ruleId}</span>
+          <span className="truncate text-sm font-medium">{step.ruleName}</span>
           {step.sandbox && (
-            <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+            <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-sm font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
               Sandbox
             </span>
           )}
-          <span className={cn("ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold", cfg.color)}>{cfg.label}</span>
-          {step.durationMs > 0 && <span className="shrink-0 text-[10px] text-muted-foreground">{step.durationMs.toFixed(2)}ms</span>}
+          <span className={cn("ml-auto shrink-0 rounded-full px-2 py-0.5 text-sm font-semibold", cfg.color)}>{cfg.label}</span>
+          {step.durationMs > 0 && <span className="shrink-0 text-sm text-muted-foreground">{step.durationMs.toFixed(2)}ms</span>}
           {hasDetails && <ChevronDown className={cn("size-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />}
         </button>
 
         {open && hasDetails && (
           <div className="ml-2 mt-1 space-y-2 border-l pl-3">
             {step.conditionSummaries.map((c, i) => (
-              <div key={i} className="rounded-md bg-muted/30 px-2.5 py-1.5 text-xs">
+              <div key={i} className="rounded-md bg-muted/30 px-2.5 py-1.5 text-sm">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">{c.field}</span>
                   {c.passed ? (
@@ -85,12 +85,12 @@ function TimelineStep({ step, index }: { step: TraceStep; index: number }) {
               </div>
             ))}
             {step.actionsApplied.length > 0 && (
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 Action{step.actionsApplied.length > 1 ? "s" : ""} applied: {step.actionsApplied.map((a) => a.type).join(", ")}
               </div>
             )}
             {step.producedValues && Object.keys(step.producedValues).length > 0 && (
-              <div className="flex flex-wrap gap-1.5 text-[11px]">
+              <div className="flex flex-wrap gap-1.5 text-sm">
                 {Object.entries(step.producedValues).map(([key, value]) => (
                   <span key={key} className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-primary">
                     {key} = {String(value)}
@@ -108,7 +108,7 @@ function TimelineStep({ step, index }: { step: TraceStep; index: number }) {
 export function ExecutionTimeline({ trace }: { trace: TraceStep[] }) {
   return (
     <div className="rounded-xl border bg-card p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         Rule Trace — Evaluation Order &amp; Execution Timeline
       </p>
       <div>

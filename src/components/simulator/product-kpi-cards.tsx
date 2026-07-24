@@ -30,7 +30,7 @@ export function ProductKpiCards({
 
   if (active.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
+      <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
         No active products yet — add one in Configuration Studio → Product Master.
       </p>
     );
@@ -56,18 +56,18 @@ export function ProductKpiCards({
               <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary")}>
                 <Icon className="size-4.5" />
               </span>
-              <Badge variant="default" className="shrink-0 text-[9px]">{p.status}</Badge>
+              <Badge variant="default" className="shrink-0 text-sm">{p.status}</Badge>
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{p.name}</p>
-              <p className="truncate font-mono text-[10px] text-muted-foreground">{p.code}</p>
+              <p className="truncate font-mono text-sm text-muted-foreground">{p.code}</p>
             </div>
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
                 <span className="font-semibold text-foreground">{mappedCount}</span> mapped rule{mappedCount === 1 ? "" : "s"}
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground/70">
+            <p className="text-sm text-muted-foreground/70">
               Last updated {new Date(p.updatedAt).toLocaleDateString()}
             </p>
           </button>

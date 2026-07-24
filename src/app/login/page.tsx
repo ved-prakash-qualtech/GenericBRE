@@ -155,7 +155,7 @@ export default function LoginPage() {
                 <div key={stage} className="flex flex-1 items-center last:flex-none">
                   <div className="flex flex-col items-center gap-1.5">
                     <span
-                      className={`flex size-6 items-center justify-center rounded-full text-[10px] font-semibold ${
+                      className={`flex size-6 items-center justify-center rounded-full text-sm font-semibold ${
                         i === 2
                           ? "bg-sidebar-primary text-sidebar-primary-foreground"
                           : "bg-sidebar-accent text-sidebar-foreground/85"

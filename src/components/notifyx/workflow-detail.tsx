@@ -68,12 +68,12 @@ export function WorkflowDetail({
               <div className="flex flex-wrap items-center gap-1.5">
                 <p className="text-sm font-semibold">{workflow.name}</p>
                 {category && (
-                  <Badge variant="outline" className={cn("text-[9px]", categoryClasses(category.colorToken))}>{category.name}</Badge>
+                  <Badge variant="outline" className={cn("text-sm", categoryClasses(category.colorToken))}>{category.name}</Badge>
                 )}
-                <Badge variant="outline" className={cn("text-[9px]", NOTIFY_STATUS_STYLES[workflow.status])}>{workflow.status}</Badge>
+                <Badge variant="outline" className={cn("text-sm", NOTIFY_STATUS_STYLES[workflow.status])}>{workflow.status}</Badge>
               </div>
             </div>
-            <div className="text-right text-[11px] text-muted-foreground">
+            <div className="text-right text-sm text-muted-foreground">
               <p>{workflow.runCount} run{workflow.runCount === 1 ? "" : "s"} total</p>
               <p>Modified {new Date(workflow.updatedAt).toLocaleDateString()}</p>
               <p>By {workflow.createdBy}</p>
@@ -81,16 +81,16 @@ export function WorkflowDetail({
           </div>
 
           <div className="mt-4">
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Trigger</p>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+            <p className="mb-1.5 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Trigger</p>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-sm font-medium text-primary">
               <Zap className="size-3" /> WHEN: {trigger?.label ?? workflow.triggerId}
             </span>
           </div>
 
           <div className="mt-4">
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Automation Steps</p>
+            <p className="mb-1.5 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Automation Steps</p>
             {workflow.steps.length === 0 ? (
-              <p className="text-xs italic text-muted-foreground">No steps configured.</p>
+              <p className="text-sm italic text-muted-foreground">No steps configured.</p>
             ) : (
               <div className="space-y-1.5">
                 {workflow.steps.map((step, i) => (
@@ -112,21 +112,21 @@ export function WorkflowDetail({
           >
             {historyOpen ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />}
             <History className="size-3.5 shrink-0 text-muted-foreground" />
-            <p className="text-xs font-semibold">Execution History</p>
-            <span className="ml-auto text-[11px] text-muted-foreground">{workflow.logs.length} entries</span>
+            <p className="text-sm font-semibold">Execution History</p>
+            <span className="ml-auto text-sm text-muted-foreground">{workflow.logs.length} entries</span>
           </button>
           {historyOpen && (
             <div className="divide-y border-t">
               {workflow.logs.length === 0 ? (
-                <p className="p-4 text-center text-xs text-muted-foreground">No executions recorded yet.</p>
+                <p className="p-4 text-center text-sm text-muted-foreground">No executions recorded yet.</p>
               ) : (
                 workflow.logs.map((log) => (
-                  <div key={log.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-xs">
+                  <div key={log.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm">
                     <div className="min-w-0">
                       <p className="truncate">{log.description}</p>
-                      <p className="text-[10px] text-muted-foreground">{new Date(log.timestamp).toLocaleString()}</p>
+                      <p className="text-sm text-muted-foreground">{new Date(log.timestamp).toLocaleString()}</p>
                     </div>
-                    <Badge variant="outline" className={cn("shrink-0 text-[9px]", RESULT_STYLES[log.result])}>{log.result}</Badge>
+                    <Badge variant="outline" className={cn("shrink-0 text-sm", RESULT_STYLES[log.result])}>{log.result}</Badge>
                   </div>
                 ))
               )}

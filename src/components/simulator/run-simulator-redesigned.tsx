@@ -288,7 +288,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                     value={sim.jsonText || "{}"}
                     onChange={(e) => sim.setJsonText(e.target.value)}
                     placeholder='{"key": "value"}'
-                    className="font-mono text-xs max-h-48 overflow-y-auto bg-gray-900 text-gray-100 border-gray-700"
+                    className="font-mono text-sm max-h-48 overflow-y-auto bg-gray-900 text-gray-100 border-gray-700"
                   />
                 </TabsContent>
               </Tabs>
@@ -384,7 +384,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                   const step = result?.flatTrace.find((t) => t.ruleId === rule.id);
                   return (
                     <div key={rule.id} className="flex flex-col items-center gap-1.5 p-2.5 border rounded-lg bg-card transition-colors hover:border-primary/30 hover:bg-accent/50">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
                         {idx + 1}
                       </div>
                       <div className="text-center">
@@ -464,7 +464,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                         {copiedRequest ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
                       </Button>
                     </div>
-                    <div className="rounded-lg border bg-gray-900 p-2 font-mono text-[10px] text-gray-100 max-h-56 overflow-y-auto">
+                    <div className="rounded-lg border bg-gray-900 p-2 font-mono text-sm text-gray-100 max-h-56 overflow-y-auto">
                       <pre className="whitespace-pre-wrap">{apiRequestJson}</pre>
                     </div>
                   </div>
@@ -482,7 +482,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                         {copiedResponse ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
                       </Button>
                     </div>
-                    <div className="rounded-lg border bg-gray-900 p-2 font-mono text-[10px] text-gray-100 max-h-56 overflow-y-auto">
+                    <div className="rounded-lg border bg-gray-900 p-2 font-mono text-sm text-gray-100 max-h-56 overflow-y-auto">
                       <pre className="whitespace-pre-wrap">{apiResponseJson}</pre>
                     </div>
                   </div>

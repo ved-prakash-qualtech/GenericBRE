@@ -32,7 +32,7 @@ export function UserMenu() {
           aria-label="Account menu"
         >
           <Avatar className="size-8">
-            <AvatarFallback className="bg-primary text-primary-foreground text-[11px] font-semibold">
+            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
               {user.initials}
             </AvatarFallback>
           </Avatar>
@@ -41,7 +41,7 @@ export function UserMenu() {
           <DropdownMenuGroup>
             <DropdownMenuLabel className="flex items-center gap-2.5 py-2">
               <Avatar className="size-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                   {user.initials}
                 </AvatarFallback>
               </Avatar>

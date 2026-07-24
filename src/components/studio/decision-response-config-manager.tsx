@@ -43,7 +43,7 @@ export function DecisionResponseConfigManager() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Controls how much detail a decision result exposes — from a lightweight Decision Only response for external
         APIs up to a Full Audit response with a structured Audit Log entry. Resolution is most-specific-wins: an
         Industry override beats Default.
@@ -65,7 +65,7 @@ export function DecisionResponseConfigManager() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-[11px] text-muted-foreground">Default Response Mode</Label>
+                <Label className="text-sm text-muted-foreground">Default Response Mode</Label>
                 <Select
                   value={current.defaultMode}
                   onValueChange={(v) => {
@@ -84,7 +84,7 @@ export function DecisionResponseConfigManager() {
 
               <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                 {FLAGS.map((flag) => (
-                  <label key={flag.key} className="flex items-center justify-between gap-2 text-xs">
+                  <label key={flag.key} className="flex items-center justify-between gap-2 text-sm">
                     <span className="text-muted-foreground">{flag.label}</span>
                     <Switch
                       size="sm"

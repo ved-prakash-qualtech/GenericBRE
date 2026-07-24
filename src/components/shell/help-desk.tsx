@@ -567,7 +567,7 @@ function GuideCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-1.5">
-            <p className="text-[13px] font-medium leading-snug text-foreground">{guide.title}</p>
+            <p className="text-sm font-medium leading-snug text-foreground">{guide.title}</p>
             <div className="flex shrink-0 items-center gap-0.5">
               <Button
                 size="icon-xs"
@@ -594,18 +594,18 @@ function GuideCard({
               )}
             </div>
           </div>
-          <p className="mt-0.5 text-[11.5px] leading-snug text-muted-foreground">{guide.description}</p>
+          <p className="mt-0.5 text-sm leading-snug text-muted-foreground">{guide.description}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <Badge className={cn("border-0 px-1.5 text-[10px]", DIFFICULTY_STYLES[guide.difficulty])}>{guide.difficulty}</Badge>
-            <span className="inline-flex items-center gap-1 text-[10.5px] text-muted-foreground">
+            <Badge className={cn("border-0 px-1.5 text-sm", DIFFICULTY_STYLES[guide.difficulty])}>{guide.difficulty}</Badge>
+            <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
               <Clock className="size-2.5" /> {guide.readingTime}
             </span>
-            <Badge className="border-0 bg-blue-50 px-1.5 text-[10px] text-blue-700">{guide.module}</Badge>
+            <Badge className="border-0 bg-blue-50 px-1.5 text-sm text-blue-700">{guide.module}</Badge>
           </div>
           {expanded && hasContent && (
             <div className="mt-2.5 space-y-2 border-t pt-2.5">
               {guide.content!.map((paragraph, i) => (
-                <p key={i} className="text-[12.5px] leading-relaxed text-foreground/80">
+                <p key={i} className="text-sm leading-relaxed text-foreground/80">
                   {paragraph}
                 </p>
               ))}
@@ -705,10 +705,10 @@ export function HelpDesk() {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   <BookOpen className="size-3.5" /> Knowledge Center
                 </p>
-                <span className="text-[11px] text-muted-foreground">{totalGuideCount} guides</span>
+                <span className="text-sm text-muted-foreground">{totalGuideCount} guides</span>
               </div>
 
               <div className="relative">
@@ -724,7 +724,7 @@ export function HelpDesk() {
 
               {!normalizedQuery && pinnedGuides.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                     <Pin className="size-3 fill-current" /> Pinned
                   </p>
                   <div className="space-y-1.5">
@@ -744,14 +744,14 @@ export function HelpDesk() {
               )}
 
               {filteredCategories.length === 0 ? (
-                <p className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
+                <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
                   No guides match &quot;{query}&quot;.
                 </p>
               ) : normalizedQuery ? (
                 <div className="space-y-3">
                   {filteredCategories.map((cat) => (
                     <div key={cat.id} className="space-y-1.5">
-                      <p className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                      <p className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
                         <cat.icon className="size-3 text-primary" /> {cat.label}
                       </p>
                       <div className="space-y-1.5">
@@ -778,7 +778,7 @@ export function HelpDesk() {
                         <span className="flex items-center gap-2">
                           <cat.icon className="size-3.5 text-primary" />
                           {cat.label}
-                          <span className="text-[11px] font-normal text-muted-foreground">({cat.guides.length})</span>
+                          <span className="text-sm font-normal text-muted-foreground">({cat.guides.length})</span>
                         </span>
                       </AccordionTrigger>
                       <AccordionContent>

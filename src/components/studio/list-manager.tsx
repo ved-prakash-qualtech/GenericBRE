@@ -36,7 +36,7 @@ export function ListManager({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">{description}</p>
+      <p className="text-sm text-muted-foreground">{description}</p>
       <div className="flex gap-2">
         <Input
           value={draft}
@@ -51,7 +51,7 @@ export function ListManager({
       </div>
       <div className="flex flex-wrap gap-2">
         {items.map((item) => (
-          <Badge key={item} variant="secondary" className="gap-1.5 py-1.5 pr-1.5 pl-2.5 text-xs">
+          <Badge key={item} variant="secondary" className="gap-1.5 py-1.5 pr-1.5 pl-2.5 text-sm">
             {item}
             <button
               onClick={() => {
@@ -65,7 +65,7 @@ export function ListManager({
             </button>
           </Badge>
         ))}
-        {items.length === 0 && <p className="text-xs text-muted-foreground">None configured yet.</p>}
+        {items.length === 0 && <p className="text-sm text-muted-foreground">None configured yet.</p>}
       </div>
     </div>
   );

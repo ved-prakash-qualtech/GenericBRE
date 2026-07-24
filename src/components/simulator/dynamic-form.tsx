@@ -32,7 +32,7 @@ export function DynamicForm({
 
         return (
           <div key={key} className="space-y-1">
-            <Label className="text-[11px] text-muted-foreground">{field.label}{field.unit ? ` (${field.unit})` : ""}</Label>
+            <Label className="text-sm text-muted-foreground">{field.label}{field.unit ? ` (${field.unit})` : ""}</Label>
             {field.type === "boolean" ? (
               <Select
                 items={{ true: "Yes", false: "No" }}

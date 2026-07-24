@@ -52,7 +52,7 @@ function NavLink({
       <Icon className={cn("size-4 shrink-0", active && "text-sidebar-primary")} strokeWidth={2.2} />
       {!collapsed && <span className="truncate">{label}</span>}
       {!collapsed && badge ? (
-        <Badge className="ml-auto h-4.5 min-w-4.5 rounded-full px-1 text-[10px]">{badge}</Badge>
+        <Badge className="ml-auto h-4.5 min-w-4.5 rounded-full px-1 text-sm">{badge}</Badge>
       ) : null}
       {collapsed && badge ? (
         <span className="absolute right-1 top-1 size-1.5 rounded-full bg-destructive" />

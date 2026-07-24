@@ -121,7 +121,7 @@ export function NewMatrixDialog({ defaultDomain }: { defaultDomain: string }) {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label>Columns *</Label>
-              <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => setColumns((c) => [...c, blankColumn()])}>
+              <Button variant="outline" size="sm" className="h-7 gap-1 text-sm" onClick={() => setColumns((c) => [...c, blankColumn()])}>
                 <Plus className="size-3.5" /> Add Column
               </Button>
             </div>
@@ -132,7 +132,7 @@ export function NewMatrixDialog({ defaultDomain }: { defaultDomain: string }) {
                     value={col.label}
                     onChange={(e) => updateColumn(i, { label: e.target.value })}
                     placeholder="Column label"
-                    className="h-8 flex-1 text-xs"
+                    className="h-8 flex-1 text-sm"
                   />
                   <Select value={col.type} onValueChange={(v) => updateColumn(i, { type: (v as MatrixColumnType) ?? col.type })}>
                     <SelectTrigger size="sm" className="h-8 w-36"><SelectValue /></SelectTrigger>
@@ -147,7 +147,7 @@ export function NewMatrixDialog({ defaultDomain }: { defaultDomain: string }) {
                       value={col.options}
                       onChange={(e) => updateColumn(i, { options: e.target.value })}
                       placeholder="opt1, opt2, ..."
-                      className="h-8 w-32 text-xs"
+                      className="h-8 w-32 text-sm"
                     />
                   )}
                   <Button

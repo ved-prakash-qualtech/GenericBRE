@@ -35,10 +35,10 @@ export function DecisionCallout({ result }: { result: DecisionResult }) {
 
   return (
     <div className="rounded-xl border bg-muted/30 p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         Decision Explanation — Transparency Breakdown
       </p>
-      <div className="space-y-2.5 text-[13px]">
+      <div className="space-y-2.5 text-sm">
         <div className="flex items-start gap-2.5">
           <Target className={cn("mt-0.5 size-4 shrink-0", accent)} />
           <div>

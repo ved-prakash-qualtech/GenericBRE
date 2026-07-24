@@ -52,7 +52,7 @@ export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
         >
           <Search className="size-3.5 shrink-0" />
           <span className="hidden sm:inline">{t("header.searchPlaceholder")}</span>
-          <kbd className="ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] sm:inline">
+          <kbd className="ml-auto hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-sm sm:inline">
             ⌘K
           </kbd>
         </button>

@@ -61,8 +61,8 @@ export function QuickActions() {
               <a.icon className="size-3.5" />
             </span>
             <div>
-              <p className="text-[13px] font-semibold leading-tight">{a.label}</p>
-              <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{a.desc}</p>
+              <p className="text-sm font-semibold leading-tight">{a.label}</p>
+              <p className="text-sm text-muted-foreground leading-tight mt-0.5">{a.desc}</p>
             </div>
           </motion.button>
         ))}

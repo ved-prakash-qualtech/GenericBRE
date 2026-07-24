@@ -10,8 +10,8 @@ export function StepBlock({ step }: { step: NotifyStep }) {
   const style = NOTIFY_STEP_STYLES[step.kind];
 
   return (
-    <div className={cn("flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-xs", style.classes)}>
-      <span className="shrink-0 rounded-full bg-background/60 px-1.5 py-0.5 text-[10px] font-bold tracking-wide">
+    <div className={cn("flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm", style.classes)}>
+      <span className="shrink-0 rounded-full bg-background/60 px-1.5 py-0.5 text-sm font-bold tracking-wide">
         {style.label}
       </span>
       <p className="min-w-0 flex-1 leading-relaxed">

@@ -216,10 +216,10 @@ export function RunSimulatorInputs({ sim }: { sim: UseRunSimulatorResult }) {
 
       {sim.testingMappedRules.length > 0 && (
         <div className="space-y-1.5 rounded-lg border p-3">
-          <label className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+          <label className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
             <FlaskConical className="size-3 text-amber-500" /> Sandbox test a pending rule
           </label>
-          <p className="text-[10.5px] text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Include one Testing-stage rule mapped to this product in this run to preview its effect before approving.
             Never affects live results.
           </p>
@@ -265,7 +265,7 @@ export function RunSimulatorResult({ product, sim }: { product: Product | null; 
         <p className="text-sm text-muted-foreground">
           {product ? "Edit the Sample JSON and click Run Simulation" : "Select a product to get started"}
         </p>
-        <p className="text-xs text-muted-foreground/70">Only rules mapped to the selected product will execute</p>
+        <p className="text-sm text-muted-foreground/70">Only rules mapped to the selected product will execute</p>
       </div>
     );
   }
@@ -273,7 +273,7 @@ export function RunSimulatorResult({ product, sim }: { product: Product | null; 
   return (
     <div className="space-y-4">
       {sim.decisionResult.sandbox && (
-        <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-400">
+        <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
           <FlaskConical className="size-4 shrink-0" />
           <p>
             <span className="font-semibold">Sandbox Test</span> — this run includes a rule still in Testing status. It
@@ -302,12 +302,12 @@ function WorkflowSteps({ product, jsonReady, running, hasResult }: { product: Pr
         { icon: CheckCircle2, label: "View Results", done: hasResult },
       ].map((step, idx) => (
         <div key={idx} className="flex items-center gap-2 shrink-0">
-          <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+          <div className={`flex h-6 w-6 items-center justify-center rounded-full text-sm font-semibold ${
             step.done ? "bg-emerald-500 text-white" : step.active ? "bg-primary text-white animate-pulse" : "bg-muted text-muted-foreground"
           }`}>
             <step.icon className="size-3.5" />
           </div>
-          <span className="text-xs whitespace-nowrap text-muted-foreground">{step.label}</span>
+          <span className="text-sm whitespace-nowrap text-muted-foreground">{step.label}</span>
           {idx < 3 && <div className="h-px w-4 bg-muted" />}
         </div>
       ))}

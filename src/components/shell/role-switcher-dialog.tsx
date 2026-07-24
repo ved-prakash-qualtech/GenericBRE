@@ -64,19 +64,19 @@ export function RoleSwitcherDialog({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{role.personaName}</p>
-                  <p className="truncate text-xs text-muted-foreground">{role.name}</p>
+                  <p className="truncate text-sm text-muted-foreground">{role.name}</p>
                 </div>
                 {active && <Check className="size-4 shrink-0 text-primary" />}
               </button>
             );
           })}
           {roles.length === 0 && (
-            <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+            <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
               No roles configured yet.
             </p>
           )}
         </div>
-        <p className="text-center text-[11px] text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground">
           Role-based access is enforced client-side in this preview environment.
         </p>
       </DialogContent>

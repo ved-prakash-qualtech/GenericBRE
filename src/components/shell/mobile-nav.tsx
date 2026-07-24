@@ -24,7 +24,7 @@ export function MobileNav({ open, onOpenChange }: { open: boolean; onOpenChange:
               onOpenChange(false);
               setAppearanceOpen(true);
             }}
-            className="flex h-9.5 w-full items-center gap-3 rounded-lg px-2.5 text-[13px] font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            className="flex h-9.5 w-full items-center gap-3 rounded-lg px-2.5 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
           >
             <Palette className="size-4 shrink-0" strokeWidth={2.2} />
             Appearance

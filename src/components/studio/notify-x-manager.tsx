@@ -103,7 +103,7 @@ export function NotifyXManager() {
 
   if (!canView) {
     return (
-      <div className="flex h-full items-center justify-center rounded-xl border border-dashed text-xs text-muted-foreground">
+      <div className="flex h-full items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
         You don&apos;t have access to NotifyX. Contact a System Administrator if you need this.
       </div>
     );

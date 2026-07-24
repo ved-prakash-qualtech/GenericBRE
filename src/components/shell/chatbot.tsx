@@ -172,7 +172,7 @@ export function ChatBot() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold leading-none">BRE Assistant</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Guided help · role-aware</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Guided help · role-aware</p>
               </div>
               <Sparkles className="size-4 text-primary/60" />
             </div>
@@ -182,7 +182,7 @@ export function ChatBot() {
                 <div key={m.id} className={cn("flex flex-col gap-1.5", m.role === "user" ? "items-end" : "items-start")}>
                   <div
                     className={cn(
-                      "max-w-[85%] rounded-2xl px-3.5 py-2 text-[13px] leading-snug",
+                      "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-snug",
                       m.role === "user" ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm"
                     )}
                   >
@@ -194,7 +194,7 @@ export function ChatBot() {
                         <button
                           key={qr.label}
                           onClick={() => handleQuickReply(qr)}
-                          className="rounded-full border px-2.5 py-1 text-[11px] font-medium hover:bg-accent transition-colors"
+                          className="rounded-full border px-2.5 py-1 text-sm font-medium hover:bg-accent transition-colors"
                         >
                           {qr.label}
                         </button>

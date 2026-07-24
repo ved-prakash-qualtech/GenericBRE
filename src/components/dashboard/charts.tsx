@@ -30,7 +30,7 @@ const STATUS_COLORS: Record<RuleStatus, string> = {
 function ChartTooltip({ active, payload }: { active?: boolean; payload?: { name: string; value: number }[] }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border bg-popover px-2.5 py-1.5 text-xs shadow-md">
+    <div className="rounded-lg border bg-popover px-2.5 py-1.5 text-sm shadow-md">
       <span className="font-medium">{payload[0].name}</span>: {payload[0].value}
     </div>
   );
@@ -51,7 +51,7 @@ export function DomainDistributionChart() {
     return (
       <div className="flex h-full flex-col rounded-xl border bg-card shadow-sm">
         <PanelHeader title="Domain Distribution" />
-        <div className="flex flex-1 items-center justify-center p-4 text-center text-xs text-muted-foreground">
+        <div className="flex flex-1 items-center justify-center p-4 text-center text-sm text-muted-foreground">
           No rules in the current selection.
         </div>
       </div>
@@ -91,11 +91,11 @@ export function DomainDistributionChart() {
               onClick={() => router.push(`/repository?domain=${d.name}`)}
               className="flex items-center justify-between rounded-md px-1.5 py-1 text-left hover:bg-accent/60 transition-colors"
             >
-              <span className="flex items-center gap-2 text-xs">
+              <span className="flex items-center gap-2 text-sm">
                 <span className="size-2 rounded-full" style={{ backgroundColor: colorForIndustry(industries, d.name) }} />
                 {d.name}
               </span>
-              <span className="text-xs font-semibold tabular-nums">{d.value}</span>
+              <span className="text-sm font-semibold tabular-nums">{d.value}</span>
             </button>
           ))}
         </div>
@@ -146,7 +146,7 @@ export function RuleStatusChart() {
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="flex flex-1 items-center justify-center p-4 text-center text-xs text-muted-foreground">
+        <div className="flex flex-1 items-center justify-center p-4 text-center text-sm text-muted-foreground">
           No rules in the current selection.
         </div>
       )}

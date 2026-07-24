@@ -184,7 +184,7 @@ export function JsonMappingManager() {
     <div className="flex h-full min-h-100 gap-4">
       <div className="w-56 shrink-0 space-y-3">
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Domain</Label>
+          <Label className="text-sm text-muted-foreground">Domain</Label>
           <Select
             value={domainFilter}
             onValueChange={(v) => {
@@ -202,7 +202,7 @@ export function JsonMappingManager() {
           </Select>
         </div>
         <div className="space-y-1">
-          <p className="text-xs font-semibold text-muted-foreground">Product</p>
+          <p className="text-sm font-semibold text-muted-foreground">Product</p>
           <div className="max-h-125 space-y-1 overflow-y-auto">
             {productsForDomain.map((p) => (
               <button
@@ -211,11 +211,11 @@ export function JsonMappingManager() {
                 className={`flex w-full items-center gap-2 rounded-lg border p-2.5 text-left transition-colors ${selectedProductId === p.id ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
               >
                 <Package className="size-3.5 shrink-0 text-muted-foreground" />
-                <p className="truncate text-xs font-semibold">{p.name}</p>
+                <p className="truncate text-sm font-semibold">{p.name}</p>
               </button>
             ))}
             {productsForDomain.length === 0 && (
-              <p className="rounded-lg border border-dashed p-4 text-center text-[11px] text-muted-foreground">
+              <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
                 No products in this domain yet.
               </p>
             )}
@@ -225,7 +225,7 @@ export function JsonMappingManager() {
 
       <div className="min-w-0 flex-1">
         {!selectedProduct ? (
-          <div className="flex h-full items-center justify-center rounded-xl border border-dashed text-xs text-muted-foreground">
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
             Select a product — its Request and Response mappings auto-generate from its rules.
           </div>
         ) : (
@@ -233,20 +233,20 @@ export function JsonMappingManager() {
             <div className="flex overflow-hidden rounded-lg border w-fit">
               <button
                 onClick={() => setActiveDirection("request")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${activeDirection === "request" ? "bg-blue-600 text-white" : "hover:bg-accent"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold transition-colors ${activeDirection === "request" ? "bg-blue-600 text-white" : "hover:bg-accent"}`}
               >
                 <ArrowUp className="size-3.5" /> Request Mapping
               </button>
               <button
                 onClick={() => setActiveDirection("response")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${activeDirection === "response" ? "bg-emerald-600 text-white" : "hover:bg-accent"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold transition-colors ${activeDirection === "response" ? "bg-emerald-600 text-white" : "hover:bg-accent"}`}
               >
                 <ArrowDown className="size-3.5" /> Response Mapping
               </button>
             </div>
 
             {!active ? (
-              <div className="flex h-40 items-center justify-center rounded-xl border border-dashed text-xs text-muted-foreground">
+              <div className="flex h-40 items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
                 Generating mapping…
               </div>
             ) : (
@@ -264,7 +264,7 @@ export function JsonMappingManager() {
 
                 <div className="space-y-2 rounded-xl border bg-card p-3.5">
                   <div className="flex items-center justify-between">
-                    <Label className="flex items-center gap-1.5 text-xs">
+                    <Label className="flex items-center gap-1.5 text-sm">
                       <FileJson className="size-3.5" /> Sample JSON Payload
                     </Label>
                     <div className="flex gap-1.5">
@@ -279,10 +279,10 @@ export function JsonMappingManager() {
                           e.target.value = "";
                         }}
                       />
-                      <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" onClick={() => fileRef.current?.click()}>
+                      <Button variant="outline" size="sm" className="h-7 gap-1.5 text-sm" onClick={() => fileRef.current?.click()}>
                         <Upload className="size-3.5" /> Upload
                       </Button>
-                      <Button size="sm" className="h-7 gap-1.5 text-xs" onClick={detectAttributes}>
+                      <Button size="sm" className="h-7 gap-1.5 text-sm" onClick={detectAttributes}>
                         <Wand2 className="size-3.5" /> Detect Attributes
                       </Button>
                     </div>
@@ -290,7 +290,7 @@ export function JsonMappingManager() {
                   <Textarea
                     value={payloadText}
                     onChange={(e) => setPayloadText(e.target.value)}
-                    className="min-h-24 max-h-[320px] resize-none overflow-y-auto font-mono text-xs"
+                    className="min-h-24 max-h-[320px] resize-none overflow-y-auto font-mono text-sm"
                   />
                 </div>
 
@@ -312,8 +312,8 @@ export function JsonMappingManager() {
                     <TableBody>
                       {active.entries.map((entry) => (
                         <TableRow key={entry.id}>
-                          <TableCell className="font-mono text-xs">{entry.externalAttribute}</TableCell>
-                          <TableCell className="font-mono text-[11px] text-muted-foreground">{entry.jsonPath}</TableCell>
+                          <TableCell className="font-mono text-sm">{entry.externalAttribute}</TableCell>
+                          <TableCell className="font-mono text-sm text-muted-foreground">{entry.jsonPath}</TableCell>
                           <TableCell>
                             <Select
                               items={{ "": "Unmapped", ...Object.fromEntries(industryFields.map((f) => [f.key, f.label])) }}
@@ -357,11 +357,11 @@ export function JsonMappingManager() {
                               value={entry.defaultValue ?? ""}
                               onChange={(e) => updateEntry(entry.id, { defaultValue: e.target.value || undefined })}
                               placeholder="Default value"
-                              className="h-8 w-28 text-xs"
+                              className="h-8 w-28 text-sm"
                             />
                           </TableCell>
                           <TableCell>
-                            <Badge variant={entry.status === "Mapped" ? "default" : "secondary"} className="text-[10px]">
+                            <Badge variant={entry.status === "Mapped" ? "default" : "secondary"} className="text-sm">
                               {entry.status}
                             </Badge>
                           </TableCell>
@@ -374,7 +374,7 @@ export function JsonMappingManager() {
                       ))}
                       {active.entries.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={9} className="py-6 text-center text-xs text-muted-foreground">
+                          <TableCell colSpan={9} className="py-6 text-center text-sm text-muted-foreground">
                             No attributes yet — paste a sample payload above and click Detect Attributes.
                           </TableCell>
                         </TableRow>
@@ -387,7 +387,7 @@ export function JsonMappingManager() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="gap-1.5 text-xs text-destructive hover:text-destructive"
+                    className="gap-1.5 text-sm text-destructive hover:text-destructive"
                     onClick={() => setPendingDelete(active)}
                   >
                     <Trash2 className="size-3.5" /> Delete Mapping

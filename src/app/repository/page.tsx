@@ -288,11 +288,11 @@ function RepositoryContent() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-xl font-bold tracking-tight text-foreground">Rule Repository</h1>
-            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-semibold text-primary">
               {rules.length} Rules
             </span>
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">Searchable catalogue of every configured business rule</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">Searchable catalogue of every configured business rule</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input
@@ -343,7 +343,7 @@ function RepositoryContent() {
       </div>
 
       {conflicts.length > 0 && (
-        <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted/20 px-5 py-1.5 text-xs text-muted-foreground sm:px-6">
+        <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted/20 px-5 py-1.5 text-sm text-muted-foreground sm:px-6">
           <div className="flex items-center gap-1.5 font-medium text-destructive">
             <AlertTriangle className="size-3.5 shrink-0" />
             <span>{conflicts.length} Conflict{conflicts.length > 1 ? "s" : ""}:</span>

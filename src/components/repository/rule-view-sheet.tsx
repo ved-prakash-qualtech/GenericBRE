@@ -69,7 +69,7 @@ function diffVersions(prev: RuleVersion | undefined, curr: RuleVersion, catalog:
 
 function GroupView({ group, depth = 0, catalog }: { group: ConditionGroup; depth?: number; catalog: BusinessField[] }) {
   if (group.children.length === 0) {
-    return <p className="text-xs italic text-muted-foreground">Always applies (no conditions)</p>;
+    return <p className="text-sm italic text-muted-foreground">Always applies (no conditions)</p>;
   }
   return (
     <div className={cn("space-y-1.5", depth > 0 && "border-l-2 pl-3")}>
@@ -79,12 +79,12 @@ function GroupView({ group, depth = 0, catalog }: { group: ConditionGroup; depth
         return (
           <div key={child.id} className={cn(excluded && "opacity-50")}>
             {i > 0 && (
-              <p className="my-1 text-[10px] font-bold uppercase tracking-wide text-primary/70">
+              <p className="my-1 text-sm font-bold uppercase tracking-wide text-primary/70">
                 {excluded ? "N.A. (excluded)" : connector}
               </p>
             )}
             {child.type === "condition" ? (
-              <div className={cn("rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs", excluded && "line-through decoration-1")}>
+              <div className={cn("rounded-md border bg-muted/30 px-2.5 py-1.5 text-sm", excluded && "line-through decoration-1")}>
                 <span className="font-medium">{getField(catalog, child.field)?.label ?? child.field}</span>{" "}
                 <span className="text-muted-foreground">{child.operator}</span>{" "}
                 <span className="font-mono">{child.value}{child.value2 ? ` – ${child.value2}` : ""}</span>
@@ -103,7 +103,7 @@ function ActionRowList({ actions }: { actions: RuleAction[] }) {
   return (
     <div className="space-y-1.5">
       {actions.map((a) => (
-        <div key={a.id} className="rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs">
+        <div key={a.id} className="rounded-md border bg-muted/30 px-2.5 py-1.5 text-sm">
           <span className="font-medium">{a.type}</span>
           {a.message && <span className="text-muted-foreground"> — {a.message}</span>}
           {a.outputField && (
@@ -145,7 +145,7 @@ function VersionHistorySection({ rule, catalog }: { rule: BusinessRule; catalog:
     <>
       <Separator />
       <div className="py-4">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           <History className="size-3.5" /> Version History
         </p>
         <div className="space-y-2">
@@ -165,7 +165,7 @@ function VersionHistorySection({ rule, catalog }: { rule: BusinessRule; catalog:
               <div key={v.version} className="rounded-lg border">
                 <button
                   onClick={() => setExpanded(isOpen ? null : v.version)}
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs"
+                  className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-sm"
                 >
                   <span className="font-mono font-semibold">v{v.version}</span>
                   <span className="text-muted-foreground">
@@ -182,7 +182,7 @@ function VersionHistorySection({ rule, catalog }: { rule: BusinessRule; catalog:
                   <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
                 </button>
                 {isOpen && (
-                  <div className="space-y-1.5 border-t px-2.5 py-2.5 text-[11px]">
+                  <div className="space-y-1.5 border-t px-2.5 py-2.5 text-sm">
                     {!prev && <p className="text-muted-foreground">Initial version — nothing to compare against.</p>}
                     {prev && !hasChanges && <p className="text-muted-foreground">No content changes from v{prev.version}.</p>}
                     {diff.metaChanges.map((m) => (
@@ -255,11 +255,11 @@ export function RuleViewSheet({ rule, open, onOpenChange }: { rule: BusinessRule
               <div className="flex flex-wrap gap-2 pb-4">
                 <StatusBadge status={rule.status} />
                 <PriorityBadge priority={rule.priority} />
-                <span className="rounded-full border px-2 py-0.5 text-[11px]">{rule.domain}</span>
-                <span className="rounded-full border px-2 py-0.5 text-[11px]">{rule.category}</span>
+                <span className="rounded-full border px-2 py-0.5 text-sm">{rule.domain}</span>
+                <span className="rounded-full border px-2 py-0.5 text-sm">{rule.category}</span>
               </div>
               <Separator />
-              <div className="grid grid-cols-2 gap-3 py-4 text-xs">
+              <div className="grid grid-cols-2 gap-3 py-4 text-sm">
                 {/* FUTURE: Owner metadata removed for demo. Restore when reintroduced:
                 <div>
                   <p className="text-muted-foreground">Owner</p>
@@ -281,19 +281,19 @@ export function RuleViewSheet({ rule, open, onOpenChange }: { rule: BusinessRule
               </div>
               <Separator />
               <div className="py-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">IF Conditions</p>
+                <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">IF Conditions</p>
                 <GroupView group={rule.rootGroup} catalog={fieldCatalog} />
               </div>
               <Separator />
               <div className="py-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">THEN Actions</p>
+                <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">THEN Actions</p>
                 <ActionRowList actions={rule.actions} />
               </div>
               {rule.elseActions && rule.elseActions.length > 0 && (
                 <>
                   <Separator />
                   <div className="py-4">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">ELSE Actions</p>
+                    <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">ELSE Actions</p>
                     <ActionRowList actions={rule.elseActions} />
                   </div>
                 </>

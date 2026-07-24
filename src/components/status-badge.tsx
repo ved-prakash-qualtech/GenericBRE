@@ -21,7 +21,7 @@ export function StatusBadge({ status, className }: { status: RuleStatus; classNa
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap",
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-sm font-medium whitespace-nowrap",
         RULE_STATUS_STYLES[status],
         className
       )}
@@ -50,7 +50,7 @@ export function OutcomeBadge({ outcome, className }: { outcome: DecisionOutcome;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-sm font-semibold whitespace-nowrap",
         OUTCOME_STYLES[outcome],
         className
       )}
@@ -70,7 +70,7 @@ const PRIORITY_LABEL: Record<number, string> = {
 
 export function PriorityBadge({ priority, className }: { priority: number; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground", className)}>
+    <span className={cn("inline-flex items-center gap-1 text-sm font-medium text-muted-foreground", className)}>
       <span className="font-mono text-foreground">P{priority}</span>
       <span className="text-muted-foreground/70">{PRIORITY_LABEL[priority] ?? ""}</span>
     </span>

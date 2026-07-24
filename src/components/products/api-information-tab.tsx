@@ -39,11 +39,11 @@ export function ApiInformationTab({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
               <p className="font-mono text-sm font-semibold">POST /api/decision</p>
-              <Badge variant={canCall ? "default" : "secondary"} className="text-[9px]">
+              <Badge variant={canCall ? "default" : "secondary"} className="text-sm">
                 {canCall ? "Live — product is Published" : "Not yet callable — publish this product first"}
               </Badge>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-sm text-muted-foreground">
               Stateless decision endpoint. Executes only the {mappedRuleCount} rule{mappedRuleCount === 1 ? "" : "s"}{" "}
               currently mapped to <span className="font-medium text-foreground">{product.name}</span>, in their configured
               execution sequence.
@@ -53,8 +53,8 @@ export function ApiInformationTab({
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-xl border bg-card p-3.5">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Required Fields</p>
-            <ul className="space-y-1.5 text-xs">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Required Fields</p>
+            <ul className="space-y-1.5 text-sm">
               <li>
                 <span className="font-mono font-medium">productId</span>
                 <span className="text-muted-foreground"> — this product&apos;s id or code, i.e. </span>
@@ -67,8 +67,8 @@ export function ApiInformationTab({
             </ul>
           </div>
           <div className="rounded-xl border bg-card p-3.5">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Optional Fields</p>
-            <ul className="space-y-1.5 text-xs">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Optional Fields</p>
+            <ul className="space-y-1.5 text-sm">
               <li>
                 <span className="font-mono font-medium">responseMode</span>
                 <span className="text-muted-foreground"> — one of: {VALID_MODES.join(", ")}</span>
@@ -82,13 +82,13 @@ export function ApiInformationTab({
         </div>
 
         <div>
-          <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="mb-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Request JSON — ready to send
           </p>
           <SampleJsonPanel data={requestExample} />
         </div>
 
-        <p className="rounded-lg border border-dashed px-3 py-2.5 text-[11px] text-muted-foreground">
+        <p className="rounded-lg border border-dashed px-3 py-2.5 text-sm text-muted-foreground">
           Response shape is the standard Decision Result payload (outcome, reasonCode, summary, and — depending on{" "}
           <span className="font-mono">responseMode</span> — explanation, trace, and full audit detail). Use the Run
           Simulator tab to see a live response for this product.

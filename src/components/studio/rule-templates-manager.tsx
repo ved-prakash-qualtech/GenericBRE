@@ -154,7 +154,7 @@ export function RuleTemplatesManager() {
     <div className="flex h-full min-h-100 gap-4">
       <div className="w-64 shrink-0 space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-muted-foreground">Templates</p>
+          <p className="text-sm font-semibold text-muted-foreground">Templates</p>
           <Button size="icon-sm" variant="ghost" onClick={startCreate}>
             <Plus className="size-4" />
           </Button>
@@ -168,19 +168,19 @@ export function RuleTemplatesManager() {
                 onClick={() => select(t)}
                 className={`w-full rounded-lg border p-2.5 text-left transition-colors ${selectedId === t.id ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
               >
-                <p className="truncate text-xs font-semibold">{t.name}</p>
-                <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{t.description || "No description"}</p>
+                <p className="truncate text-sm font-semibold">{t.name}</p>
+                <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{t.description || "No description"}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-sm text-muted-foreground">
                     {conditionCount} condition{conditionCount === 1 ? "" : "s"}
                   </span>
                   {t.domain && (
-                    <Badge variant="secondary" className="text-[9px]">
+                    <Badge variant="secondary" className="text-sm">
                       {industries.find((i) => i.id === t.domain)?.name ?? t.domain}
                     </Badge>
                   )}
                   {t.categoryId && (
-                    <Badge variant="outline" className="text-[9px]">
+                    <Badge variant="outline" className="text-sm">
                       {ruleCategories.find((c) => c.id === t.categoryId)?.name ?? t.categoryId}
                     </Badge>
                   )}
@@ -189,7 +189,7 @@ export function RuleTemplatesManager() {
             );
           })}
           {templates.length === 0 && !draft && (
-            <p className="rounded-lg border border-dashed p-4 text-center text-[11px] text-muted-foreground">
+            <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
               No templates yet. Add one to speed up Rule Builder authoring.
             </p>
           )}
@@ -198,7 +198,7 @@ export function RuleTemplatesManager() {
 
       <div className="min-w-0 flex-1">
         {!active ? (
-          <div className="flex h-full items-center justify-center rounded-xl border border-dashed text-xs text-muted-foreground">
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed text-sm text-muted-foreground">
             Select a template or create a new one.
           </div>
         ) : (
@@ -255,7 +255,7 @@ export function RuleTemplatesManager() {
             </div>
 
             <div>
-              <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="mb-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 IF — Condition Builder
               </h2>
               <ConditionGroupEditor
@@ -268,7 +268,7 @@ export function RuleTemplatesManager() {
             </div>
 
             <div>
-              <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="mb-2 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 THEN — Action Builder
               </h2>
               <ActionListEditor actions={active.actions} domain={editorDomain} rules={[]} rootGroup={active.rootGroup} onChange={setActions} />
@@ -276,9 +276,9 @@ export function RuleTemplatesManager() {
 
             <div>
               <div className="mb-2 flex items-center justify-between px-1">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">ELSE — Otherwise</h2>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">ELSE — Otherwise</h2>
                 {!showElseBranch && (
-                  <Button variant="ghost" size="sm" className="h-6 gap-1 text-[11px]" onClick={() => setShowElseBranch(true)}>
+                  <Button variant="ghost" size="sm" className="h-6 gap-1 text-sm" onClick={() => setShowElseBranch(true)}>
                     <Plus className="size-3" /> Add ELSE Branch
                   </Button>
                 )}
@@ -289,7 +289,7 @@ export function RuleTemplatesManager() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="mt-2 h-6 text-[11px] text-muted-foreground"
+                    className="mt-2 h-6 text-sm text-muted-foreground"
                     onClick={() => {
                       setShowElseBranch(false);
                       setElseActions([]);
@@ -299,7 +299,7 @@ export function RuleTemplatesManager() {
                   </Button>
                 </>
               ) : (
-                <p className="rounded-lg border border-dashed px-3 py-3 text-center text-xs text-muted-foreground">
+                <p className="rounded-lg border border-dashed px-3 py-3 text-center text-sm text-muted-foreground">
                   No ELSE branch configured.
                 </p>
               )}
@@ -310,7 +310,7 @@ export function RuleTemplatesManager() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="gap-1.5 text-xs text-destructive hover:text-destructive"
+                  className="gap-1.5 text-sm text-destructive hover:text-destructive"
                   onClick={() => setPendingDelete(selected)}
                 >
                   <Trash2 className="size-3.5" /> Delete Template

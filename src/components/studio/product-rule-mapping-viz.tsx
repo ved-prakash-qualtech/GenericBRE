@@ -30,15 +30,15 @@ export function ProductRuleCoverageChart({
       <div className="flex items-center gap-2">
         <BarChart3 className="size-4 text-primary" />
         <h3 className="text-sm font-semibold text-gray-900">Product Coverage</h3>
-        <span className="text-xs text-gray-500 ml-auto">{products.length} products</span>
+        <span className="text-sm text-gray-500 ml-auto">{products.length} products</span>
       </div>
 
       <div className="space-y-3">
         {coverage.map((item) => (
           <div key={item.id} className="space-y-1">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-sm">
               <span className="font-medium text-gray-900 truncate">{item.name}</span>
-              <Badge variant="outline" className="text-[10px]">
+              <Badge variant="outline" className="text-sm">
                 {item.count} rule{item.count !== 1 ? "s" : ""}
               </Badge>
             </div>
@@ -87,13 +87,13 @@ export function ProductRuleNetworkDiagram({
       <div className="flex items-center gap-2">
         <Network className="size-4 text-primary" />
         <h3 className="text-sm font-semibold text-gray-900">Rule Categories</h3>
-        <span className="text-xs text-gray-500 ml-auto">{data.length} active</span>
+        <span className="text-sm text-gray-500 ml-auto">{data.length} active</span>
       </div>
 
       <div className="space-y-2.5">
         {data.map(([category, count]) => (
           <div key={category} className="space-y-1">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-sm">
               <span className="font-medium text-gray-900 capitalize">{category}</span>
               <span className="text-gray-500">{count}</span>
             </div>

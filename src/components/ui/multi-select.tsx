@@ -54,7 +54,7 @@ export function MultiSelect({ label, options, selected, onChange, className, ali
       <span className="flex items-center gap-1.5">
         {label}
         {selected.length > 0 && (
-          <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[10px] h-4 min-w-4">
+          <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-sm h-4 min-w-4">
             {selected.length}
           </Badge>
         )}
@@ -93,7 +93,7 @@ export function MultiSelect({ label, options, selected, onChange, className, ali
       </CommandList>
       {selected.length > 0 && (
         <div className="border-t p-2">
-          <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => onChange([])}>
+          <Button variant="ghost" size="sm" className="w-full text-sm" onClick={() => onChange([])}>
             Clear all
           </Button>
         </div>

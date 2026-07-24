@@ -13,7 +13,7 @@ import { PanelHeader, ACTION_DOT, initials } from "./recent-panels";
 import { cn } from "@/lib/utils";
 
 function EmptyRow({ children }: { children: React.ReactNode }) {
-  return <p className="px-3.5 py-4 text-center text-xs text-muted-foreground">{children}</p>;
+  return <p className="px-3.5 py-4 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
 // `owner` on a rule is a team ("Credit Risk Division"), not an individual —
@@ -39,8 +39,8 @@ export function DraftRulesPanel() {
               className="flex w-full items-center justify-between gap-3 px-3.5 py-1.5 text-left hover:bg-accent/50 transition-colors"
             >
               <div className="min-w-0">
-                <p className="truncate text-[13px] font-medium">{r.name}</p>
-                <p className="text-[11px] text-muted-foreground">{r.id} · {r.category}</p>
+                <p className="truncate text-sm font-medium">{r.name}</p>
+                <p className="text-sm text-muted-foreground">{r.id} · {r.category}</p>
               </div>
             </button>
           ))}
@@ -68,8 +68,8 @@ export function RulesAwaitingReviewPanel() {
               className="flex w-full items-center justify-between gap-3 px-3.5 py-1.5 text-left hover:bg-accent/50 transition-colors"
             >
               <div className="min-w-0">
-                <p className="truncate text-[13px] font-medium">{r.name}</p>
-                <p className="text-[11px] text-muted-foreground">{r.id} · {r.domain}</p>
+                <p className="truncate text-sm font-medium">{r.name}</p>
+                <p className="text-sm text-muted-foreground">{r.id} · {r.domain}</p>
               </div>
               <StatusBadge status={r.status} className="shrink-0" />
             </button>
@@ -108,8 +108,8 @@ export function ApprovalQueuePanel() {
                 className="flex w-full items-center justify-between gap-3 px-3.5 py-1.5 text-left hover:bg-accent/50 transition-colors"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-[13px] font-medium">{rule?.name ?? a.ruleId}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="truncate text-sm font-medium">{rule?.name ?? a.ruleId}</p>
+                  <p className="text-sm text-muted-foreground">
                     Requested by {a.requestedBy} · {formatDistanceToNow(new Date(a.requestedAt), { addSuffix: true })}
                   </p>
                 </div>
@@ -141,8 +141,8 @@ export function RuleConflictsPanel() {
             >
               <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-500" />
               <div className="min-w-0">
-                <p className="text-[13px] font-medium">{c.ruleAId} vs {c.ruleBId}</p>
-                <p className="text-[11px] text-muted-foreground">{c.reason} (on {c.field})</p>
+                <p className="text-sm font-medium">{c.ruleAId} vs {c.ruleBId}</p>
+                <p className="text-sm text-muted-foreground">{c.reason} (on {c.field})</p>
               </div>
             </button>
           ))}
@@ -182,17 +182,17 @@ export function ExecutionLogsPanel() {
               className="flex w-full items-center gap-2 px-3.5 py-1.5 text-left hover:bg-accent/50 transition-colors"
             >
               <span className={cn("size-1.5 shrink-0 rounded-full", ACTION_DOT[a.action] ?? "bg-muted-foreground")} />
-              <span className="min-w-0 flex-1 truncate text-[12px]">
+              <span className="min-w-0 flex-1 truncate text-sm">
                 <span className="font-medium">{a.action}</span>{" "}
-                <span className="font-mono text-[11px] text-muted-foreground">{a.entityId}</span>
+                <span className="font-mono text-sm text-muted-foreground">{a.entityId}</span>
               </span>
               <span
-                className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] font-semibold text-muted-foreground"
+                className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground"
                 title={a.user}
               >
                 {initials(a.user)}
               </span>
-              <span className="w-14 shrink-0 text-right text-[10px] text-muted-foreground">
+              <span className="w-14 shrink-0 text-right text-sm text-muted-foreground">
                 {formatDistanceToNow(new Date(a.timestamp))}
               </span>
             </button>
@@ -218,14 +218,14 @@ export function DecisionLookupPanel() {
       <PanelHeader title="Decision Lookup" />
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center">
         <ShieldQuestion className="size-6 text-muted-foreground/50" />
-        <p className="text-[11px] text-muted-foreground">Look up a rule ID or name to see its decision history in the Repository.</p>
+        <p className="text-sm text-muted-foreground">Look up a rule ID or name to see its decision history in the Repository.</p>
         <div className="flex w-full max-w-72 gap-1.5">
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && go()}
             placeholder="e.g. RL-101"
-            className="h-8 text-xs"
+            className="h-8 text-sm"
           />
           <button
             onClick={go}

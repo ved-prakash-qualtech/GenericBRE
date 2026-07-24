@@ -53,17 +53,17 @@ export function TemplateGalleryDialog({
                   <Zap className="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
                 </div>
                 {category && (
-                  <Badge variant="outline" className={cn("w-fit text-[9px]", categoryClasses(category.colorToken))}>
+                  <Badge variant="outline" className={cn("w-fit text-sm", categoryClasses(category.colorToken))}>
                     {category.name}
                   </Badge>
                 )}
-                <p className="text-[11px] text-muted-foreground">Trigger: {trigger?.label ?? t.triggerId}</p>
-                <p className="text-[10px] text-muted-foreground/70">{t.steps.length} steps configured</p>
+                <p className="text-sm text-muted-foreground">Trigger: {trigger?.label ?? t.triggerId}</p>
+                <p className="text-sm text-muted-foreground/70">{t.steps.length} steps configured</p>
               </button>
             );
           })}
           {templates.length === 0 && (
-            <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+            <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
               No templates available yet.
             </p>
           )}

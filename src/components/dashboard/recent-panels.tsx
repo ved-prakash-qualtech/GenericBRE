@@ -12,9 +12,9 @@ import { cn } from "@/lib/utils";
 export function PanelHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
   return (
     <div className="flex shrink-0 items-center justify-between border-b px-3.5 py-2.5">
-      <h3 className="text-[13px] font-semibold">{title}</h3>
+      <h3 className="text-sm font-semibold">{title}</h3>
       {action && (
-        <button onClick={onAction} className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+        <button onClick={onAction} className="flex items-center gap-1 text-sm font-medium text-primary hover:underline">
           {action} <ArrowUpRight className="size-3" />
         </button>
       )}
@@ -39,8 +39,8 @@ export function RecentRulesPanel() {
               className="flex w-full items-center justify-between gap-3 px-3.5 py-1.5 text-left hover:bg-accent/50 transition-colors"
             >
               <div className="min-w-0">
-                <p className="truncate text-[13px] font-medium">{r.name}</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="truncate text-sm font-medium">{r.name}</p>
+                <p className="text-sm text-muted-foreground">
                   {r.id} · {r.domain} · updated {formatDistanceToNow(new Date(r.updatedAt), { addSuffix: true })}
                 </p>
               </div>
@@ -100,17 +100,17 @@ export function RecentActivityPanel() {
               className="flex w-full items-center gap-2 px-3.5 py-1.5 text-left hover:bg-accent/50 transition-colors"
             >
               <span className={cn("size-1.5 shrink-0 rounded-full", ACTION_DOT[a.action] ?? "bg-muted-foreground")} />
-              <span className="min-w-0 flex-1 truncate text-[12px]">
+              <span className="min-w-0 flex-1 truncate text-sm">
                 <span className="font-medium">{a.action}</span>{" "}
-                <span className="font-mono text-[11px] text-foreground/70">{a.entityId}</span>
+                <span className="font-mono text-sm text-foreground/70">{a.entityId}</span>
               </span>
               <span
-                className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] font-semibold text-muted-foreground"
+                className="flex size-4.5 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground"
                 title={a.user}
               >
                 {initials(a.user)}
               </span>
-              <span className="w-14 shrink-0 text-right text-[10px] text-muted-foreground">
+              <span className="w-14 shrink-0 text-right text-sm text-muted-foreground">
                 {formatDistanceToNow(new Date(a.timestamp))}
               </span>
             </button>
@@ -136,10 +136,10 @@ export function RecentDeploymentsPanel() {
           <div key={r.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1">
             <span className={cn("size-1.5 shrink-0 rounded-full", "bg-emerald-500")} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[12.5px] font-medium">{r.name}</p>
-              <p className="text-[10.5px] text-muted-foreground">{r.domain}</p>
+              <p className="truncate text-sm font-medium">{r.name}</p>
+              <p className="text-sm text-muted-foreground">{r.domain}</p>
             </div>
-            <span className="shrink-0 text-[10.5px] text-muted-foreground">
+            <span className="shrink-0 text-sm text-muted-foreground">
               {formatDistanceToNow(new Date(r.updatedAt), { addSuffix: true })}
             </span>
           </div>

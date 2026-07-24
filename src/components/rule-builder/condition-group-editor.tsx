@@ -236,7 +236,7 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
         {!isRoot && (
           <span
             className={cn(
-              "rounded-md border px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider",
+              "rounded-md border px-2 py-0.5 font-mono text-sm font-bold tracking-wider",
               "border-border bg-muted/60 text-muted-foreground"
             )}
           >
@@ -427,7 +427,7 @@ export function ConditionGroupEditor({ group, domain, handlers, selection, clipb
               {group.children.length > 0 && <ConnectorDropRow group={group} index={group.children.length} handlers={handlers} showChip={false} />}
             </div>
             {!isRoot && (
-              <p className="px-3 pb-1.5 font-mono text-[10px] font-bold text-muted-foreground/60">)</p>
+              <p className="px-3 pb-1.5 font-mono text-sm font-bold text-muted-foreground/60">)</p>
             )}
           </motion.div>
         )}

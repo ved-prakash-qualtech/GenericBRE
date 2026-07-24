@@ -33,20 +33,20 @@ export default function MatrixPage() {
       <div className="flex shrink-0 items-center justify-between border-b bg-card/40 px-5 py-3.5 sm:px-6">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Decision Matrix</h1>
-          <p className="text-xs text-muted-foreground">Excel-like truth tables for pricing, haircut & premium slabs</p>
+          <p className="text-sm text-muted-foreground">Excel-like truth tables for pricing, haircut & premium slabs</p>
         </div>
         {canEdit && <NewMatrixDialog defaultDomain={industries[0]?.id ?? ""} />}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 p-5 sm:p-6">
         {matrices.length === 0 ? (
-          <p className="rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
             No matrices configured yet. {canEdit && "Create one to get started."}
           </p>
         ) : (
           <>
             <div className="w-full max-w-xl shrink-0 space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">Domain</label>
+              <label className="text-sm font-semibold text-muted-foreground">Domain</label>
               <Select items={matrixItems} value={activeMatrixId} onValueChange={(v) => setMatrixId(v ?? "")}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>

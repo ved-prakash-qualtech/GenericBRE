@@ -80,163 +80,163 @@ export function WorkflowBuilderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-2xl">
+        <DialogHeader className="shrink-0 pb-1">
+          <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
             <Workflow className="size-4 text-primary" /> {isNew ? "Create Workflow" : `Edit — ${workflow.name}`}
           </DialogTitle>
-          <DialogDescription>Define trigger, conditions, and automated actions.</DialogDescription>
+          <DialogDescription className="text-sm">Define trigger, conditions, and automated actions.</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="min-h-0 flex-1">
-          <div className="space-y-3 pr-3">
-            <div className="space-y-2.5 rounded-xl border p-3.5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Workflow Details</p>
+        {/* Scrollable Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3 my-1">
+          <div className="space-y-2.5 rounded-xl border p-3.5 bg-card">
+            <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Workflow Details</p>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Name *</Label>
+              <Input value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} placeholder="e.g. Rule Review Reminder" className="text-sm" />
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
               <div className="space-y-1.5">
-                <Label>Name *</Label>
-                <Input value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} placeholder="e.g. Rule Review Reminder" />
+                <Label className="text-sm">Category</Label>
+                <Select value={draft.categoryId} onValueChange={(v) => setCategory(v as string)}>
+                  <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="space-y-1.5">
-                  <Label>Category</Label>
-                  <Select value={draft.categoryId} onValueChange={(v) => setCategory(v as string)}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Status</Label>
-                  <Select value={draft.status} onValueChange={(v) => setDraft((d) => ({ ...d, status: v as NotifyWorkflow["status"] }))}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Draft">Draft</SelectItem>
-                      <SelectItem value="Active">Active</SelectItem>
-                      <SelectItem value="Paused">Paused</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Status</Label>
+                <Select value={draft.status} onValueChange={(v) => setDraft((d) => ({ ...d, status: v as NotifyWorkflow["status"] }))}>
+                  <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Draft">Draft</SelectItem>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Paused">Paused</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
+          </div>
 
-            <div className="space-y-1.5 rounded-xl border border-primary/25 bg-primary/5 p-3.5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-primary">⚡ WHEN — Trigger Event</p>
-              <Select value={draft.triggerId} onValueChange={(v) => setDraft((d) => ({ ...d, triggerId: v as string }))}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {triggersForCategory.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1.5 rounded-xl border border-primary/25 bg-primary/5 p-3.5">
+            <p className="text-sm font-semibold uppercase tracking-widest text-primary">⚡ WHEN — Trigger Event</p>
+            <Select value={draft.triggerId} onValueChange={(v) => setDraft((d) => ({ ...d, triggerId: v as string }))}>
+              <SelectTrigger className="w-full text-sm bg-background"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {triggersForCategory.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="space-y-2">
-              {draft.steps.map((step) => (
-                <div key={step.id} className={cn("space-y-2 rounded-lg border p-3", NOTIFY_STEP_STYLES[step.kind].classes)}>
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full bg-background/60 px-1.5 py-0.5 text-[10px] font-bold">{NOTIFY_STEP_STYLES[step.kind].label}</span>
-                    <Button variant="ghost" size="icon-sm" onClick={() => deleteStep(step.id)}>
-                      <X className="size-3.5" />
-                    </Button>
-                  </div>
+          <div className="space-y-2">
+            {draft.steps.map((step) => (
+              <div key={step.id} className={cn("space-y-2 rounded-lg border p-3", NOTIFY_STEP_STYLES[step.kind].classes)}>
+                <div className="flex items-center justify-between">
+                  <span className="rounded-full bg-background/60 px-1.5 py-0.5 text-sm font-bold">{NOTIFY_STEP_STYLES[step.kind].label}</span>
+                  <Button variant="ghost" size="icon-sm" className="size-6" onClick={() => deleteStep(step.id)}>
+                    <X className="size-3" />
+                  </Button>
+                </div>
 
-                  {step.kind === "condition" && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <Select value={step.field} onValueChange={(v) => updateStep(step.id, { field: v as string })}>
-                        <SelectTrigger size="sm" className="h-8 w-full bg-background"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {NOTIFY_CONDITION_FIELDS.map((f) => (
-                            <SelectItem key={f} value={f}>{f}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select value={step.operator} onValueChange={(v) => updateStep(step.id, { operator: v as "is" | "is not" | "contains" })}>
-                        <SelectTrigger size="sm" className="h-8 w-full bg-background"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {NOTIFY_OPERATORS.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        value={step.value}
-                        onChange={(e) => updateStep(step.id, { value: e.target.value })}
-                        placeholder="Value"
-                        className="h-8 bg-background text-xs"
-                      />
-                    </div>
-                  )}
-
-                  {step.kind === "action" && (
-                    <>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Select value={step.actionType} onValueChange={(v) => updateStep(step.id, { actionType: v as NotifyActionType })}>
-                          <SelectTrigger size="sm" className="h-8 w-full bg-background"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {NOTIFY_ACTION_TYPES.map((a) => (
-                              <SelectItem key={a} value={a}>{a}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select value={step.recipient} onValueChange={(v) => updateStep(step.id, { recipient: v as string })}>
-                          <SelectTrigger size="sm" className="h-8 w-full bg-background"><SelectValue placeholder="Recipient" /></SelectTrigger>
-                          <SelectContent>
-                            {recipients.map((r) => (
-                              <SelectItem key={r} value={r}>{r}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {!NOTIFY_ACTIONS_WITHOUT_MESSAGE.includes(step.actionType) && (
-                        <Input
-                          value={step.message ?? ""}
-                          onChange={(e) => updateStep(step.id, { message: e.target.value })}
-                          placeholder="Message"
-                          className="h-8 bg-background text-xs"
-                        />
-                      )}
-                    </>
-                  )}
-
-                  {step.kind === "wait" && (
-                    <Select value={step.duration} onValueChange={(v) => updateStep(step.id, { duration: v as string })}>
-                      <SelectTrigger size="sm" className="h-8 w-full bg-background"><SelectValue /></SelectTrigger>
+                {step.kind === "condition" && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <Select value={step.field} onValueChange={(v) => updateStep(step.id, { field: v as string })}>
+                      <SelectTrigger size="sm" className="h-8 w-full bg-background text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {NOTIFY_DELAYS.map((d) => (
-                          <SelectItem key={d} value={d}>{d}</SelectItem>
+                        {NOTIFY_CONDITION_FIELDS.map((f) => (
+                          <SelectItem key={f} value={f}>{f}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  )}
-                </div>
-              ))}
-            </div>
+                    <Select value={step.operator} onValueChange={(v) => updateStep(step.id, { operator: v as "is" | "is not" | "contains" })}>
+                      <SelectTrigger size="sm" className="h-8 w-full bg-background text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {NOTIFY_OPERATORS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={step.value}
+                      onChange={(e) => updateStep(step.id, { value: e.target.value })}
+                      placeholder="Value"
+                      className="h-8 bg-background text-sm"
+                    />
+                  </div>
+                )}
 
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] text-muted-foreground">Add step:</span>
-              <Button variant="outline" size="sm" className={cn("h-7 gap-1 text-[11px]", NOTIFY_STEP_STYLES.condition.classes)} onClick={() => addStep("condition")}>
-                <Plus className="size-3" /> IF Condition
-              </Button>
-              <Button variant="outline" size="sm" className={cn("h-7 gap-1 text-[11px]", NOTIFY_STEP_STYLES.action.classes)} onClick={() => addStep("action")}>
-                <Plus className="size-3" /> THEN Action
-              </Button>
-              <Button variant="outline" size="sm" className={cn("h-7 gap-1 text-[11px]", NOTIFY_STEP_STYLES.wait.classes)} onClick={() => addStep("wait")}>
-                <Plus className="size-3" /> WAIT Delay
-              </Button>
-            </div>
+                {step.kind === "action" && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Select value={step.actionType} onValueChange={(v) => updateStep(step.id, { actionType: v as NotifyActionType })}>
+                        <SelectTrigger size="sm" className="h-8 w-full bg-background text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {NOTIFY_ACTION_TYPES.map((a) => (
+                            <SelectItem key={a} value={a}>{a}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={step.recipient} onValueChange={(v) => updateStep(step.id, { recipient: v as string })}>
+                        <SelectTrigger size="sm" className="h-8 w-full bg-background text-sm"><SelectValue placeholder="Recipient" /></SelectTrigger>
+                        <SelectContent>
+                          {recipients.map((r) => (
+                            <SelectItem key={r} value={r}>{r}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {!NOTIFY_ACTIONS_WITHOUT_MESSAGE.includes(step.actionType) && (
+                      <Input
+                        value={step.message ?? ""}
+                        onChange={(e) => updateStep(step.id, { message: e.target.value })}
+                        placeholder="Message"
+                        className="h-8 bg-background text-sm"
+                      />
+                    )}
+                  </>
+                )}
+
+                {step.kind === "wait" && (
+                  <Select value={step.duration} onValueChange={(v) => updateStep(step.id, { duration: v as string })}>
+                    <SelectTrigger size="sm" className="h-8 w-full bg-background text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {NOTIFY_DELAYS.map((d) => (
+                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            ))}
           </div>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-          <Button variant="outline" className="gap-1.5" onClick={() => save("draft")}>
+        {/* Fixed Step Controls & Actions */}
+        <div className="flex shrink-0 items-center gap-1.5 pt-2 border-t">
+          <span className="text-sm font-medium text-muted-foreground">Add step:</span>
+          <Button variant="outline" size="sm" className={cn("h-7 gap-1 text-sm", NOTIFY_STEP_STYLES.condition.classes)} onClick={() => addStep("condition")}>
+            <Plus className="size-3" /> IF Condition
+          </Button>
+          <Button variant="outline" size="sm" className={cn("h-7 gap-1 text-sm", NOTIFY_STEP_STYLES.action.classes)} onClick={() => addStep("action")}>
+            <Plus className="size-3" /> THEN Action
+          </Button>
+          <Button variant="outline" size="sm" className={cn("h-7 gap-1 text-sm", NOTIFY_STEP_STYLES.wait.classes)} onClick={() => addStep("wait")}>
+            <Plus className="size-3" /> WAIT Delay
+          </Button>
+        </div>
+
+        <DialogFooter className="shrink-0 pt-2 border-t">
+          <DialogClose render={<Button variant="outline" size="sm" />}>Cancel</DialogClose>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => save("draft")}>
             <Save className="size-3.5" /> Save as Draft
           </Button>
-          <Button className="gap-1.5" onClick={() => save("activate")} disabled={!draft.name.trim()}>
+          <Button size="sm" className="gap-1.5" onClick={() => save("activate")} disabled={!draft.name.trim()}>
             <Rocket className="size-3.5" /> Activate
           </Button>
         </DialogFooter>

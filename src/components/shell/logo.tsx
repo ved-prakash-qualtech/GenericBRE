@@ -33,7 +33,7 @@ export function LogoLockup({ collapsed }: { collapsed?: boolean }) {
           <span className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">
             {appName}
           </span>
-          <span className="truncate text-[11px] text-sidebar-foreground/55">{tagline}</span>
+          <span className="truncate text-sm text-sidebar-foreground/55">{tagline}</span>
         </div>
       )}
     </div>

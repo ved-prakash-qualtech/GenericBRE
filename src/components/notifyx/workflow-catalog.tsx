@@ -102,7 +102,7 @@ export function WorkflowCatalog({
           </span>
           <div>
             <p className="text-sm font-semibold">NotifyX</p>
-            <p className="text-xs text-muted-foreground">Automate reminders, escalations, and notifications across the platform.</p>
+            <p className="text-sm text-muted-foreground">Automate reminders, escalations, and notifications across the platform.</p>
           </div>
         </div>
         <div className="flex shrink-0 gap-1.5">
@@ -148,7 +148,7 @@ export function WorkflowCatalog({
           selected={statusFilter}
           onChange={(v) => { setStatusFilter(v); resetPage(); }}
         />
-        <span className="ml-auto shrink-0 text-xs text-muted-foreground">{filtered.length} workflow{filtered.length === 1 ? "" : "s"}</span>
+        <span className="ml-auto shrink-0 text-sm text-muted-foreground">{filtered.length} workflow{filtered.length === 1 ? "" : "s"}</span>
       </div>
 
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
@@ -159,13 +159,13 @@ export function WorkflowCatalog({
             <div key={w.id} className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3">
               <div className="min-w-0 flex-1 space-y-1">
                 <p className="truncate text-sm font-semibold">{w.name}</p>
-                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
                   {category && (
-                    <Badge variant="outline" className={cn("text-[9px]", categoryClasses(category.colorToken))}>
+                    <Badge variant="outline" className={cn("text-sm", categoryClasses(category.colorToken))}>
                       {category.name}
                     </Badge>
                   )}
-                  <Badge variant="outline" className={cn("text-[9px]", NOTIFY_STATUS_STYLES[w.status])}>
+                  <Badge variant="outline" className={cn("text-sm", NOTIFY_STATUS_STYLES[w.status])}>
                     {w.status}
                   </Badge>
                   <span className="flex items-center gap-1">
@@ -198,14 +198,14 @@ export function WorkflowCatalog({
           );
         })}
         {pageRows.length === 0 && (
-          <p className="rounded-xl border border-dashed p-8 text-center text-xs text-muted-foreground">
+          <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             {workflows.length === 0 ? "No workflows yet." : "No workflows match your filters."}
           </p>
         )}
       </div>
 
       {filtered.length > 0 && (
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t pt-2.5 text-xs text-muted-foreground">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t pt-2.5 text-sm text-muted-foreground">
           <span>
             {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)} of {filtered.length}
           </span>

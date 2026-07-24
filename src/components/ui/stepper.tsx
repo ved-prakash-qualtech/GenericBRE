@@ -46,7 +46,7 @@ export function Stepper({
             >
               <span
                 className={cn(
-                  "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors",
+                  "flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors",
                   isCompleted
                     ? "bg-primary text-primary-foreground"
                     : isCurrent
@@ -58,7 +58,7 @@ export function Stepper({
               </span>
               <span
                 className={cn(
-                  "max-w-20 text-center text-[10.5px] leading-tight text-wrap",
+                  "max-w-20 text-center text-sm leading-tight text-wrap",
                   isCurrent ? "font-semibold text-foreground" : "text-muted-foreground"
                 )}
               >

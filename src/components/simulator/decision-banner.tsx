@@ -42,7 +42,7 @@ export function DecisionBanner({ result }: { result: DecisionResult }) {
         <div className="min-w-0 flex-1">
           <p className="text-2xl font-bold tracking-tight">{result.outcome.toUpperCase()}</p>
           <p className="mt-0.5 text-sm text-foreground/80">{result.summary}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-foreground/60">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-foreground/60">
             <span>Reason: <span className="font-mono font-medium">{result.reasonCode}</span></span>
             <span>·</span>
             <span>Evaluated in {result.totalDurationMs.toFixed(1)}ms</span>
@@ -54,7 +54,7 @@ export function DecisionBanner({ result }: { result: DecisionResult }) {
           <div className="flex flex-wrap gap-2">
             {Object.entries(result.calculatedValues).map(([k, v]) => (
               <div key={k} className="rounded-lg border bg-background/70 px-3 py-1.5 text-right">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{k.replace(/_/g, " ")}</p>
+                <p className="text-sm uppercase tracking-wide text-muted-foreground">{k.replace(/_/g, " ")}</p>
                 <p className="text-sm font-semibold text-foreground">{String(v)}</p>
               </div>
             ))}

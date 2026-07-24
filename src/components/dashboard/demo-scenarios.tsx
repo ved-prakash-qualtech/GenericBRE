@@ -40,11 +40,11 @@ export function DemoScenariosPanel() {
               className={`group relative overflow-hidden rounded-lg border bg-gradient-to-br p-3 text-left ${ACCENTS[i % ACCENTS.length]}`}
             >
               <Icon className="size-5" />
-              <p className="mt-2 text-[13px] font-semibold text-foreground">{ind.name}</p>
-              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              <p className="mt-2 text-sm font-semibold text-foreground">{ind.name}</p>
+              <p className="mt-1 text-sm leading-snug text-muted-foreground">
                 {ind.description ?? "Run a live simulation against this industry's configured rules."}
               </p>
-              <span className="mt-2 flex items-center gap-1 text-[11px] font-medium opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="mt-2 flex items-center gap-1 text-sm font-medium opacity-0 transition-opacity group-hover:opacity-100">
                 Launch simulator <ArrowRight className="size-3" />
               </span>
             </motion.button>

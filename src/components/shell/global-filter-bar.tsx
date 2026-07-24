@@ -58,7 +58,7 @@ export function MobileFilterButton() {
       <Button variant="outline" size="sm" className="h-9 gap-1.5 lg:hidden" onClick={() => setOpen(true)} aria-label="Filters">
         <SlidersHorizontal className="size-3.5" />
         <span className="hidden lg:inline">Filters</span>
-        {count > 0 && <Badge variant="secondary" className="h-4.5 min-w-4.5 rounded-full px-1 text-[10px]">{count}</Badge>}
+        {count > 0 && <Badge variant="secondary" className="h-4.5 min-w-4.5 rounded-full px-1 text-sm">{count}</Badge>}
       </Button>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="bottom" className="max-h-[75vh]">
