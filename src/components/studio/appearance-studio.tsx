@@ -774,43 +774,77 @@ export function AppearanceStudio({ onClose, onOpenChange }: AppearanceStudioProp
                   );
                 })()}
 
-                {/* Sign-in Page Preview - Split Layout */}
+                {/* Sign-in Page Preview - Split Layout, matching the real
+                    /login page's current design: diagonal sidebar-token
+                    gradient on the left (so theme/color changes actually
+                    show here), radial-gradient card panel on the right,
+                    same fixed #0a1230 ink and bordered/taller fields the
+                    real page uses regardless of the active theme. */}
                 {previewTab === "signin" && (
                   <div className="flex overflow-hidden rounded-2xl border shadow-xl h-96">
-                    {/* Left Side - Dark Brand with Logo */}
-                    <div className="flex-1 p-4 flex flex-col justify-start items-start relative overflow-hidden" style={{ background: "#0f172a", color: "#e2e8f0" }}>
-                      {/* Logo at Top-Left */}
-                      <div className="relative z-10 flex items-center gap-2">
-                        <div
-                          className="flex size-10 items-center justify-center overflow-hidden rounded-lg shrink-0"
-                          style={{ background: "var(--primary)" }}
-                        >
-                          {draft.logo ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={draft.logo} alt="" className="size-full object-contain p-1" />
-                          ) : (
-                            <Workflow className="size-6" />
-                          )}
+                    {/* Left Side - Dark Brand Panel */}
+                    <div
+                      className="flex-1 p-4 flex flex-col justify-between items-start relative overflow-hidden"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, color-mix(in oklch, var(--sidebar) 88%, black 12%) 0%, var(--sidebar) 45%, color-mix(in oklch, var(--sidebar) 78%, var(--sidebar-primary) 22%) 100%)",
+                        color: "var(--sidebar-foreground)",
+                      }}
+                    >
+                      <div>
+                        <div className="relative z-10 flex items-center gap-2">
+                          <div
+                            className="flex size-10 items-center justify-center overflow-hidden rounded-lg shrink-0"
+                            style={{ background: "var(--sidebar-primary)", color: "var(--sidebar-primary-foreground)" }}
+                          >
+                            {draft.logo ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={draft.logo} alt="" className="size-full object-contain p-1" />
+                            ) : (
+                              <Workflow className="size-6" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold leading-tight">{draft.appName || "Business Rules System"}</p>
+                            <p className="text-[8px]" style={{ color: "color-mix(in oklch, var(--sidebar-foreground) 60%, transparent)" }}>{draft.tagline || "Decision Platform"}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs font-bold leading-tight">{draft.appName || "Business Rules System"}</p>
-                          <p className="text-[8px] text-slate-400">{draft.tagline || "Decision Platform"}</p>
-                        </div>
+
+                        <p className="mt-4 text-sm font-semibold leading-snug text-balance">
+                          One decision platform for every industry.
+                        </p>
                       </div>
 
-                      {/* Blurred Background Content */}
-                      <div style={{ filter: "blur(5px)", opacity: 0.2, marginTop: "auto", marginBottom: "auto", textAlign: "center", width: "100%" }}>
-                        <p className="text-xs mb-2">Dashboard Overview</p>
-                        <p className="text-[10px]">Simulations • Rules • Workflows</p>
+                      <div className="grid w-full grid-cols-3 gap-1.5">
+                        {[
+                          { label: "Total Rules", value: "157" },
+                          { label: "Active Rules", value: "97" },
+                          { label: "Simulations", value: "263" },
+                        ].map((s) => (
+                          <div
+                            key={s.label}
+                            className="rounded-md border p-1.5 text-center"
+                            style={{ borderColor: "var(--sidebar-border)", background: "color-mix(in oklch, var(--sidebar-accent) 40%, transparent)" }}
+                          >
+                            <p className="text-[10px] font-bold" style={{ color: "var(--sidebar-primary)" }}>{s.value}</p>
+                            <p className="text-[7px]" style={{ color: "color-mix(in oklch, var(--sidebar-foreground) 75%, transparent)" }}>{s.label}</p>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     {/* Right Side - Sign-in Form */}
-                    <div className="flex-1 p-6 flex flex-col items-center justify-center" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+                    <div
+                      className="flex-1 p-6 flex flex-col items-center justify-center"
+                      style={{
+                        background:
+                          "radial-gradient(400px 300px at 100% 0%, #eef3ff 0%, transparent 60%), radial-gradient(300px 250px at 0% 100%, #fff4e0 0%, transparent 60%), #fbfcff",
+                      }}
+                    >
                       <div className="w-full max-w-sm space-y-5">
                         <div>
-                          <p className="text-lg font-bold">Welcome Back</p>
-                          <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                          <p className="text-lg font-bold" style={{ color: "#0a1230" }}>Welcome Back</p>
+                          <p className="text-xs" style={{ color: "color-mix(in srgb, #0a1230 70%, transparent)" }}>
                             Sign in to your {draft.appName || "Business Rules System"} account
                           </p>
                         </div>
@@ -818,29 +852,29 @@ export function AppearanceStudio({ onClose, onOpenChange }: AppearanceStudioProp
                         <div className="space-y-3">
                           {/* Employee ID Input */}
                           <div className="space-y-1">
-                            <p className="text-xs font-medium">Employee ID</p>
+                            <p className="text-xs font-bold" style={{ color: "#0a1230" }}>Employee ID</p>
                             <div
-                              className="h-8 rounded-lg border px-2.5 flex items-center text-xs"
-                              style={{ borderColor: "var(--input)", background: "var(--background)" }}
+                              className="h-9 rounded-lg border px-2.5 flex items-center text-xs"
+                              style={{ borderColor: "#c7cfe3", background: "transparent" }}
                             >
-                              <p style={{ color: "var(--muted-foreground)" }}>EMP-0001</p>
+                              <p style={{ color: "color-mix(in srgb, #0a1230 55%, transparent)" }}>EMP-0001</p>
                             </div>
                           </div>
 
                           {/* Password Input */}
                           <div className="space-y-1">
-                            <p className="text-xs font-medium">Password</p>
+                            <p className="text-xs font-bold" style={{ color: "#0a1230" }}>Password</p>
                             <div
-                              className="h-8 rounded-lg border px-2.5 flex items-center justify-between text-xs"
-                              style={{ borderColor: "var(--input)", background: "var(--background)" }}
+                              className="h-9 rounded-lg border px-2.5 flex items-center justify-between text-xs"
+                              style={{ borderColor: "#c7cfe3", background: "transparent" }}
                             >
-                              <p style={{ color: "var(--muted-foreground)" }}>••••••••</p>
+                              <p style={{ color: "color-mix(in srgb, #0a1230 55%, transparent)" }}>••••••••</p>
                             </div>
                           </div>
 
                           {/* Remember Me & Forgot Password */}
                           <div className="flex items-center justify-between text-xs">
-                            <label className="flex items-center gap-1.5">
+                            <label className="flex items-center gap-1.5" style={{ color: "#0a1230" }}>
                               <input type="checkbox" className="size-3.5" />
                               Remember me
                             </label>
@@ -851,16 +885,16 @@ export function AppearanceStudio({ onClose, onOpenChange }: AppearanceStudioProp
 
                           {/* Sign-in Button */}
                           <div
-                            className="h-8 rounded-lg flex items-center justify-center font-medium text-xs cursor-pointer"
+                            className="h-9 rounded-lg flex items-center justify-center font-semibold text-xs cursor-pointer shadow-sm"
                             style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                           >
                             Sign In
                           </div>
 
                           {/* Demo Mode */}
-                          <p className="text-center text-xs">
+                          <p className="text-center text-xs" style={{ color: "color-mix(in srgb, #0a1230 70%, transparent)" }}>
                             Need Demo Access?{" "}
-                            <span style={{ color: "var(--primary)" }} className="font-medium">
+                            <span style={{ color: "#0a1230" }} className="font-medium">
                               Enter Demo Mode
                             </span>
                           </p>
@@ -868,13 +902,11 @@ export function AppearanceStudio({ onClose, onOpenChange }: AppearanceStudioProp
 
                         {/* Features */}
                         <div className="grid grid-cols-2 gap-2 border-t pt-3">
-                          <div className="text-[9px]">
-                            <p style={{ color: "var(--primary)" }} className="font-medium">✓ Secure Access</p>
-                            <p style={{ color: "var(--muted-foreground)" }} className="text-[8px]">Enterprise auth</p>
+                          <div className="text-[9px]" style={{ color: "color-mix(in srgb, #0a1230 80%, transparent)" }}>
+                            <p className="flex items-center gap-1 font-medium"><ShieldCheck className="size-2.5" style={{ color: "var(--primary)" }} /> Secure Access</p>
                           </div>
-                          <div className="text-[9px]">
-                            <p style={{ color: "var(--primary)" }} className="font-medium">✓ Role-Based</p>
-                            <p style={{ color: "var(--muted-foreground)" }} className="text-[8px]">Permissions</p>
+                          <div className="text-[9px]" style={{ color: "color-mix(in srgb, #0a1230 80%, transparent)" }}>
+                            <p className="flex items-center gap-1 font-medium"><ShieldCheck className="size-2.5" style={{ color: "var(--primary)" }} /> Role-Based Permissions</p>
                           </div>
                         </div>
                       </div>
