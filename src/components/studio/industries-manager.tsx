@@ -84,10 +84,7 @@ export function IndustriesManager() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Every business domain/vertical the platform supports — add one here and it appears immediately in every module, no code changes.
-        </p>
+      <div className="flex items-center justify-end">
         <Button size="sm" className="shrink-0 gap-1.5" onClick={startCreate}>
           <Plus className="size-3.5" /> Add Domain
         </Button>

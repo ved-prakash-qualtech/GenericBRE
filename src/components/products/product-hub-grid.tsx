@@ -86,45 +86,68 @@ export function ProductHubGrid({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3.5">
       {showControls && (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-48 flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or code..."
-              className="h-8 pl-8 text-sm"
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+            <div className="relative min-w-48 flex-1 sm:max-w-64">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name or code..."
+                className="h-8 pl-8 text-xs bg-background"
+              />
+            </div>
+            <MultiSelect
+              label="Domain"
+              options={industries.map((i) => ({ value: i.id, label: i.name }))}
+              selected={domainFilter}
+              onChange={setDomainFilter}
+              className="h-8 text-xs"
             />
+            <MultiSelect
+              label="Status"
+              options={[
+                { value: "Active", label: "Active" },
+                { value: "Inactive", label: "Inactive" },
+              ]}
+              selected={statusFilter}
+              onChange={setStatusFilter}
+              className="h-8 text-xs"
+            />
+            {(search !== "" || domainFilter.length > 0 || (statusFilter.length > 0 && (statusFilter.length !== 1 || statusFilter[0] !== "Active"))) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setSearch("");
+                  setDomainFilter([]);
+                  setStatusFilter(["Active"]);
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
           </div>
-          <MultiSelect
-            label="Domain"
-            options={industries.map((i) => ({ value: i.id, label: i.name }))}
-            selected={domainFilter}
-            onChange={setDomainFilter}
-            className="h-8 text-sm"
-          />
-          <MultiSelect
-            label="Status"
-            options={[
-              { value: "Active", label: "Active" },
-              { value: "Inactive", label: "Inactive" },
-            ]}
-            selected={statusFilter}
-            onChange={setStatusFilter}
-            className="h-8 text-sm"
-          />
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm" onClick={exportCsv} disabled={filtered.length === 0}>
-            <Download className="size-3.5" /> Export CSV
-          </Button>
-          <span className="text-sm text-muted-foreground">{filtered.length} of {base.length}</span>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-muted-foreground font-medium">{filtered.length} of {base.length} Products</span>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs shadow-2xs" onClick={exportCsv} disabled={filtered.length === 0}>
+              <Download className="size-3.5" /> Export CSV
+            </Button>
+          </div>
         </div>
       )}
       {filtered.length === 0 && (
-        <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">No products match this filter.</p>
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
+          <Package className="size-8 text-muted-foreground/50 mb-2" />
+          <p className="text-sm font-medium text-foreground">No products found</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">No products match the selected search or filter criteria.</p>
+        </div>
       )}
-      <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3", compact && "gap-2.5")}>
+      <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4", compact && "gap-2.5")}>
         {visible.map((p) => {
           const industry = industries.find((i) => i.id === p.domain);
           const Icon = iconForIndustry(industry?.icon) ?? Package;
@@ -137,12 +160,11 @@ export function ProductHubGrid({
               ? `Published ${new Date(p.lastPublishedAt).toLocaleDateString()}`
               : `Updated ${new Date(p.updatedAt).toLocaleDateString()}`;
 
-          // Priority mix (P1..P5) among this product's mapped rules — drives the
-          // sparkline. Real derived data, not decorative filler. Full card only.
+          // Priority mix (P1..P5) among this product's mapped rules
           const priorityCounts = [1, 2, 3, 4, 5].map((pr) => mappedRules.filter((r) => r.priority === pr).length);
           const maxPriorityCount = Math.max(1, ...priorityCounts);
 
-          // Status mix among mapped rules — drives the small heatmap row. Full card only.
+          // Status mix among mapped rules
           const statusMix: { status: BusinessRule["status"]; color: string }[] = [
             { status: "Active", color: "bg-emerald-500" },
             { status: "Draft", color: "bg-amber-500" },
@@ -164,69 +186,67 @@ export function ProductHubGrid({
               onClick={() => onConfigure(p)}
               onKeyDown={(e) => e.key === "Enter" && onConfigure(p)}
               className={cn(
-                "flex cursor-pointer flex-col rounded-xl border bg-card text-left transition-colors hover:border-primary/40 hover:bg-accent/40",
-                compact ? "gap-2 p-3" : "gap-2.5 p-3.5",
+                "group relative flex cursor-pointer flex-col justify-between rounded-xl border bg-card text-left transition-all duration-150 hover:border-primary/40 hover:shadow-xs",
+                compact ? "gap-2 p-3" : "gap-3 p-3.5",
                 p.status === "Inactive" && "opacity-60"
               )}
             >
-              <div className="flex items-start justify-between gap-2">
-                <span className={cn("flex shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary", compact ? "size-7" : "size-8")}>
-                  <Icon className={compact ? "size-3.5" : "size-4"} />
-                </span>
-                {/* One status badge — Inactive takes precedence since it overrides publish state at a glance. */}
-                <Badge variant={p.status === "Inactive" ? "outline" : published ? "default" : "secondary"} className="h-6 shrink-0 text-xs">
-                  {p.status === "Inactive" ? "Inactive" : (p.publishStatus ?? "Draft")}
-                </Badge>
-                {!compact && (
-                  <div className="flex h-6 items-end gap-0.5" title="Mapped rules by priority (P1–P5)">
-                    {priorityCounts.map((c, i) => (
-                      <span
-                        key={i}
-                        className={cn("w-1 rounded-sm", c > 0 ? "bg-primary/60" : "bg-muted")}
-                        style={{ height: `${Math.max(15, (c / maxPriorityCount) * 100)}%` }}
-                      />
-                    ))}
+              <div>
+                <div className="flex items-start justify-between gap-2">
+                  <span className={cn("flex shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary shadow-2xs", compact ? "size-8" : "size-9")}>
+                    <Icon className={compact ? "size-4" : "size-4.5"} />
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant={p.status === "Inactive" ? "outline" : published ? "default" : "secondary"} className="h-5 shrink-0 text-xs font-medium">
+                      {p.status === "Inactive" ? "Inactive" : (p.publishStatus ?? "Draft")}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="mt-2.5 min-w-0">
+                  <p className="truncate text-xs font-semibold tracking-tight text-foreground">{p.name}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="truncate font-mono text-[11px] text-muted-foreground">{p.code}</span>
+                    <span className="text-muted-foreground/40">·</span>
+                    <span className="truncate text-[10px] font-medium text-muted-foreground/80">{industry?.name ?? p.domain}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-2.5 space-y-2 border-t pt-2.5">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    <span className="font-semibold text-foreground">{mappedCount}</span> rule{mappedCount === 1 ? "" : "s"}
+                    {compact && <span className="text-muted-foreground/70"> · {lastUpdatedLabel}</span>}
+                  </span>
+                  {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-1.5 py-0.5 text-[10px]" />}
+                </div>
+
+                {!compact && statusDots.length > 0 && (
+                  <div className="flex items-center gap-1" title="Mapped rule status mix">
+                    {statusDots}
                   </div>
                 )}
-              </div>
 
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{p.name}</p>
-                <p className="truncate font-mono text-sm text-muted-foreground">{p.code}</p>
-              </div>
+                {!compact && <p className="text-[10px] text-muted-foreground/70">{lastUpdatedLabel}</p>}
 
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>
-                  <span className="font-semibold text-foreground">{mappedCount}</span> rule{mappedCount === 1 ? "" : "s"}
-                  {compact && <span className="text-muted-foreground/70"> · {lastUpdatedLabel}</span>}
-                </span>
-                {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-2 py-0.5 text-[10px]" />}
-              </div>
-
-              {!compact && statusDots.length > 0 && (
-                <div className="flex items-center gap-1" title="Mapped rule status mix">
-                  {statusDots}
+                <div className="grid grid-cols-2 gap-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1 text-xs font-medium shadow-2xs"
+                    onClick={() => onConfigure(p)}
+                  >
+                    <Settings2 className="size-3" /> Configure
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-7 gap-1 text-xs font-medium shadow-xs"
+                    onClick={() => onRunSimulation(p)}
+                  >
+                    <PlayCircle className="size-3" /> Simulate
+                  </Button>
                 </div>
-              )}
-
-              {!compact && <p className="text-sm text-muted-foreground/70">{lastUpdatedLabel}</p>}
-
-              <div className="grid grid-cols-2 gap-1.5" onClick={(e) => e.stopPropagation()}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1 text-sm"
-                  onClick={() => onConfigure(p)}
-                >
-                  <Settings2 className="size-3" /> Configure
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-7 gap-1 text-sm"
-                  onClick={() => onRunSimulation(p)}
-                >
-                  <PlayCircle className="size-3" /> Simulate
-                </Button>
               </div>
             </div>
           );

@@ -148,7 +148,7 @@ export default function ProductWorkspacePage() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage className="truncate">{product.name}</BreadcrumbPage>
+              <BreadcrumbPage className="truncate font-medium">{product.name}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -157,24 +157,24 @@ export default function ProductWorkspacePage() {
             <ArrowLeft className="size-4" />
           </Button>
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <h1 className="truncate text-lg font-semibold tracking-tight">{product.name}</h1>
-              <Badge variant="outline" className="h-6 shrink-0 font-mono text-sm">{product.code}</Badge>
-              <Badge variant={product.status === "Active" ? "default" : "secondary"} className="h-6 shrink-0 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-lg font-semibold tracking-tight text-foreground">{product.name}</h1>
+              <Badge variant="outline" className="h-5 shrink-0 font-mono text-xs bg-muted/30">{product.code}</Badge>
+              <Badge variant={product.status === "Active" ? "default" : "secondary"} className="h-5 shrink-0 text-xs font-medium">
                 {product.status}
               </Badge>
-              <Badge variant={published ? "default" : "secondary"} className="h-6 shrink-0 text-xs">
+              <Badge variant={published ? "default" : "secondary"} className="h-5 shrink-0 text-xs font-medium">
                 {product.publishStatus ?? "Draft"}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {industries.find((i) => i.id === product.domain)?.name ?? product.domain}
             </p>
           </div>
           {!published && (
             <Button
               size="sm"
-              className="shrink-0 gap-1.5"
+              className="shrink-0 gap-1.5 font-medium shadow-xs"
               onClick={handlePublish}
               disabled={!canPublish || !canManage}
               title={!canPublish ? "Map rules, sequence them, and run a simulation before publishing" : undefined}
@@ -183,8 +183,7 @@ export default function ProductWorkspacePage() {
             </Button>
           )}
         </div>
-        {/* Scroll the journey stepper on narrow screens (its 7 steps don't fit
-            under ~500px); restores the full-width flex spread at sm and up. */}
+        {/* Scroll the journey stepper on narrow screens */}
         <div className="overflow-x-auto">
           <Stepper
             steps={WORKSPACE_STEPS}
@@ -197,8 +196,6 @@ export default function ProductWorkspacePage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as string)} className="flex min-h-0 flex-1 flex-col gap-0">
-        {/* Horizontal-scroll wrapper so the 7-tab bar stays fully reachable on
-            narrow screens instead of clipping off the right edge. */}
         <div className="mx-5 mt-3 overflow-x-auto sm:mx-6">
           <TabsList className="w-fit">
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -213,52 +210,67 @@ export default function ProductWorkspacePage() {
 
         <TabsContent value="overview" className="min-h-0 flex-1">
           <ScrollArea className="h-full">
-            <div className="max-w-2xl space-y-3 p-5 sm:p-6">
-              <div className="space-y-1.5 rounded-xl border bg-card p-3.5">
-                <Label>Name *</Label>
-                <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5 rounded-xl border bg-card p-3.5">
-                  <Label>Code</Label>
-                  <Input value={draft.code} disabled className="font-mono" />
-                  <p className="text-sm text-muted-foreground">
-                    Stable API identifier — not editable here to avoid breaking existing integrations.
-                  </p>
+            <div className="max-w-2xl p-5 sm:p-6">
+              <div className="rounded-xl border bg-card p-5 space-y-4 shadow-2xs">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Product Name *</Label>
+                  <Input
+                    value={draft.name}
+                    onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                    className="text-xs"
+                  />
                 </div>
-                <div className="space-y-1.5 rounded-xl border bg-card p-3.5">
-                  <Label>Domain</Label>
-                  <Select value={draft.domain} onValueChange={(v) => setDraft({ ...draft, domain: (v as string) ?? draft.domain })}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Product Code</Label>
+                    <Input value={draft.code} disabled className="font-mono text-xs bg-muted/40" />
+                    <p className="text-[11px] text-muted-foreground/80 leading-tight">
+                      Stable API identifier — non-editable to prevent breaking active API integrations.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Domain</Label>
+                    <Select value={draft.domain} onValueChange={(v) => setDraft({ ...draft, domain: (v as string) ?? draft.domain })}>
+                      <SelectTrigger className="w-full text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {industries.map((i) => (
+                          <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Status</Label>
+                  <Select value={draft.status} onValueChange={(v) => setDraft({ ...draft, status: (v as "Active" | "Inactive") ?? draft.status })}>
+                    <SelectTrigger className="w-full text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {industries.map((i) => (
-                        <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
-                      ))}
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-muted-foreground/80 leading-tight">
+                    Controls execution eligibility — separate from the Publish lifecycle status.
+                  </p>
                 </div>
-              </div>
-              <div className="space-y-1.5 rounded-xl border bg-card p-3.5">
-                <Label>Status</Label>
-                <Select value={draft.status} onValueChange={(v) => setDraft({ ...draft, status: (v as "Active" | "Inactive") ?? draft.status })}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Active">Active</SelectItem>
-                    <SelectItem value="Inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">Controls execution eligibility — separate from Publish status above.</p>
-              </div>
-              <div className="space-y-1.5 rounded-xl border bg-card p-3.5">
-                <Label>Description</Label>
-                <Textarea
-                  value={draft.description ?? ""}
-                  onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-                  className="min-h-16"
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button size="sm" onClick={saveOverview} disabled={!canManage}>Save Changes</Button>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Description</Label>
+                  <Textarea
+                    value={draft.description ?? ""}
+                    onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                    placeholder="Product summary and business scope..."
+                    className="min-h-20 text-xs leading-relaxed"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <Button size="sm" className="font-medium shadow-xs" onClick={saveOverview} disabled={!canManage}>
+                    Save Changes
+                  </Button>
+                </div>
               </div>
             </div>
           </ScrollArea>

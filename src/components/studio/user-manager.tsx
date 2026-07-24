@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Mail, Building2, ShieldCheck } from "lucide-react";
+import { Plus, Trash2, Pencil, Mail, Building2, ShieldCheck, Search } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { AppUser, Capability } from "@/lib/types";
 import { ALL_CAPABILITIES, capabilityLabel } from "@/lib/capabilities";
@@ -61,6 +61,19 @@ export function UserManager() {
   const [open, setOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<AppUser | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filteredUsers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.role.toLowerCase().includes(q) ||
+        (u.department && u.department.toLowerCase().includes(q))
+    );
+  }, [users, search]);
 
   const startCreate = () => {
     setEditing(null);
@@ -121,91 +134,130 @@ export function UserManager() {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Every named user on the roster — their Role, System Permissions, and which Rule Categories they&apos;re authorized to approve.
-        </p>
-        <Button size="sm" className="shrink-0 gap-1.5" onClick={startCreate}>
+    <div className="space-y-4">
+      {/* Top Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="relative w-64">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search users or roles..."
+              className="h-8 pl-8 text-xs"
+            />
+          </div>
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+            {filteredUsers.length} Users Configured
+          </span>
+        </div>
+
+        <Button size="sm" className="gap-1.5 font-medium shadow-xs" onClick={startCreate}>
           <Plus className="size-3.5" /> Add User
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {users.map((user) => (
-          <div key={user.id} className="flex flex-col gap-2.5 rounded-xl border bg-card p-3.5">
-            <div className="flex items-start gap-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-semibold text-primary">
-                {user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "?"}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <p className="truncate text-sm font-semibold">{user.name}</p>
-                  <Badge
-                    variant={user.status === "Active" ? "outline" : "secondary"}
-                    className={cn("shrink-0 text-sm", user.status === "Active" && "border-emerald-500/30 text-emerald-600 dark:text-emerald-400")}
-                  >
-                    {user.status}
-                  </Badge>
+      {/* Users Cards Grid */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {filteredUsers.map((user) => (
+          <div
+            key={user.id}
+            className="group relative flex flex-col justify-between rounded-xl border bg-card p-3.5 transition-all duration-150 hover:border-primary/40 hover:shadow-xs"
+          >
+            <div>
+              <div className="flex items-start gap-2.5 justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary shadow-2xs">
+                    {user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "?"}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-xs font-semibold tracking-tight text-foreground">{user.name}</p>
+                      <Badge
+                        variant={user.status === "Active" ? "outline" : "secondary"}
+                        className={cn(
+                          "shrink-0 text-[10px] py-0 h-4",
+                          user.status === "Active" && "border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                        )}
+                      >
+                        {user.status}
+                      </Badge>
+                    </div>
+                    <p className="truncate text-[11px] font-medium text-muted-foreground">{user.role}</p>
+                  </div>
                 </div>
-                <p className="truncate text-sm text-muted-foreground">{user.role}</p>
+
+                <div className="flex shrink-0 items-center gap-0.5 opacity-80 transition-opacity group-hover:opacity-100">
+                  <Button variant="ghost" size="icon-sm" className="size-7" onClick={() => startEdit(user)} title="Edit User">
+                    <Pencil className="size-3 text-muted-foreground hover:text-foreground" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="size-7"
+                    onClick={() => setPendingDelete(user)}
+                    title="Delete User"
+                  >
+                    <Trash2 className="size-3 text-muted-foreground hover:text-destructive" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex shrink-0 flex-col gap-1">
-                <Button variant="ghost" size="icon-sm" onClick={() => startEdit(user)}>
-                  <Pencil className="size-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive" onClick={() => setPendingDelete(user)}>
-                  <Trash2 className="size-3.5" />
-                </Button>
+
+              <div className="mt-2.5 space-y-1 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <Mail className="size-3 shrink-0 text-muted-foreground/70" />
+                  <span className="truncate">{user.email}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Building2 className="size-3 shrink-0 text-muted-foreground/70" />
+                  <span className="truncate">{user.department || "—"}</span>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-0.5 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <Mail className="size-3 shrink-0" />
-                <span className="truncate">{user.email}</span>
+            <div className="mt-3.5 space-y-2 border-t pt-2.5">
+              <div>
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Permissions</p>
+                <div className="max-h-[76px] overflow-y-auto pr-1 flex flex-wrap items-center gap-1.5 scrollbar-thin">
+                  {user.permissions.length === 0 ? (
+                    <span className="text-[10px] text-muted-foreground/60 italic">None</span>
+                  ) : (
+                    user.permissions.map((c) => (
+                      <span key={c} className="rounded-md border border-border/80 bg-muted/60 px-2 py-0.5 text-xs font-mono font-medium text-foreground">
+                        {capabilityLabel(c)}
+                      </span>
+                    ))
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Building2 className="size-3 shrink-0" />
-                <span className="truncate">{user.department || "—"}</span>
-              </div>
-            </div>
 
-            <div>
-              <p className="mb-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Permissions</p>
-              <div className="flex flex-wrap gap-1">
-                {user.permissions.length === 0 ? (
-                  <span className="text-sm text-muted-foreground/60">None</span>
-                ) : (
-                  user.permissions.map((c) => (
-                    <Badge key={c} variant="outline" className="text-sm">{capabilityLabel(c)}</Badge>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-1 flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                <ShieldCheck className="size-2.5" /> Approvals
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {user.approvalCategories.length === 0 ? (
-                  <span className="text-sm text-muted-foreground/60">None assigned</span>
-                ) : (
-                  user.approvalCategories.map((cat) => (
-                    <Badge key={cat} variant="outline" className="border-amber-500/30 bg-amber-500/10 text-sm text-amber-700 dark:text-amber-400">
-                      {cat}
-                    </Badge>
-                  ))
-                )}
+              <div>
+                <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <ShieldCheck className="size-3 text-amber-500" /> Approvals
+                </p>
+                <div className="flex flex-wrap items-center gap-1">
+                  {user.approvalCategories.length === 0 ? (
+                    <span className="text-[10px] text-muted-foreground/60 italic">None assigned</span>
+                  ) : (
+                    user.approvalCategories.map((cat) => (
+                      <span key={cat} className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                        {cat}
+                      </span>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>
         ))}
-        {users.length === 0 && (
-          <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-            No users configured yet. Add one to get started.
-          </p>
+        {filteredUsers.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
+            <ShieldCheck className="size-8 text-muted-foreground/50 mb-2" />
+            <p className="text-sm font-medium text-foreground">No users found</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {search ? "No users match your search filter." : "No users configured yet."}
+            </p>
+          </div>
         )}
       </div>
 

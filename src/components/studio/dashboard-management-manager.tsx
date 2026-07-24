@@ -68,11 +68,6 @@ export function DashboardManagementManager() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        For each role: where they land after signing in or switching roles, and which dashboard widgets are visible by
-        default. A user can still personalize their own layout afterward from Manage Widgets — this just sets the
-        starting point per BRD §5.3&apos;s Persona-to-Module Mapping.
-      </p>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {roles.map((role) => {

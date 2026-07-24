@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Pencil, Package, Search, Download, Power, PowerOff, Trash2, AlertTriangle } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, useHasCapability } from "@/lib/store";
+import { iconForIndustry } from "@/lib/industries";
 import { Product } from "@/lib/types";
 import { downloadCsv } from "@/lib/csv";
 import { Button } from "@/components/ui/button";
@@ -37,18 +38,17 @@ function blank(defaultDomain: string): Product {
   return { id: "", name: "", code: "", domain: defaultDomain, description: "", status: "Active", createdAt: now, updatedAt: now };
 }
 
-// Product Master — a configurable named scheme a client offers (Home Loan,
-// Auto Loan, ...). Which rules apply to it lives entirely in Product-Rule
-// Mapping (see product-rule-mapping-manager.tsx); a Product never embeds
-// rule logic itself.
+const suggestCode = (name: string) => name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+const suggestId = (name: string) => `prod-${name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
 export function ProductManager() {
   const products = useAppStore((s) => s.products);
   const industries = useAppStore((s) => s.industries);
-  const productRuleMappings = useAppStore((s) => s.productRuleMappings);
-  const simulations = useAppStore((s) => s.simulations);
+  const mappings = useAppStore((s) => s.productRuleMappings);
   const addProduct = useAppStore((s) => s.addProduct);
   const updateProduct = useAppStore((s) => s.updateProduct);
   const deleteProduct = useAppStore((s) => s.deleteProduct);
+  const canCreate = useHasCapability("config.manage");
 
   const [editing, setEditing] = useState<Product | null>(null);
   const [draft, setDraft] = useState<Product>(blank(industries[0]?.id ?? ""));
@@ -68,6 +68,9 @@ export function ProductManager() {
     });
   }, [products, search, domainFilter, statusFilter]);
 
+  const mappedCount = (id: string) => mappings.filter((m) => m.productId === id && m.active).length;
+  const hasHistory = (id: string) => mappings.some((m) => m.productId === id);
+
   const exportCsv = () => {
     downloadCsv(
       "products",
@@ -78,7 +81,6 @@ export function ProductManager() {
         Status: p.status,
         "Publish Status": p.publishStatus ?? "Draft",
         "Mapped Rules": mappedCount(p.id),
-        Description: p.description ?? "",
       }))
     );
   };
@@ -88,28 +90,22 @@ export function ProductManager() {
     setDraft(blank(industries[0]?.id ?? ""));
     setOpen(true);
   };
-  const startEdit = (product: Product) => {
-    setEditing(product);
-    setDraft(product);
+  const startEdit = (p: Product) => {
+    setEditing(p);
+    setDraft(p);
     setOpen(true);
   };
-
-  const mappedCount = (productId: string) => productRuleMappings.filter((m) => m.productId === productId && m.active).length;
-  // Delete is only ever safe (and only ever offered) for a product nobody has
-  // configured yet — any mapping (active or not) or simulation history means
-  // real referential data would be orphaned by a hard delete; Deactivate is
-  // the retirement path once a product has been used for anything.
-  const hasHistory = (productId: string) =>
-    productRuleMappings.some((m) => m.productId === productId) || simulations.some((sim) => sim.productId === productId);
-
-  // Products previously had no retirement path at all — deprecating one just
-  // left it as permanent, invisible clutter (audit finding B19). Reuses the
-  // existing Active/Inactive status field rather than a hard delete, keeping
-  // history/mappings intact and reversible.
   const toggleStatus = (p: Product) => {
-    const next = p.status === "Active" ? "Inactive" : "Active";
-    updateProduct(p.id, { status: next });
-    toast.success(`"${p.name}" ${next === "Active" ? "reactivated" : "deactivated"}.`);
+    const nextStatus = p.status === "Active" ? "Inactive" : "Active";
+    updateProduct(p.id, { status: nextStatus });
+    toast.info(`"${p.name}" status changed to ${nextStatus}.`);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteConfirm) return;
+    deleteProduct(deleteConfirm.id);
+    toast.info(`"${deleteConfirm.name}" removed.`);
+    setDeleteConfirm(null);
   };
 
   const save = () => {
@@ -117,23 +113,14 @@ export function ProductManager() {
       toast.error("Product name is required.");
       return;
     }
-    if (!draft.code.trim()) {
-      toast.error("Product code is required.");
-      return;
-    }
-    const code = draft.code.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_|_$/g, "");
-    const dupCode = products.find((p) => p.code === code && p.id !== editing?.id);
-    if (dupCode) {
-      toast.error(`Product code "${code}" is already used by "${dupCode.name}".`);
-      return;
-    }
+    const code = draft.code.trim() ? draft.code.trim().toUpperCase() : suggestCode(draft.name);
     if (editing) {
       updateProduct(editing.id, { ...draft, code });
       toast.success(`"${draft.name}" updated.`);
     } else {
-      const id = `prod-${draft.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
-      if (products.some((p) => p.id === id)) {
-        toast.error(`A product with id "${id}" already exists.`);
+      const id = suggestId(draft.name);
+      if (products.some((p) => p.id === id || p.code === code)) {
+        toast.error("A product with that name or code already exists.");
         return;
       }
       addProduct({ ...draft, id, code });
@@ -144,95 +131,124 @@ export function ProductManager() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Configurable product/scheme master — a client can offer many. Which rules apply to each is configured in
-          Product-Rule Mapping, not here.
-        </p>
-        <Button size="sm" className="shrink-0 gap-1.5" onClick={startCreate}>
-          <Plus className="size-3.5" /> Add Product
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-48 flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or code..."
-            className="h-8 pl-8 text-sm"
-          />
-        </div>
-        <MultiSelect
-          label="Domain"
-          options={industries.map((i) => ({ value: i.id, label: i.name }))}
-          selected={domainFilter}
-          onChange={setDomainFilter}
-          className="h-8 text-sm"
-        />
-        <MultiSelect
-          label="Status"
-          options={[
-            { value: "Active", label: "Active" },
-            { value: "Inactive", label: "Inactive" },
-          ]}
-          selected={statusFilter}
-          onChange={setStatusFilter}
-          className="h-8 text-sm"
-        />
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm" onClick={exportCsv} disabled={filteredProducts.length === 0}>
-          <Download className="size-3.5" /> Export CSV
-        </Button>
-        <span className="text-sm text-muted-foreground">{filteredProducts.length} of {products.length}</span>
-      </div>
-
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredProducts.map((p) => (
-          <div key={p.id} className="flex items-start gap-3 rounded-xl border bg-card p-3.5">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Package className="size-4.5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <p className="truncate text-sm font-semibold">{p.name}</p>
-                <Badge variant={p.status === "Active" ? "default" : "secondary"} className="h-6 shrink-0 text-sm">{p.status}</Badge>
-              </div>
-              <p className="mt-0.5 font-mono text-sm text-muted-foreground">{p.code} · {industries.find((i) => i.id === p.domain)?.name ?? p.domain}</p>
-              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{p.description || "No description"}</p>
-              <p className="mt-1 text-sm font-medium text-muted-foreground/70">
-                {mappedCount(p.id)} rule{mappedCount(p.id) === 1 ? "" : "s"} mapped
-              </p>
-            </div>
-            <div className="flex shrink-0 gap-0.5">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                title={p.status === "Active" ? "Deactivate" : "Reactivate"}
-                onClick={() => toggleStatus(p)}
-              >
-                {p.status === "Active" ? <PowerOff className="size-3.5" /> : <Power className="size-3.5" />}
-              </Button>
-              <Button variant="ghost" size="icon-sm" onClick={() => startEdit(p)}>
-                <Pencil className="size-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="text-muted-foreground hover:text-destructive disabled:pointer-events-auto"
-                disabled={hasHistory(p.id)}
-                title={hasHistory(p.id) ? "Has rule mappings or simulation history — deactivate instead" : "Delete permanently"}
-                onClick={() => setDeleteConfirm(p)}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
-            </div>
+      {/* Top Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+          <div className="relative min-w-48 flex-1 sm:max-w-64">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or code..."
+              className="h-8 pl-8 text-xs"
+            />
           </div>
-        ))}
+          <MultiSelect
+            label="Domain"
+            options={industries.map((i) => ({ value: i.id, label: i.name }))}
+            selected={domainFilter}
+            onChange={setDomainFilter}
+            className="h-8 text-xs"
+          />
+          <MultiSelect
+            label="Status"
+            options={[
+              { value: "Active", label: "Active" },
+              { value: "Inactive", label: "Inactive" },
+            ]}
+            selected={statusFilter}
+            onChange={setStatusFilter}
+            className="h-8 text-xs"
+          />
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs shadow-2xs" onClick={exportCsv} disabled={filteredProducts.length === 0}>
+            <Download className="size-3.5" /> Export CSV
+          </Button>
+          <span className="text-xs text-muted-foreground">{filteredProducts.length} of {products.length}</span>
+        </div>
+
+        {canCreate && (
+          <Button size="sm" className="shrink-0 gap-1.5 font-medium shadow-xs" onClick={startCreate}>
+            <Plus className="size-3.5" /> Add Product
+          </Button>
+        )}
+      </div>
+
+      {/* Product Cards Grid */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
+        {filteredProducts.map((p) => {
+          const industry = industries.find((i) => i.id === p.domain);
+          const Icon = iconForIndustry(industry?.icon) ?? Package;
+          const count = mappedCount(p.id);
+
+          return (
+            <div key={p.id} className="group relative flex flex-col justify-between rounded-xl border bg-card p-3.5 transition-all duration-150 hover:border-primary/40 hover:shadow-xs">
+              <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary shadow-2xs">
+                      <Icon className="size-4.5" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-sm font-semibold tracking-tight text-foreground">{p.name}</p>
+                        <Badge variant={p.status === "Active" ? "default" : "secondary"} className="h-5 shrink-0 px-1.5 text-[10px] font-medium">
+                          {p.status}
+                        </Badge>
+                      </div>
+                      <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
+                        {p.code} · {industry?.name ?? p.domain}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-0.5 opacity-80 transition-opacity group-hover:opacity-100">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="size-7"
+                      title={p.status === "Active" ? "Deactivate" : "Reactivate"}
+                      onClick={() => toggleStatus(p)}
+                    >
+                      {p.status === "Active" ? <PowerOff className="size-3.5 text-muted-foreground hover:text-foreground" /> : <Power className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
+                    </Button>
+                    <Button variant="ghost" size="icon-sm" className="size-7" onClick={() => startEdit(p)} title="Edit Product">
+                      <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="size-7 text-muted-foreground hover:text-destructive disabled:pointer-events-auto disabled:opacity-40"
+                      disabled={hasHistory(p.id)}
+                      title={hasHistory(p.id) ? "Has rule mappings or simulation history — deactivate instead" : "Delete permanently"}
+                      onClick={() => setDeleteConfirm(p)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                <p className="mt-2.5 line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+                  {p.description || "No description provided"}
+                </p>
+              </div>
+
+              <div className="mt-3.5 flex items-center justify-between border-t pt-2.5 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  {count} rule{count === 1 ? "" : "s"} mapped
+                </span>
+                <span className="text-[10px] font-mono text-muted-foreground/60">{p.publishStatus ?? "Draft"}</span>
+              </div>
+            </div>
+          );
+        })}
         {filteredProducts.length === 0 && (
-          <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-            {products.length === 0 ? "No products configured yet. Add one to get started." : "No products match this filter."}
-          </p>
+          <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
+            <Package className="size-8 text-muted-foreground/50 mb-2" />
+            <p className="text-sm font-medium text-foreground">No products found</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {products.length === 0 ? "No products configured yet. Add one to get started." : "No products match this filter."}
+            </p>
+          </div>
         )}
       </div>
 

@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Search, Download, Upload, AlertTriangle, Link2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Search, Download, Upload, AlertTriangle, Link2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { BusinessField, FieldDataType } from "@/lib/types";
 import { fieldUsage } from "@/lib/condition-tree";
@@ -68,7 +68,10 @@ export function FieldCatalogManager() {
   const [industryFilters, setIndustryFilters] = useState<string[]>([]);
   const [typeFilters, setTypeFilters] = useState<string[]>([]);
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
   const importRef = useRef<HTMLInputElement>(null);
+
+  const PAGE_SIZE = 6;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -80,6 +83,13 @@ export function FieldCatalogManager() {
       return true;
     });
   }, [fieldCatalog, search, industryFilters, typeFilters, statusFilters]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
+  const safePage = Math.min(page, totalPages);
+  const paginatedFields = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, safePage]);
 
   const startCreate = () => {
     setEditingKey(null);
@@ -201,7 +211,56 @@ export function FieldCatalogManager() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      {/* Top Controls Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+          <div className="relative min-w-48 flex-1 sm:max-w-64">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by label, key or business name..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 pl-8 text-xs bg-background"
+            />
+          </div>
+          <MultiSelect
+            label="Domain"
+            options={industries.map((i) => ({ value: i.id, label: i.name }))}
+            selected={industryFilters}
+            onChange={setIndustryFilters}
+            className="h-8 text-xs"
+          />
+          <MultiSelect
+            label="Type"
+            options={FIELD_TYPES.map((t) => ({ value: t, label: t }))}
+            selected={typeFilters}
+            onChange={setTypeFilters}
+            className="h-8 text-xs"
+          />
+          <MultiSelect
+            label="Status"
+            options={STATUSES.map((s) => ({ value: s, label: s }))}
+            selected={statusFilters}
+            onChange={setStatusFilters}
+            className="h-8 text-xs"
+          />
+          {(search !== "" || industryFilters.length > 0 || typeFilters.length > 0 || statusFilters.length > 0) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setSearch("");
+                setIndustryFilters([]);
+                setTypeFilters([]);
+                setStatusFilters([]);
+              }}
+            >
+              Clear all
+            </Button>
+          )}
+        </div>
+
         <div className="flex shrink-0 gap-1.5">
           <input
             ref={importRef}
@@ -214,89 +273,68 @@ export function FieldCatalogManager() {
               e.target.value = "";
             }}
           />
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => importRef.current?.click()}>
+          <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs text-xs" onClick={() => importRef.current?.click()}>
             <Upload className="size-3.5" /> Import
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCsv}>
+          <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs text-xs" onClick={exportCsv}>
             <Download className="size-3.5" /> Export
           </Button>
-          <Button size="sm" className="gap-1.5" onClick={startCreate}>
+          <Button size="sm" className="gap-1.5 shadow-xs font-medium text-xs" onClick={startCreate}>
             <Plus className="size-3.5" /> Add Field
           </Button>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by label, key or business name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-64 pl-8"
-          />
-        </div>
-        <MultiSelect
-          label="Domain"
-          options={industries.map((i) => ({ value: i.id, label: i.name }))}
-          selected={industryFilters}
-          onChange={setIndustryFilters}
-        />
-        <MultiSelect
-          label="Type"
-          options={FIELD_TYPES.map((t) => ({ value: t, label: t }))}
-          selected={typeFilters}
-          onChange={setTypeFilters}
-        />
-        <MultiSelect
-          label="Status"
-          options={STATUSES.map((s) => ({ value: s, label: s }))}
-          selected={statusFilters}
-          onChange={setStatusFilters}
-        />
-        {(search !== "" || industryFilters.length > 0 || typeFilters.length > 0 || statusFilters.length > 0) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 text-xs text-muted-foreground"
-            onClick={() => {
-              setSearch("");
-              setIndustryFilters([]);
-              setTypeFilters([]);
-              setStatusFilters([]);
-            }}
-          >
-            Clear all
-          </Button>
-        )}
-      </div>
-
-      <div className="max-h-125 overflow-auto rounded-xl border">
+      {/* Polished Table Container */}
+      <div className="rounded-xl border bg-card shadow-2xs">
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-card">
+          <TableHeader className="bg-card/95 border-b">
             <TableRow className="hover:bg-transparent">
-              <TableHead>Label</TableHead>
-              <TableHead>Key</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Used By</TableHead>
-              <TableHead className="w-20">Actions</TableHead>
+              <TableHead className="text-xs font-semibold text-foreground">Label & Key</TableHead>
+              <TableHead className="text-xs font-semibold text-foreground">Type & Entity</TableHead>
+              <TableHead className="text-xs font-semibold text-foreground">Status</TableHead>
+              <TableHead className="text-xs font-semibold text-foreground">Used By</TableHead>
+              <TableHead className="w-20 text-right text-xs font-semibold text-foreground">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((f) => {
+            {paginatedFields.map((f) => {
               const usage = fieldUsage(f.key, rules);
+              const entityName = entities.find((e) => e.id === f.entity)?.name;
+
               return (
-                <TableRow key={f.key}>
-                  <TableCell className="font-medium">
-                    {f.label}
-                    {f.computed && <Badge variant="secondary" className="ml-2 text-[10px]">computed</Badge>}
-                    {f.businessName && <p className="text-[10px] font-normal text-muted-foreground">{f.businessName}</p>}
+                <TableRow key={f.key} className="hover:bg-accent/40 transition-colors">
+                  <TableCell className="py-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-xs text-foreground tracking-tight">{f.label}</span>
+                      {f.computed && (
+                        <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-mono">
+                          computed
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{f.key}</p>
+                    {f.businessName && <p className="text-[10px] text-muted-foreground/70">{f.businessName}</p>}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{f.key}</TableCell>
-                  <TableCell className={`text-xs font-medium ${STATUS_TONE[f.status ?? "Active"]}`}>{f.status ?? "Active"}</TableCell>
-                  <TableCell>
+                  <TableCell className="py-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="outline" className="px-1.5 py-0.5 text-[10px] font-mono bg-muted/30">
+                        {f.type}
+                      </Badge>
+                      {entityName && (
+                        <span className="text-[10px] text-muted-foreground">· {entityName}</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-2.5">
+                    <span className={`inline-flex items-center gap-1 text-xs font-medium ${STATUS_TONE[f.status ?? "Active"]}`}>
+                      <span className="size-1.5 rounded-full bg-current" />
+                      {f.status ?? "Active"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-2.5">
                     {usage.count === 0 ? (
-                      <span className="text-xs text-muted-foreground">Unused</span>
+                      <span className="text-xs text-muted-foreground/60 italic">Unused</span>
                     ) : (
                       <Popover>
                         <PopoverTrigger
@@ -329,13 +367,19 @@ export function FieldCatalogManager() {
                       </Popover>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex gap-0.5">
-                      <Button variant="ghost" size="icon-sm" onClick={() => startEdit(f)}>
-                        <Pencil className="size-3.5" />
+                  <TableCell className="py-2.5 text-right">
+                    <div className="flex justify-end gap-0.5">
+                      <Button variant="ghost" size="icon-sm" className="size-7" onClick={() => startEdit(f)} title="Edit Field">
+                        <Pencil className="size-3 text-muted-foreground hover:text-foreground" />
                       </Button>
-                      <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive" onClick={() => setPendingDelete(f)}>
-                        <Trash2 className="size-3.5" />
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="size-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => setPendingDelete(f)}
+                        title="Delete Field"
+                      >
+                        <Trash2 className="size-3" />
                       </Button>
                     </div>
                   </TableCell>
@@ -351,6 +395,66 @@ export function FieldCatalogManager() {
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-3.5 py-2 text-xs text-muted-foreground bg-muted/20">
+          <div>
+            Showing <span className="font-semibold text-foreground">{filtered.length > 0 ? (safePage - 1) * PAGE_SIZE + 1 : 0}</span> to{" "}
+            <span className="font-semibold text-foreground">{Math.min(safePage * PAGE_SIZE, filtered.length)}</span> of{" "}
+            <span className="font-semibold text-foreground">{filtered.length}</span> fields
+            {filtered.length !== fieldCatalog.length && (
+              <span className="text-muted-foreground/70"> (filtered from {fieldCatalog.length} total)</span>
+            )}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="size-7"
+                disabled={safePage <= 1}
+                onClick={() => setPage(1)}
+                title="First Page"
+              >
+                <ChevronsLeft className="size-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="size-7"
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                title="Previous Page"
+              >
+                <ChevronLeft className="size-3.5" />
+              </Button>
+              <span className="px-2 text-xs font-medium text-foreground">
+                Page {safePage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="size-7"
+                disabled={safePage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                title="Next Page"
+              >
+                <ChevronRight className="size-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                className="size-7"
+                disabled={safePage >= totalPages}
+                onClick={() => setPage(totalPages)}
+                title="Last Page"
+              >
+                <ChevronsRight className="size-3.5" />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

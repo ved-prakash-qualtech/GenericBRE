@@ -330,6 +330,7 @@ function ProductSelector({
   selected: Product | null;
   onSelect: (p: Product) => void;
 }) {
+  const storeIndustries = useAppStore((s) => s.industries);
   const recentProductIds = useAppStore((s) => s.recentProductIds);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -350,55 +351,77 @@ function ProductSelector({
     const q = search.trim().toLowerCase();
     const filtered = q ? products.filter((p) => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)) : products;
     return (
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between px-0.5">
-          <p className="text-sm font-semibold text-muted-foreground">Select Product</p>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search products..."
-                className="h-7 w-44 pl-8 text-sm"
-              />
-            </div>
-            <Badge variant="secondary" className="h-6 text-sm">{filtered.length} of {products.length}</Badge>
+            <p className="text-sm font-bold tracking-tight text-foreground">Select Product</p>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {filtered.length} of {products.length}
+            </span>
+          </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search products..."
+              className="h-7 w-48 pl-8 text-xs"
+            />
           </div>
         </div>
         {filtered.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center">
-            <Search className="mx-auto mb-2 size-6 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">No products match this search.</p>
+          <div className="rounded-xl border border-dashed p-6 text-center">
+            <Search className="mx-auto mb-1.5 size-5 text-muted-foreground/40" />
+            <p className="text-xs text-muted-foreground">No products match this search.</p>
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2.5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-4">
             {filtered.map((p) => {
               const Icon = iconFor(p.domain);
               const count = mappedCount(p.id);
               const isSelected = selected?.id === p.id;
+              const domainName = storeIndustries.find((i) => i.id === p.domain)?.name ?? p.domain;
+
               return (
                 <button
                   key={p.id}
+                  type="button"
                   onClick={() => onSelect(p)}
                   className={cn(
-                    "flex shrink-0 items-center gap-2.5 rounded-lg border px-3.5 py-2.5 text-left transition-colors",
+                    "group relative flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-all duration-150",
                     isSelected
-                      ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20"
+                      ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/30 dark:bg-primary/15"
                       : "border-border bg-card hover:border-primary/40 hover:bg-accent/40"
                   )}
                 >
                   <span
                     className={cn(
-                      "flex size-8 shrink-0 items-center justify-center rounded-md",
-                      isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                      "flex size-8 shrink-0 items-center justify-center rounded-lg shadow-2xs transition-colors",
+                      isSelected
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted/70 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                     )}
                   >
                     <Icon className="size-4" />
                   </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold whitespace-nowrap">{p.name}</p>
-                    <p className="text-sm text-muted-foreground">{count} rule{count === 1 ? "" : "s"}</p>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <p className={cn("truncate text-xs font-semibold tracking-tight", isSelected ? "text-primary" : "text-foreground")}>
+                        {p.name}
+                      </p>
+                      {isSelected && (
+                        <span className="flex size-4 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                          <Check className="size-2.5" strokeWidth={3} />
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span className="truncate">{domainName}</span>
+                      <span className={cn("font-medium shrink-0 ml-1", isSelected ? "text-primary/90" : "text-muted-foreground/80")}>
+                        {count} rule{count === 1 ? "" : "s"}
+                      </span>
+                    </div>
                   </div>
                 </button>
               );
