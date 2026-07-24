@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { iconForRole } from "@/lib/role-icons";
 import { cn } from "@/lib/utils";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 const LANDING_ROUTES: { value: string; label: string }[] = [
   { value: "/dashboard", label: "Dashboard" },
@@ -114,84 +115,98 @@ export function DashboardManagementManager() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {filteredRoles.map((role, idx) => {
-          const config = configFor(role.id);
-          const Icon = iconForRole(role.icon);
-          const accent = ROLE_ACCENT_PALETTE[idx % ROLE_ACCENT_PALETTE.length];
+      {filteredRoles.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
+          <LayoutDashboard className="size-8 text-muted-foreground/50 mb-2" />
+          <p className="text-sm font-medium text-foreground">No role configurations found</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">No roles match your search filter.</p>
+        </div>
+      ) : (
+        <Accordion className="gap-3">
+          {filteredRoles.map((role, idx) => {
+            const config = configFor(role.id);
+            const Icon = iconForRole(role.icon);
+            const accent = ROLE_ACCENT_PALETTE[idx % ROLE_ACCENT_PALETTE.length];
 
-          const setLandingRoute = (route: string) => updateConfig(role.id, { landingRoute: route });
-          const reorder = (widgets: DashboardConfig["widgets"]) => updateConfig(role.id, { widgets });
-          const toggleVisible = (id: string) =>
-            updateConfig(role.id, {
-              widgets: config.widgets.some((w) => w.id === id)
-                ? config.widgets.map((w) => (w.id === id ? { ...w, visible: !w.visible } : w))
-                : [...config.widgets, { id, visible: true, order: config.widgets.length }],
-            });
-          const kpis = config.kpis?.length ? config.kpis : DEFAULT_KPI_IDS;
-          const toggleKpi = (id: string) =>
-            updateConfig(role.id, { kpis: kpis.includes(id) ? kpis.filter((k) => k !== id) : [...kpis, id] });
-          const actions = config.quickActions?.length ? config.quickActions : DEFAULT_ACTION_IDS;
-          const toggleAction = (id: string) =>
-            updateConfig(role.id, { quickActions: actions.includes(id) ? actions.filter((a) => a !== id) : [...actions, id] });
+            const setLandingRoute = (route: string) => updateConfig(role.id, { landingRoute: route });
+            const reorder = (widgets: DashboardConfig["widgets"]) => updateConfig(role.id, { widgets });
+            const toggleVisible = (id: string) =>
+              updateConfig(role.id, {
+                widgets: config.widgets.some((w) => w.id === id)
+                  ? config.widgets.map((w) => (w.id === id ? { ...w, visible: !w.visible } : w))
+                  : [...config.widgets, { id, visible: true, order: config.widgets.length }],
+              });
+            const kpis = config.kpis?.length ? config.kpis : DEFAULT_KPI_IDS;
+            const toggleKpi = (id: string) =>
+              updateConfig(role.id, { kpis: kpis.includes(id) ? kpis.filter((k) => k !== id) : [...kpis, id] });
+            const actions = config.quickActions?.length ? config.quickActions : DEFAULT_ACTION_IDS;
+            const toggleAction = (id: string) =>
+              updateConfig(role.id, { quickActions: actions.includes(id) ? actions.filter((a) => a !== id) : [...actions, id] });
 
-          return (
-            <div
-              key={role.id}
-              className={cn(
-                "space-y-4 rounded-xl border bg-card p-4 shadow-2xs transition-all duration-150 hover:shadow-xs",
-                accent.border
-              )}
-            >
-              <div className="flex items-center gap-3 border-b pb-3">
-                <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg shadow-2xs", accent.bg, accent.text)}>
-                  <Icon className="size-4.5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold tracking-tight text-foreground">{role.name}</p>
-                  <p className="truncate text-sm font-medium text-muted-foreground">{role.personaName}</p>
-                </div>
-              </div>
+            const landingLabel = LANDING_ROUTES.find((r) => r.value === config.landingRoute)?.label ?? config.landingRoute;
+            const visibleWidgetCount = config.widgets.filter((w) => w.visible).length;
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-foreground">Landing Route</label>
-                <Select value={config.landingRoute} onValueChange={(v) => setLandingRoute((v as string) ?? "/dashboard")}>
-                  <SelectTrigger className="w-full text-sm bg-background"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LANDING_ROUTES.map((r) => (
-                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            return (
+              <AccordionItem
+                key={role.id}
+                value={role.id}
+                className={cn("rounded-xl border bg-card px-4 shadow-2xs transition-colors", accent.border)}
+              >
+                <AccordionTrigger className="py-3.5 hover:no-underline">
+                  <div className="flex min-w-0 flex-1 items-center gap-3 pr-2">
+                    <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg shadow-2xs", accent.bg, accent.text)}>
+                      <Icon className="size-4.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold tracking-tight text-foreground">{role.name}</p>
+                      <p className="truncate text-sm font-medium text-muted-foreground">{role.personaName}</p>
+                    </div>
+                    <div className="hidden shrink-0 items-center gap-1.5 text-sm text-muted-foreground sm:flex">
+                      <span>{landingLabel}</span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span>{kpis.length} KPI{kpis.length === 1 ? "" : "s"}</span>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span>{visibleWidgetCount} widget{visibleWidgetCount === 1 ? "" : "s"}</span>
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-semibold text-foreground">Landing Route</label>
+                      <Select value={config.landingRoute} onValueChange={(v) => setLandingRoute((v as string) ?? "/dashboard")}>
+                        <SelectTrigger className="w-full text-sm bg-background"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {LANDING_ROUTES.map((r) => (
+                            <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-foreground">KPI Cards</label>
-                <CheckboxPicker allIds={ALL_KPI_IDS} labels={KPI_LABELS} selected={kpis} onToggle={toggleKpi} />
-              </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-semibold text-foreground">KPI Cards</label>
+                      <CheckboxPicker allIds={ALL_KPI_IDS} labels={KPI_LABELS} selected={kpis} onToggle={toggleKpi} />
+                    </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-foreground">Quick Actions</label>
-                <CheckboxPicker allIds={ALL_ACTION_IDS} labels={ACTION_LABELS} selected={actions} onToggle={toggleAction} />
-              </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-semibold text-foreground">Quick Actions</label>
+                      <CheckboxPicker allIds={ALL_ACTION_IDS} labels={ACTION_LABELS} selected={actions} onToggle={toggleAction} />
+                    </div>
 
-              <div className="space-y-1.5 border-t pt-3">
-                <label className="text-sm font-semibold text-foreground">Default Widgets</label>
-                <div className="max-h-72 overflow-y-auto pr-1">
-                  <WidgetReorderList items={config.widgets} labels={WIDGET_LABELS} onReorder={reorder} onToggleVisible={toggleVisible} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-        {filteredRoles.length === 0 && (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
-            <LayoutDashboard className="size-8 text-muted-foreground/50 mb-2" />
-            <p className="text-sm font-medium text-foreground">No role configurations found</p>
-            <p className="mt-0.5 text-sm text-muted-foreground">No roles match your search filter.</p>
-          </div>
-        )}
-      </div>
+                    <div className="space-y-1.5 border-t pt-3">
+                      <label className="text-sm font-semibold text-foreground">Default Widgets</label>
+                      <div className="max-h-72 overflow-y-auto pr-1">
+                        <WidgetReorderList items={config.widgets} labels={WIDGET_LABELS} onReorder={reorder} onToggleVisible={toggleVisible} />
+                      </div>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
+      )}
     </div>
   );
 }
