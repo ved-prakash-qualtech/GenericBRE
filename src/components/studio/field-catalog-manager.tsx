@@ -66,7 +66,6 @@ export function FieldCatalogManager() {
 
   const [search, setSearch] = useState("");
   const [industryFilters, setIndustryFilters] = useState<string[]>([]);
-  const [entityFilters, setEntityFilters] = useState<string[]>([]);
   const [typeFilters, setTypeFilters] = useState<string[]>([]);
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const importRef = useRef<HTMLInputElement>(null);
@@ -76,12 +75,11 @@ export function FieldCatalogManager() {
     return fieldCatalog.filter((f) => {
       if (q && !`${f.label} ${f.key} ${f.businessName ?? ""}`.toLowerCase().includes(q)) return false;
       if (industryFilters.length && !industryFilters.includes(f.domain)) return false;
-      if (entityFilters.length && !entityFilters.includes(f.entity ?? "")) return false;
       if (typeFilters.length && !typeFilters.includes(f.type)) return false;
       if (statusFilters.length && !statusFilters.includes(f.status ?? "Active")) return false;
       return true;
     });
-  }, [fieldCatalog, search, industryFilters, entityFilters, typeFilters, statusFilters]);
+  }, [fieldCatalog, search, industryFilters, typeFilters, statusFilters]);
 
   const startCreate = () => {
     setEditingKey(null);
@@ -203,10 +201,7 @@ export function FieldCatalogManager() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">
-          The business field vocabulary that drives every condition dropdown in Rule Builder and every dynamic input in the Simulator.
-        </p>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <div className="flex shrink-0 gap-1.5">
           <input
             ref={importRef}
@@ -248,12 +243,6 @@ export function FieldCatalogManager() {
           onChange={setIndustryFilters}
         />
         <MultiSelect
-          label="Entity"
-          options={entities.map((e) => ({ value: e.id, label: e.name }))}
-          selected={entityFilters}
-          onChange={setEntityFilters}
-        />
-        <MultiSelect
           label="Type"
           options={FIELD_TYPES.map((t) => ({ value: t, label: t }))}
           selected={typeFilters}
@@ -265,7 +254,7 @@ export function FieldCatalogManager() {
           selected={statusFilters}
           onChange={setStatusFilters}
         />
-        {(search !== "" || industryFilters.length > 0 || entityFilters.length > 0 || typeFilters.length > 0 || statusFilters.length > 0) && (
+        {(search !== "" || industryFilters.length > 0 || typeFilters.length > 0 || statusFilters.length > 0) && (
           <Button
             variant="ghost"
             size="sm"
@@ -273,7 +262,6 @@ export function FieldCatalogManager() {
             onClick={() => {
               setSearch("");
               setIndustryFilters([]);
-              setEntityFilters([]);
               setTypeFilters([]);
               setStatusFilters([]);
             }}
@@ -289,9 +277,6 @@ export function FieldCatalogManager() {
             <TableRow className="hover:bg-transparent">
               <TableHead>Label</TableHead>
               <TableHead>Key</TableHead>
-              <TableHead>Domain</TableHead>
-              <TableHead>Entity</TableHead>
-              <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Used By</TableHead>
               <TableHead className="w-20">Actions</TableHead>
@@ -308,9 +293,6 @@ export function FieldCatalogManager() {
                     {f.businessName && <p className="text-[10px] font-normal text-muted-foreground">{f.businessName}</p>}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{f.key}</TableCell>
-                  <TableCell className="text-xs">{f.domain === "Common" ? "Common (all)" : industries.find((i) => i.id === f.domain)?.name ?? f.domain}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{entities.find((e) => e.id === f.entity)?.name ?? "—"}</TableCell>
-                  <TableCell className="text-xs capitalize">{f.type}</TableCell>
                   <TableCell className={`text-xs font-medium ${STATUS_TONE[f.status ?? "Active"]}`}>{f.status ?? "Active"}</TableCell>
                   <TableCell>
                     {usage.count === 0 ? (
@@ -362,7 +344,7 @@ export function FieldCatalogManager() {
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-xs text-muted-foreground">
+                <TableCell colSpan={5} className="py-8 text-center text-xs text-muted-foreground">
                   No fields match the current filters.
                 </TableCell>
               </TableRow>
