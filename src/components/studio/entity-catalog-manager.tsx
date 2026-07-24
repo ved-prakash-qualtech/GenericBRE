@@ -87,10 +87,7 @@ export function EntityCatalogManager() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Business entities (Applicant, Loan Account, Collateral...) that Field Catalog entries and rules attach to.
-        </p>
+      <div className="flex items-center justify-end">
         <Button size="sm" className="shrink-0 gap-1.5" onClick={startCreate}>
           <Plus className="size-3.5" /> Add Entity
         </Button>
@@ -98,16 +95,19 @@ export function EntityCatalogManager() {
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {entities.map((ent) => (
-          <div key={ent.id} className="flex items-start gap-3 rounded-xl border bg-card p-3.5">
+          <div
+            key={ent.id}
+            className="flex min-h-32 items-start gap-3 rounded-xl border bg-card p-3.5 transition-colors hover:border-primary/30 hover:bg-accent/20"
+          >
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Boxes className="size-4.5" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{ent.name}</p>
-              <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{ent.description || "No description"}</p>
-              <div className="mt-1.5 flex items-center gap-1.5">
-                {ent.industry && <Badge variant="secondary" className="text-[10px]">{industries.find((i) => i.id === ent.industry)?.name ?? ent.industry}</Badge>}
-                <span className="text-[10px] font-medium text-muted-foreground/70">
+              <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{ent.description || "No description"}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {ent.industry && <Badge variant="secondary" className="text-sm">{industries.find((i) => i.id === ent.industry)?.name ?? ent.industry}</Badge>}
+                <span className="text-sm font-medium text-muted-foreground/70">
                   {fieldCount(ent.id)} field{fieldCount(ent.id) === 1 ? "" : "s"}
                 </span>
               </div>
@@ -123,9 +123,10 @@ export function EntityCatalogManager() {
           </div>
         ))}
         {entities.length === 0 && (
-          <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
-            No entities configured yet. Add one to get started.
-          </p>
+          <div className="col-span-full flex flex-col items-center gap-2 rounded-xl border border-dashed p-8 text-center">
+            <Boxes className="size-6 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">No entities configured yet. Add one to get started.</p>
+          </div>
         )}
       </div>
 
