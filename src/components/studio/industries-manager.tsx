@@ -95,14 +95,14 @@ export function IndustriesManager() {
           const Icon = iconForIndustry(ind.icon);
           const ruleCount = rules.filter((r) => r.domain === ind.id).length;
           return (
-            <div key={ind.id} className="flex items-start gap-3 rounded-xl border bg-card p-3.5">
+            <div key={ind.id} className="flex items-start gap-3 rounded-xl border bg-card p-3.5 transition-colors hover:border-primary/30 hover:bg-accent/20">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Icon className="size-4.5" />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{ind.name}</p>
-                <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{ind.description || "No description"}</p>
-                <p className="mt-1 text-[10px] font-medium text-muted-foreground/70">{ruleCount} rule{ruleCount === 1 ? "" : "s"}</p>
+                <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{ind.description || "No description"}</p>
+                <p className="mt-1 text-sm font-medium text-muted-foreground/70">{ruleCount} rule{ruleCount === 1 ? "" : "s"}</p>
               </div>
               <div className="flex shrink-0 flex-col gap-1">
                 <Button variant="ghost" size="icon-sm" onClick={() => startEdit(ind)}>
@@ -116,7 +116,7 @@ export function IndustriesManager() {
           );
         })}
         {industries.length === 0 && (
-          <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-xs text-muted-foreground">
+          <p className="col-span-full rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
             No domains configured yet. Add one to get started.
           </p>
         )}

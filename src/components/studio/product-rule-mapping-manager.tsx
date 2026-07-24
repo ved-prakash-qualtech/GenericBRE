@@ -103,7 +103,7 @@ export function MappedRulesReorder({
             >
               <GripVertical className="size-4" />
             </span>
-            <span className="flex size-5.5 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-[10px] font-bold text-primary">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-sm font-bold text-primary">
               {i + 1}
             </span>
             <span className="w-16 shrink-0 font-mono text-sm text-muted-foreground">{r.id}</span>
@@ -355,7 +355,7 @@ function ProductSelector({
         <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
           <div className="flex items-center gap-2">
             <p className="text-sm font-bold tracking-tight text-foreground">Select Product</p>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-sm font-medium text-muted-foreground">
               {filtered.length} of {products.length}
             </span>
           </div>
@@ -365,14 +365,14 @@ function ProductSelector({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search products..."
-              className="h-7 w-48 pl-8 text-xs"
+              className="h-8 w-48 pl-8 text-sm"
             />
           </div>
         </div>
         {filtered.length === 0 ? (
           <div className="rounded-xl border border-dashed p-6 text-center">
             <Search className="mx-auto mb-1.5 size-5 text-muted-foreground/40" />
-            <p className="text-xs text-muted-foreground">No products match this search.</p>
+            <p className="text-sm text-muted-foreground">No products match this search.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-4">
@@ -407,7 +407,7 @@ function ProductSelector({
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">
-                      <p className={cn("truncate text-xs font-semibold tracking-tight", isSelected ? "text-primary" : "text-foreground")}>
+                      <p className={cn("truncate text-sm font-semibold tracking-tight", isSelected ? "text-primary" : "text-foreground")}>
                         {p.name}
                       </p>
                       {isSelected && (
@@ -416,7 +416,7 @@ function ProductSelector({
                         </span>
                       )}
                     </div>
-                    <div className="mt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                    <div className="mt-0.5 flex items-center justify-between text-sm text-muted-foreground">
                       <span className="truncate">{domainName}</span>
                       <span className={cn("font-medium shrink-0 ml-1", isSelected ? "text-primary/90" : "text-muted-foreground/80")}>
                         {count} rule{count === 1 ? "" : "s"}

@@ -38,7 +38,7 @@ function CheckboxPicker({
   return (
     <div className="grid grid-cols-2 gap-1.5">
       {allIds.map((id) => (
-        <label key={id} className="flex items-center gap-2 rounded-md px-1.5 py-1 text-xs hover:bg-muted">
+        <label key={id} className="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted">
           <Checkbox checked={selected.includes(id)} onCheckedChange={() => onToggle(id)} />
           {labels[id] ?? id}
         </label>
@@ -97,12 +97,12 @@ export function DashboardManagementManager() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{role.name}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">{role.personaName}</p>
+                  <p className="truncate text-sm text-muted-foreground">{role.personaName}</p>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-muted-foreground">Landing Route</label>
+                <label className="text-sm font-medium text-muted-foreground">Landing Route</label>
                 <Select value={config.landingRoute} onValueChange={(v) => setLandingRoute((v as string) ?? "/dashboard")}>
                   <SelectTrigger size="sm" className="h-8 w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -114,17 +114,17 @@ export function DashboardManagementManager() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-muted-foreground">KPI Cards</label>
+                <label className="text-sm font-medium text-muted-foreground">KPI Cards</label>
                 <CheckboxPicker allIds={ALL_KPI_IDS} labels={KPI_LABELS} selected={kpis} onToggle={toggleKpi} />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-muted-foreground">Quick Actions</label>
+                <label className="text-sm font-medium text-muted-foreground">Quick Actions</label>
                 <CheckboxPicker allIds={ALL_ACTION_IDS} labels={ACTION_LABELS} selected={actions} onToggle={toggleAction} />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-muted-foreground">Default Widgets</label>
+                <label className="text-sm font-medium text-muted-foreground">Default Widgets</label>
                 <div className="max-h-72 overflow-y-auto pr-1">
                   <WidgetReorderList items={config.widgets} labels={WIDGET_LABELS} onReorder={reorder} onToggleVisible={toggleVisible} />
                 </div>
