@@ -1175,9 +1175,34 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 39,
+      version: 40,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v39 -> v40 wired the Field Catalog to the Entity Catalog: every seed
+        // field now carries an `entity` reference (previously all undefined,
+        // which made Entity Catalog's field counts and Rule Builder's
+        // attribute-panel grouping look empty in a demo), and added two
+        // entities (Credit Card Account, Investment Account) so Credit
+        // Cards/Wealth fields have somewhere to attach.
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.entities) {
+            const existingEntityIds = new Set(s.entities.map((e) => e.id));
+            for (const entity of DEFAULT_ENTITIES) {
+              if (!existingEntityIds.has(entity.id)) s.entities.push(entity);
+            }
+          }
+          if (s?.fieldCatalog) {
+            const defaultsByKey = new Map(DEFAULT_FIELD_CATALOG.map((f) => [f.key, f]));
+            for (const field of s.fieldCatalog) {
+              if (!field.entity) {
+                const seed = defaultsByKey.get(field.key);
+                if (seed?.entity) field.entity = seed.entity;
+              }
+            }
+          }
+        }
+
         // v38 -> v39 added RL-514 ("Personal Loan Liability-Adjusted Final
         // Amount") — the third hop in the Personal Loan chain (RL-501 →
         // RL-502 → RL-514), deducting monthly liabilities from

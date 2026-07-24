@@ -121,7 +121,7 @@ const ROADMAP = [
 
 const SECTION_DESCRIPTIONS: Record<SectionId, string> = {
   fields: "The business field vocabulary that drives every condition dropdown in Rule Builder and every dynamic input in the Simulator.",
-  entities: "Business entities (Applicant, Loan Account, Collateral...) that Field Catalog entries attach to.",
+  entities: "Business entities (Applicant, Loan Account, Collateral...) that Field Catalog entries attach to — this is what groups fields into sections in Rule Builder's Available Attributes panel.",
   "json-mapping": "Map incoming/outgoing API JSON attributes to internal BRE fields — the foundation for integrating a real source system.",
   categories: "Rule categories available in the Rule Builder and Repository filters.",
   "rule-templates": "Reusable starting shapes for Rule Builder's condition and action editors — pre-fill a rule, then edit freely.",

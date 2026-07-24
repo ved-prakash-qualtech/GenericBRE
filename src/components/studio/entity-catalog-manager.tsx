@@ -83,7 +83,8 @@ export function EntityCatalogManager() {
     setPendingDelete(null);
   };
 
-  const fieldCount = (entityId: string) => fieldCatalog.filter((f) => f.entity === entityId).length;
+  const fieldsForEntity = (entityId: string) => fieldCatalog.filter((f) => f.entity === entityId);
+  const fieldCount = (entityId: string) => fieldsForEntity(entityId).length;
 
   return (
     <div className="space-y-3">
@@ -111,6 +112,22 @@ export function EntityCatalogManager() {
                   {fieldCount(ent.id)} field{fieldCount(ent.id) === 1 ? "" : "s"}
                 </span>
               </div>
+              {fieldCount(ent.id) > 0 ? (
+                <div className="mt-2 flex flex-wrap items-center gap-1 border-t pt-2">
+                  {fieldsForEntity(ent.id).slice(0, 3).map((f) => (
+                    <Badge key={f.key} variant="outline" className="text-sm font-normal text-muted-foreground">
+                      {f.label}
+                    </Badge>
+                  ))}
+                  {fieldCount(ent.id) > 3 && (
+                    <span className="text-sm text-muted-foreground/70">+{fieldCount(ent.id) - 3} more</span>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 border-t pt-2 text-sm text-muted-foreground/60">
+                  No fields tagged yet — assign this entity in Field Catalog.
+                </p>
+              )}
             </div>
             <div className="flex shrink-0 flex-col gap-1">
               <Button variant="ghost" size="icon-sm" onClick={() => startEdit(ent)}>
