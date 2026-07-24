@@ -582,19 +582,17 @@ export function AppearanceStudio({ onClose, onOpenChange }: AppearanceStudioProp
                   >
                     {t("appearance.previewDashboardTab")}
                   </button>
-                  {activeTab === "branding" && (
-                    <button
-                      onClick={() => setPreviewTab("signin")}
-                      className={cn(
-                        "px-3 py-2 text-sm font-medium border-b-2 transition-colors",
-                        previewTab === "signin"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {t("appearance.previewSignInTab")}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setPreviewTab("signin")}
+                    className={cn(
+                      "px-3 py-2 text-sm font-medium border-b-2 transition-colors",
+                      previewTab === "signin"
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {t("appearance.previewSignInTab")}
+                  </button>
                 </div>
 
                 {/* Dashboard Preview */}
@@ -625,7 +623,7 @@ export function AppearanceStudio({ onClose, onOpenChange }: AppearanceStudioProp
                       />
                     </>
                   );
-                  return (previewTab === "dashboard" || activeTab !== "branding") && (
+                  return previewTab === "dashboard" && (
                   <div className="relative isolate flex overflow-hidden rounded-2xl border shadow-xl">
                   {draft.background.target === "app" && wallpaperLayer}
                   <div
@@ -776,8 +774,8 @@ export function AppearanceStudio({ onClose, onOpenChange }: AppearanceStudioProp
                   );
                 })()}
 
-                {/* Sign-in Page Preview - Split Layout (Branding Tab Only) */}
-                {previewTab === "signin" && activeTab === "branding" && (
+                {/* Sign-in Page Preview - Split Layout */}
+                {previewTab === "signin" && (
                   <div className="flex overflow-hidden rounded-2xl border shadow-xl h-96">
                     {/* Left Side - Dark Brand with Logo */}
                     <div className="flex-1 p-4 flex flex-col justify-start items-start relative overflow-hidden" style={{ background: "#0f172a", color: "#e2e8f0" }}>
