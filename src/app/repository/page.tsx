@@ -284,70 +284,83 @@ function RepositoryContent() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-card/40 px-5 py-3.5 sm:px-6">
-        <div className="mr-auto">
-          <h1 className="text-lg font-semibold tracking-tight">Rule Repository</h1>
-          <p className="text-sm text-muted-foreground">Searchable catalogue of every configured business rule</p>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-card/60 px-5 py-3.5 backdrop-blur-sm sm:px-6">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Rule Repository</h1>
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+              {rules.length} Rules
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">Searchable catalogue of every configured business rule</p>
         </div>
-        <input
-          ref={importRef}
-          type="file"
-          accept=".csv,.json"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleImportFile(file);
-            e.target.value = "";
-          }}
-        />
-        {canCreate && (
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => importRef.current?.click()}>
-            <Upload className="size-3.5" /> Import Rules
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={importRef}
+            type="file"
+            accept=".csv,.json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImportFile(file);
+              e.target.value = "";
+            }}
+          />
+          {canCreate && (
+            <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs" onClick={() => importRef.current?.click()}>
+              <Upload className="size-3.5" /> Import Rules
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 shadow-2xs"
+            onClick={() =>
+              downloadCsv(
+                "rule_repository",
+                filtered.map((r) => ({
+                  RuleID: r.id,
+                  Name: r.name,
+                  Domain: r.domain,
+                  Category: r.category,
+                  Priority: r.priority,
+                  Status: r.status,
+                  // Environment removed — FUTURE: restore when environment promotion is reintroduced
+                  // Owner column removed from CSV — FUTURE: restore when Owner is reintroduced
+                  UpdatedAt: r.updatedAt,
+                }))
+              )
+            }
+          >
+            <Download className="size-3.5" /> Export CSV
           </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5"
-          onClick={() =>
-            downloadCsv(
-              "rule_repository",
-              filtered.map((r) => ({
-                RuleID: r.id,
-                Name: r.name,
-                Domain: r.domain,
-                Category: r.category,
-                Priority: r.priority,
-                Status: r.status,
-                // Environment removed — FUTURE: restore when environment promotion is reintroduced
-                // Owner column removed from CSV — FUTURE: restore when Owner is reintroduced
-                UpdatedAt: r.updatedAt,
-              }))
-            )
-          }
-        >
-          <Download className="size-3.5" /> Export CSV
-        </Button>
-        {canCreate && (
-          <Button size="sm" className="gap-1.5" onClick={() => router.push("/rule-builder")}>
-            <Plus className="size-3.5" /> Create Rule
-          </Button>
-        )}
+          {canCreate && (
+            <Button size="sm" className="gap-1.5 shadow-xs font-medium" onClick={() => router.push("/rule-builder")}>
+              <Plus className="size-3.5" /> Create Rule
+            </Button>
+          )}
+        </div>
       </div>
 
       {conflicts.length > 0 && (
-        <div className="flex shrink-0 flex-col gap-1 border-b bg-destructive/5 px-5 py-2.5 sm:px-6">
-          {conflicts.slice(0, 3).map((c, i) => (
-            <div key={i} className="flex items-start gap-2 text-sm text-destructive">
-              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-              <span>
-                <span className="font-semibold">Possible conflict:</span> {c.ruleAId} vs {c.ruleBId} — {c.reason}
+        <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted/20 px-5 py-1.5 text-xs text-muted-foreground sm:px-6">
+          <div className="flex items-center gap-1.5 font-medium text-destructive">
+            <AlertTriangle className="size-3.5 shrink-0" />
+            <span>{conflicts.length} Conflict{conflicts.length > 1 ? "s" : ""}:</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {conflicts.slice(0, 2).map((c, i) => (
+              <span key={i} className="inline-flex items-center gap-1">
+                <span className="font-mono font-medium text-foreground">{c.ruleAId}</span>
+                <span className="text-muted-foreground/60">vs</span>
+                <span className="font-mono font-medium text-foreground">{c.ruleBId}</span>
+                <span className="text-muted-foreground/80">— {c.reason}</span>
               </span>
-            </div>
-          ))}
-          {conflicts.length > 3 && (
-            <p className="pl-5.5 text-sm text-destructive/70">+{conflicts.length - 3} more possible conflict(s).</p>
-          )}
+            ))}
+            {conflicts.length > 2 && (
+              <span className="text-muted-foreground/70">+{conflicts.length - 2} more</span>
+            )}
+          </div>
         </div>
       )}
 

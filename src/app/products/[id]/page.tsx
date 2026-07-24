@@ -163,7 +163,7 @@ export default function ProductWorkspacePage() {
               <Badge variant={product.status === "Active" ? "default" : "secondary"} className="h-6 shrink-0 text-sm">
                 {product.status}
               </Badge>
-              <Badge variant={published ? "default" : "secondary"} className="h-6 shrink-0 text-sm">
+              <Badge variant={published ? "default" : "secondary"} className="h-6 shrink-0 text-xs">
                 {product.publishStatus ?? "Draft"}
               </Badge>
             </div>

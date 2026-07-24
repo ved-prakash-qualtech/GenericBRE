@@ -174,7 +174,7 @@ export function ProductHubGrid({
                   <Icon className={compact ? "size-3.5" : "size-4"} />
                 </span>
                 {/* One status badge — Inactive takes precedence since it overrides publish state at a glance. */}
-                <Badge variant={p.status === "Inactive" ? "outline" : published ? "default" : "secondary"} className="h-6 shrink-0 text-sm">
+                <Badge variant={p.status === "Inactive" ? "outline" : published ? "default" : "secondary"} className="h-6 shrink-0 text-xs">
                   {p.status === "Inactive" ? "Inactive" : (p.publishStatus ?? "Draft")}
                 </Badge>
                 {!compact && (
@@ -200,7 +200,7 @@ export function ProductHubGrid({
                   <span className="font-semibold text-foreground">{mappedCount}</span> rule{mappedCount === 1 ? "" : "s"}
                   {compact && <span className="text-muted-foreground/70"> · {lastUpdatedLabel}</span>}
                 </span>
-                {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-1.5 py-0 text-sm" />}
+                {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-2 py-0.5 text-[10px]" />}
               </div>
 
               {!compact && statusDots.length > 0 && (

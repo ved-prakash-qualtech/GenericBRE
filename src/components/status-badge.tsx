@@ -50,7 +50,7 @@ export function OutcomeBadge({ outcome, className }: { outcome: DecisionOutcome;
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold whitespace-nowrap",
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap",
         OUTCOME_STYLES[outcome],
         className
       )}
