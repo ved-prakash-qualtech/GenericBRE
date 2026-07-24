@@ -127,7 +127,7 @@ const SECTION_DESCRIPTIONS: Record<SectionId, string> = {
   "rule-templates": "Reusable starting shapes for Rule Builder's condition and action editors — pre-fill a rule, then edit freely.",
   products: "Configurable product/scheme master (Home Loan, Auto Loan, ...) — a client can offer many. Rules stay standalone; see Product-Rule Mapping for which rules apply to each.",
   "product-rule-mapping": "Map each product to the rules that should execute for it — many-to-many. This is what /api/decision uses to identify and run only the rules mapped to the request's product.",
-  "dashboard-management": "Per-role landing page and default dashboard widgets — BRD §5.3's Persona-to-Module Mapping, made configurable.",
+  "dashboard-management": "Controls where each role lands after sign-in, and which KPI cards, quick actions and widgets show on their Dashboard by default — configurable per role, no code required.",
   industries: "Every business domain/vertical the platform supports.",
   roles: "Reusable capability templates several users can share — who can do what, enforced both in the UI and at the data layer.",
   users: "Every named person on the roster — their Role, System Permissions, and which Rule Categories they're authorized to approve under Maker-Checker.",
