@@ -96,7 +96,7 @@ export function ProductHubGrid({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or code..."
-                className="h-8 pl-8 text-xs bg-background"
+                className="h-9 pl-8 text-sm bg-background"
               />
             </div>
             <MultiSelect
@@ -104,7 +104,7 @@ export function ProductHubGrid({
               options={industries.map((i) => ({ value: i.id, label: i.name }))}
               selected={domainFilter}
               onChange={setDomainFilter}
-              className="h-8 text-xs"
+              className="h-9 text-sm"
             />
             <MultiSelect
               label="Status"
@@ -114,13 +114,13 @@ export function ProductHubGrid({
               ]}
               selected={statusFilter}
               onChange={setStatusFilter}
-              className="h-8 text-xs"
+              className="h-9 text-sm"
             />
             {(search !== "" || domainFilter.length > 0 || (statusFilter.length > 0 && (statusFilter.length !== 1 || statusFilter[0] !== "Active"))) && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                className="h-9 text-sm text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   setSearch("");
                   setDomainFilter([]);
@@ -133,8 +133,8 @@ export function ProductHubGrid({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-muted-foreground font-medium">{filtered.length} of {base.length} Products</span>
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs shadow-2xs" onClick={exportCsv} disabled={filtered.length === 0}>
+            <span className="text-sm text-muted-foreground font-medium">{filtered.length} of {base.length} Products</span>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 text-sm shadow-2xs" onClick={exportCsv} disabled={filtered.length === 0}>
               <Download className="size-3.5" /> Export CSV
             </Button>
           </div>
@@ -144,7 +144,7 @@ export function ProductHubGrid({
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
           <Package className="size-8 text-muted-foreground/50 mb-2" />
           <p className="text-sm font-medium text-foreground">No products found</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">No products match the selected search or filter criteria.</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">No products match the selected search or filter criteria.</p>
         </div>
       )}
       <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4", compact && "gap-2.5")}>
@@ -197,29 +197,29 @@ export function ProductHubGrid({
                     <Icon className={compact ? "size-4" : "size-4.5"} />
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <Badge variant={p.status === "Inactive" ? "outline" : published ? "default" : "secondary"} className="h-5 shrink-0 text-xs font-medium">
+                    <Badge variant={p.status === "Inactive" ? "outline" : published ? "default" : "secondary"} className="h-6 shrink-0 text-sm font-medium">
                       {p.status === "Inactive" ? "Inactive" : (p.publishStatus ?? "Draft")}
                     </Badge>
                   </div>
                 </div>
 
                 <div className="mt-2.5 min-w-0">
-                  <p className="truncate text-xs font-semibold tracking-tight text-foreground">{p.name}</p>
+                  <p className="truncate text-sm font-semibold tracking-tight text-foreground">{p.name}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="truncate font-mono text-[11px] text-muted-foreground">{p.code}</span>
+                    <span className="truncate font-mono text-sm text-muted-foreground">{p.code}</span>
                     <span className="text-muted-foreground/40">·</span>
-                    <span className="truncate text-[10px] font-medium text-muted-foreground/80">{industry?.name ?? p.domain}</span>
+                    <span className="truncate text-sm font-medium text-muted-foreground/80">{industry?.name ?? p.domain}</span>
                   </div>
                 </div>
               </div>
 
               <div className="mt-2.5 space-y-2 border-t pt-2.5">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>
                     <span className="font-semibold text-foreground">{mappedCount}</span> rule{mappedCount === 1 ? "" : "s"}
                     {compact && <span className="text-muted-foreground/70"> · {lastUpdatedLabel}</span>}
                   </span>
-                  {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-1.5 py-0.5 text-[10px]" />}
+                  {lastSim && <OutcomeBadge outcome={lastSim.outcome} className="px-2 py-0.5 text-sm" />}
                 </div>
 
                 {!compact && statusDots.length > 0 && (
@@ -228,23 +228,23 @@ export function ProductHubGrid({
                   </div>
                 )}
 
-                {!compact && <p className="text-[10px] text-muted-foreground/70">{lastUpdatedLabel}</p>}
+                {!compact && <p className="text-sm text-muted-foreground/70">{lastUpdatedLabel}</p>}
 
                 <div className="grid grid-cols-2 gap-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 gap-1 text-xs font-medium shadow-2xs"
+                    className="h-8 gap-1 text-sm font-medium shadow-2xs"
                     onClick={() => onConfigure(p)}
                   >
-                    <Settings2 className="size-3" /> Configure
+                    <Settings2 className="size-3.5" /> Configure
                   </Button>
                   <Button
                     size="sm"
-                    className="h-7 gap-1 text-xs font-medium shadow-xs"
+                    className="h-8 gap-1 text-sm font-medium shadow-xs"
                     onClick={() => onRunSimulation(p)}
                   >
-                    <PlayCircle className="size-3" /> Simulate
+                    <PlayCircle className="size-3.5" /> Simulate
                   </Button>
                 </div>
               </div>
