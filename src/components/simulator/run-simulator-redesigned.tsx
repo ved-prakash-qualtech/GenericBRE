@@ -195,7 +195,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                 {product.status}
               </Badge>
             </div>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px]">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
               <span>
                 <span className="text-muted-foreground">Domain</span>{" "}
                 <span className="font-medium">{product.domain}</span>
@@ -230,12 +230,12 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 rounded-lg border bg-card p-3.5">
                       {parsedFields.map(([key, value]) => (
                         <div key={key} className="space-y-1">
-                          <label htmlFor={`sim-field-${key}`} className="text-[11px] font-medium text-muted-foreground">
+                          <label htmlFor={`sim-field-${key}`} className="text-sm font-medium text-muted-foreground">
                             {key}
                           </label>
                           {typeof value === "boolean" ? (
                             <Select value={String(value)} onValueChange={(v) => v && updateField(key, v)}>
-                              <SelectTrigger id={`sim-field-${key}`} size="sm" className="h-8 w-full">
+                              <SelectTrigger id={`sim-field-${key}`} size="sm" className="h-9 w-full text-sm">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -246,7 +246,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                           ) : (
                             <Input
                               id={`sim-field-${key}`}
-                              className="h-8 text-xs"
+                              className="h-9 text-sm"
                               type={typeof value === "number" ? "number" : "text"}
                               value={String(value)}
                               onChange={(e) => updateField(key, e.target.value)}
@@ -256,7 +256,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-lg border border-dashed px-4 py-6 text-center text-xs text-muted-foreground">
+                    <div className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
                       {jsonIsValid ? "No fields in the current input." : "The JSON is invalid — switch to the JSON tab to fix it."}
                     </div>
                   )}
@@ -337,7 +337,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                       />
                       <Badge
                         className={cn(
-                          "text-[11px] border-0 px-2 py-1",
+                          "text-sm border-0 px-2 py-1",
                           outcomeTone === "emerald"
                             ? "bg-emerald-100 text-emerald-700"
                             : outcomeTone === "red"
@@ -348,8 +348,8 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                         {result.outcome.toUpperCase()}
                       </Badge>
                     </div>
-                    <p className="text-xs text-foreground/80">{result.summary}</p>
-                    <div className="grid grid-cols-2 gap-2 border-t pt-2.5 text-[11px]">
+                    <p className="text-sm text-foreground/80">{result.summary}</p>
+                    <div className="grid grid-cols-2 gap-2 border-t pt-2.5 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Passed</span>
                         <span className="font-medium text-emerald-600">{result.flatTrace.filter((t) => t.status === "Passed").length}</span>
@@ -364,7 +364,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                     </Button>
                   </>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Run the simulation to see the decision here.</p>
+                  <p className="text-sm text-muted-foreground">Run the simulation to see the decision here.</p>
                 )}
               </div>
             </div>
@@ -375,24 +375,24 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
           <div className="space-y-2.5">
             <h3 className="text-sm font-semibold">Execution Plan (Rule Sequence)</h3>
             {executionPlan.length === 0 ? (
-              <div className="rounded-lg border border-dashed px-4 py-6 text-center text-xs text-muted-foreground">
+              <div className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
                 No rules are mapped to {product.name}. Map rules to this product to build an execution plan.
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
                 {executionPlan.map((rule, idx) => {
                   const step = result?.flatTrace.find((t) => t.ruleId === rule.id);
                   return (
-                    <div key={rule.id} className="flex flex-col items-center gap-1 p-2 border rounded-lg bg-card hover:bg-accent/50">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                    <div key={rule.id} className="flex flex-col items-center gap-1.5 p-2.5 border rounded-lg bg-card transition-colors hover:border-primary/30 hover:bg-accent/50">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
                         {idx + 1}
                       </div>
                       <div className="text-center">
-                        <div className="text-[10px] font-medium">{rule.id}</div>
-                        <div className="text-[9px] text-muted-foreground leading-tight">{rule.name}</div>
-                        <div className="mt-0.5 flex flex-wrap items-center justify-center gap-1">
-                          {rule.ruleType && <Badge className="text-[8px] bg-blue-50 text-blue-700 border-0 px-1 py-0">{rule.ruleType}</Badge>}
-                          {step && <Badge className={cn("text-[8px] border-0 px-1 py-0", STATUS_STYLES[step.status])}>{step.status}</Badge>}
+                        <div className="text-sm font-medium">{rule.id}</div>
+                        <div className="text-sm text-muted-foreground leading-tight">{rule.name}</div>
+                        <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
+                          {rule.ruleType && <Badge className="text-sm bg-blue-50 text-blue-700 border-0 px-1.5 py-0.5">{rule.ruleType}</Badge>}
+                          {step && <Badge className={cn("text-sm border-0 px-1.5 py-0.5", STATUS_STYLES[step.status])}>{step.status}</Badge>}
                         </div>
                       </div>
                     </div>
@@ -408,7 +408,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
               <h3 className="text-sm font-semibold">Simulation Timeline</h3>
               <div className="border rounded-lg overflow-hidden bg-card">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-sm">
                     <thead className="bg-muted/50 border-b">
                       <tr>
                         <th className="px-3 py-2.5 text-left font-semibold">Rule</th>
@@ -424,7 +424,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                         <tr key={step.ruleId} className="hover:bg-accent/40">
                           <td className="px-3 py-2.5 font-medium">
                             <div>{step.ruleId}</div>
-                            <div className="text-[10px] text-muted-foreground">{step.ruleName}</div>
+                            <div className="text-sm text-muted-foreground">{step.ruleName}</div>
                           </td>
                           <td className="px-3 py-2.5 text-muted-foreground">{inputSummary(step)}</td>
                           <td className="px-3 py-2.5 text-muted-foreground">{conditionSummary(step)}</td>
@@ -452,7 +452,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-semibold">API Request</h4>
+                      <h4 className="text-sm font-semibold">API Request</h4>
                       <Button
                         size="icon-sm"
                         variant="ghost"
@@ -470,7 +470,7 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-semibold">Final Output (Response JSON)</h4>
+                      <h4 className="text-sm font-semibold">Final Output (Response JSON)</h4>
                       <Button
                         size="icon-sm"
                         variant="ghost"
