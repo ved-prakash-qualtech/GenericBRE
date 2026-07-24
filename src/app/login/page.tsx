@@ -201,7 +201,7 @@ export default function LoginPage() {
             <form className="mt-6 space-y-4" onSubmit={handleSignIn}>
               <div className="space-y-1.5">
                 <Label htmlFor="employeeId" className="font-bold text-[#0a1230]">Employee ID</Label>
-                <InputGroup className="border-[#c7cfe3] bg-transparent">
+                <InputGroup className="h-[42px] border-[#c7cfe3] bg-transparent">
                   <InputGroupAddon>
                     <User className="size-4 text-[#0a1230]/80" />
                   </InputGroupAddon>
@@ -219,7 +219,7 @@ export default function LoginPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="font-bold text-[#0a1230]">Password</Label>
-                <InputGroup className="border-[#c7cfe3] bg-transparent">
+                <InputGroup className="h-[42px] border-[#c7cfe3] bg-transparent">
                   <InputGroupAddon>
                     <Lock className="size-4 text-[#0a1230]/80" />
                   </InputGroupAddon>
