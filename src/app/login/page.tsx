@@ -190,7 +190,7 @@ export default function LoginPage() {
         className="flex flex-col items-center justify-center px-6 py-10 sm:px-10 md:py-12"
         style={{
           background:
-            "radial-gradient(800px 600px at 100% 0%, #eef3ff 0%, transparent 60%), radial-gradient(600px 500px at 0% 100%, #fff4e0 0%, transparent 60%), #fbfcff",
+            "radial-gradient(800px 600px at 100% 0%, rgb(192 207 243) 0%, transparent 60%), radial-gradient(600px 500px at 0% 100%, rgb(165 164 162) 0%, transparent 60%), rgb(241 231 231)",
         }}
       >
         <div className="w-full max-w-[30rem]">

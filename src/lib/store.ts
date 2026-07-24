@@ -148,6 +148,8 @@ interface AppState {
   auditLog: AuditEntry[];
   simulations: SimulationResult[];
   appearance: AppearanceSettings;
+  appearanceOpen: boolean;
+  setAppearanceOpen: (open: boolean) => void;
   // generic, per-user/per-device dashboard customization — see
   // src/lib/dashboard-layout.ts's useDashboardLayout, keyed by dashboardKey
   // so any dashboard-style page can plug in its own widget catalog.
@@ -350,6 +352,7 @@ export const useAppStore = create<AppState>()(
       auditLog: AUDIT_LOG,
       simulations: DEFAULT_SIMULATIONS,
       appearance: DEFAULT_APPEARANCE,
+      appearanceOpen: false,
       dashboardLayouts: {},
       currentUser: DEFAULT_USER,
       sidebarCollapsed: false,
@@ -1124,6 +1127,7 @@ export const useAppStore = create<AppState>()(
 
       setAppearance: (patch) => set((s) => ({ appearance: { ...s.appearance, ...patch } })),
       resetAppearance: () => set({ appearance: DEFAULT_APPEARANCE }),
+      setAppearanceOpen: (open) => set({ appearanceOpen: open }),
 
       setDashboardLayout: (key, layout) => set((s) => ({ dashboardLayouts: { ...s.dashboardLayouts, [key]: layout } })),
       resetDashboardLayout: (key) =>
@@ -1171,9 +1175,37 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "bre-prototype-store",
-      version: 38,
+      version: 39,
       skipHydration: true,
       migrate: (persistedState) => {
+        // v38 -> v39 added RL-514 ("Personal Loan Liability-Adjusted Final
+        // Amount") — the third hop in the Personal Loan chain (RL-501 →
+        // RL-502 → RL-514), deducting monthly liabilities from
+        // pl_eligible_amount to produce approved_loan_amount — and its
+        // product mapping (order 3, before the RL-508 fee waiver which
+        // shifts to order 4).
+        {
+          const s = persistedState as Partial<AppState>;
+          if (s?.rules && !s.rules.some((r) => r.id === "RL-514")) {
+            const rule = ALL_RULES.find((r) => r.id === "RL-514");
+            if (rule) s.rules.push(rule);
+          }
+          if (s?.productRuleMappings) {
+            const existingPairs = new Set(s.productRuleMappings.map((m) => `${m.productId}:${m.ruleId}`));
+            const mappingDef = DEFAULT_PRODUCT_RULE_MAPPINGS.find(
+              (m) => m.productId === "prod-personal-loan" && m.ruleId === "RL-514"
+            );
+            if (mappingDef && !existingPairs.has(`${mappingDef.productId}:${mappingDef.ruleId}`)) {
+              s.productRuleMappings.push(mappingDef);
+            }
+            // Keep the fee waiver running last now that RL-514 is spliced in.
+            const feeWaiver = s.productRuleMappings.find(
+              (m) => m.productId === "prod-personal-loan" && m.ruleId === "RL-508"
+            );
+            if (feeWaiver) feeWaiver.order = 4;
+          }
+        }
+
         // v37 -> v38 migrated RL-116 ("Interest Rate Determination") from
         // its temporary IF-condition + Bracket Lookup THEN action to a
         // native CASE rule (caseWhens + caseElseActions), now that the Rule

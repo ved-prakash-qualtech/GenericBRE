@@ -11,10 +11,12 @@ import { UserMenu } from "./user-menu";
 import { CommandPalette } from "./command-palette";
 import { AppearanceStudio } from "@/components/studio/appearance-studio";
 import { useTranslate } from "@/lib/use-translate";
+import { useAppStore } from "@/lib/store";
 
 export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const appearanceOpen = useAppStore((s) => s.appearanceOpen);
+  const setAppearanceOpen = useAppStore((s) => s.setAppearanceOpen);
   const router = useRouter();
   const t = useTranslate();
   // The Domain filter only ever scopes the Dashboard's widgets (globalFilters
@@ -81,7 +83,7 @@ export function Header({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
         </div>
       </header>
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-      <AppearanceStudio open={appearanceOpen} onOpenChange={setAppearanceOpen} />
+      {appearanceOpen && <AppearanceStudio open={appearanceOpen} onOpenChange={setAppearanceOpen} />}
     </>
   );
 }

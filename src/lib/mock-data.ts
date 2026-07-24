@@ -138,6 +138,22 @@ export const CORE_RULES: BusinessRule[] = [
     updatedDaysAgo: 40,
   }),
   makeRule({
+    id: "RL-110",
+    name: "Young Adult Fast-Track Approval",
+    domain: "Lending",
+    category: "Eligibility",
+    priority: 2,
+    status: "Active",
+    description: "Fast-track approval scheme for young adult loan applicants.",
+    owner: "Product Strategy Team",
+    rootGroup: group("AND", [cond("applicant_age", "<", "25")]),
+    actions: [
+      { id: cid(), type: "Approve", reasonCode: "YOUNG_ADULT_FASTTRACK", message: "Fast-track loan approval for young adult applicants." },
+    ],
+    createdDaysAgo: 90,
+    updatedDaysAgo: 10,
+  }),
+  makeRule({
     id: "RL-104",
     name: "Debt-to-Income Ratio Cap",
     domain: "Lending",
@@ -633,6 +649,19 @@ export const CORE_RULES: BusinessRule[] = [
     createdDaysAgo: 98, updatedDaysAgo: 9,
   }),
   makeRule({
+    id: "RL-309",
+    name: "Gold Collateral Preferential Approval",
+    domain: "NBFC",
+    category: "Collateral",
+    priority: 2,
+    status: "Active",
+    description: "Automated approval for gold-backed loan requests under current promotional scheme.",
+    owner: "Asset Management Group",
+    rootGroup: group("AND", [cond("collateral_type", "=", "Gold")]),
+    actions: [{ id: cid(), type: "Approve", reasonCode: "GOLD_PREFERRED_APPROVAL", message: "Gold collateral meets eligibility criteria for auto-approval." }],
+    createdDaysAgo: 85, updatedDaysAgo: 12,
+  }),
+  makeRule({
     id: "RL-304",
     name: "LTV Ceiling Guardrail",
     domain: "NBFC",
@@ -1100,6 +1129,38 @@ export const CORE_RULES: BusinessRule[] = [
     ],
     createdDaysAgo: 4,
     updatedDaysAgo: 1,
+  }),
+
+  // COMPLEX — third hop in the Personal Loan chain (RL-501 → RL-502 → RL-514):
+  // deducts the applicant's existing monthly liabilities from RL-502's
+  // pl_eligible_amount to produce the real, disbursable approved_loan_amount.
+  // Liabilities are annuitized at the same 60x multiple RL-502 uses to size
+  // the eligible amount in the first place, so both sides of the subtraction
+  // are on the same footing. Gated to dti_ratio <= 45 so the deduction can
+  // never exceed 45% of the eligible amount — the result is guaranteed
+  // positive by construction, never a negative "approved" figure.
+  makeRule({
+    id: "RL-514",
+    name: "Personal Loan Liability-Adjusted Final Amount",
+    domain: "Lending",
+    category: "Eligibility",
+    priority: 1,
+    status: "Active",
+    description:
+      "Chains on Personal Loan Eligibility & Limit's pl_eligible_amount: deducts existing monthly liabilities (annuitized at the same 60x multiple used to size the eligible amount) to produce the final approved_loan_amount. An applicant with no liabilities gets the full eligible amount unchanged.",
+    owner: "Credit Risk Division",
+    rootGroup: group("AND", [
+      cond("pl_eligible_amount", ">", "0"),
+      cond("monthly_liabilities", ">=", "0"),
+      cond("dti_ratio", "<=", "45"),
+    ]),
+    actions: [
+      { id: cid(), type: "Calculate", outputField: "liability_deduction_amount", outputValue: "{{monthly_liabilities}} * 60", outputType: "currency" },
+      { id: cid(), type: "Calculate", outputField: "approved_loan_amount", outputValue: "{{pl_eligible_amount}} - {{liability_deduction_amount}}", outputType: "currency" },
+      { id: cid(), type: "Show Message", message: "Final approved amount reflects a deduction for existing monthly liabilities." },
+    ],
+    createdDaysAgo: 0,
+    updatedDaysAgo: 0,
   }),
 
   // ============================================================
@@ -1592,11 +1653,13 @@ export const DEFAULT_PRODUCT_RULE_MAPPINGS: ProductRuleMapping[] = [
   mapping("prm-hld-3", "prod-home-loan-demo", "RL-116", 2),
   mapping("prm-hld-4", "prod-home-loan-demo", "RL-117", 3),
   // Personal Loan — sequenced to demonstrate chaining: the minor gate rejects
-  // first, RL-501 produces risk_score, RL-502 consumes it, RL-508 prices fees.
+  // first, RL-501 produces risk_score, RL-502 consumes it into pl_eligible_amount,
+  // RL-514 deducts liabilities into approved_loan_amount, RL-508 prices fees.
   mapping("prm-pl-minor-gate", "prod-personal-loan", "RL-507", 0),
   mapping("prm-pl-risk-grade", "prod-personal-loan", "RL-501", 1),
   mapping("prm-pl-eligibility", "prod-personal-loan", "RL-502", 2),
-  mapping("prm-pl-fee-waiver", "prod-personal-loan", "RL-508", 3),
+  mapping("prm-pl-liability-adjust", "prod-personal-loan", "RL-514", 3),
+  mapping("prm-pl-fee-waiver", "prod-personal-loan", "RL-508", 4),
 ];
 
 // Moved from the store's initial state (was previously inlined there) so

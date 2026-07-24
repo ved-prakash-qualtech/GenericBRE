@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Sparkles, GripVertical, ArrowRight } from "lucide-react";
+import { Download, Sparkles, GripVertical } from "lucide-react";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
-import { ProductHubGrid } from "@/components/products/product-hub-grid";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import { RecentRulesPanel, RecentActivityPanel, RecentDeploymentsPanel } from "@/components/dashboard/recent-panels";
 import { DomainDistributionChart, RuleStatusChart } from "@/components/dashboard/charts";
@@ -58,17 +57,8 @@ export default function DashboardPage() {
   const showInsights = useAppStore((s) => s.appearance.showInsights);
   const roleId = useAppStore((s) => s.currentUser.role);
   const dashboardConfigs = useAppStore((s) => s.dashboardConfigs);
-  const allProducts = useAppStore((s) => s.products);
-  const industries = useAppStore((s) => s.industries);
-  const productRuleMappings = useAppStore((s) => s.productRuleMappings);
-  const simulations = useAppStore((s) => s.simulations);
   const domainFilter = useAppStore((s) => s.globalFilters.domains);
   const [editMode, setEditMode] = useState(false);
-
-  // Same "every widget scopes to the header's Industry filter" rule
-  // KpiCards/charts already follow (audit finding B16) — the Products panel
-  // was the one place that filter did nothing.
-  const products = domainFilter.length ? allProducts.filter((p) => domainFilter.includes(p.domain)) : allProducts;
 
   // The widget catalog for this page is scoped to the current role's
   // admin-configured defaults (Configuration Studio → Dashboard Management,
@@ -163,28 +153,6 @@ export default function DashboardPage() {
           )}
           <div className="mb-4">
             <KpiCards />
-          </div>
-          <div className="mb-4">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("dashboard.products")}</p>
-              <button
-                onClick={() => router.push("/products")}
-                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-              >
-                {t("dashboard.viewAll")} <ArrowRight className="size-3" />
-              </button>
-            </div>
-            <ProductHubGrid
-              products={products}
-              industries={industries}
-              rules={rules}
-              mappings={productRuleMappings}
-              simulations={simulations}
-              onConfigure={(p) => router.push(`/products/${p.id}`)}
-              onRunSimulation={(p) => router.push(`/products/${p.id}?tab=simulate`)}
-              compact
-              limit={4}
-            />
           </div>
           <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-6">
             {visibleWidgets.map((w) => {

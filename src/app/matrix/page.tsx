@@ -45,7 +45,7 @@ export default function MatrixPage() {
           </p>
         ) : (
           <>
-            <div className="w-full max-w-sm shrink-0 space-y-1.5">
+            <div className="w-full max-w-xl shrink-0 space-y-1.5">
               <label className="text-xs font-semibold text-muted-foreground">Domain</label>
               <Select items={matrixItems} value={activeMatrixId} onValueChange={(v) => setMatrixId(v ?? "")}>
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>

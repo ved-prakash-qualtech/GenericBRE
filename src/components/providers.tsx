@@ -11,54 +11,57 @@ function systemPrefersDark() {
 }
 
 export function applyAppearance(appearance: ReturnType<typeof useAppStore.getState>["appearance"]) {
-  const root = document.documentElement;
-  const isDark = appearance.colorMode === "dark" || (appearance.colorMode === "system" && systemPrefersDark());
-  root.classList.toggle("dark", isDark);
-  root.classList.toggle("glass-mode", !!appearance.background.imageData);
+  if (typeof window === "undefined") return;
+  requestAnimationFrame(() => {
+    const root = document.documentElement;
+    const isDark = appearance.colorMode === "dark" || (appearance.colorMode === "system" && systemPrefersDark());
+    root.classList.toggle("dark", isDark);
+    root.classList.toggle("glass-mode", !!appearance.background.imageData);
 
-  const def = getThemeDefinition(appearance.preset);
-  const vars = isDark ? def.dark : def.light;
-  for (const [key, value] of Object.entries(vars)) {
-    root.style.setProperty(key, value);
-  }
+    const def = getThemeDefinition(appearance.preset);
+    const vars = isDark ? def.dark : def.light;
+    for (const [key, value] of Object.entries(vars)) {
+      root.style.setProperty(key, value);
+    }
 
-  // Custom color overrides (Colors tab) — plain hex is a valid CSS color
-  // value, so no HSL/OKLCH conversion is needed to layer these on top of
-  // the preset above.
-  const cc = appearance.customColors;
-  if (cc.primary) {
-    root.style.setProperty("--primary", cc.primary);
-    root.style.setProperty("--ring", cc.primary);
-  }
-  if (cc.sidebarBg) root.style.setProperty("--sidebar", cc.sidebarBg);
-  if (cc.sidebarFg) root.style.setProperty("--sidebar-foreground", cc.sidebarFg);
-  if (cc.sidebarActive) root.style.setProperty("--sidebar-primary", cc.sidebarActive);
-  if (cc.chartAccent) root.style.setProperty("--chart-1", cc.chartAccent);
+    // Custom color overrides (Colors tab) — plain hex is a valid CSS color
+    // value, so no HSL/OKLCH conversion is needed to layer these on top of
+    // the preset above.
+    const cc = appearance.customColors;
+    if (cc.primary) {
+      root.style.setProperty("--primary", cc.primary);
+      root.style.setProperty("--ring", cc.primary);
+    }
+    if (cc.sidebarBg) root.style.setProperty("--sidebar", cc.sidebarBg);
+    if (cc.sidebarFg) root.style.setProperty("--sidebar-foreground", cc.sidebarFg);
+    if (cc.sidebarActive) root.style.setProperty("--sidebar-primary", cc.sidebarActive);
+    if (cc.chartAccent) root.style.setProperty("--chart-1", cc.chartAccent);
 
-  // Background image — a single set of CSS vars feeds three possible layer
-  // elements (full-app / dashboard-scoped / sidebar-scoped); data-bg-target
-  // picks which one is actually visible, so switching "target" needs no JS.
-  const bg = appearance.background;
-  root.setAttribute("data-bg-target", bg.target);
-  if (bg.imageData) {
-    const blurPx = bg.displayMode === "blur" ? Math.min(40, bg.blur * 2 + 12) : bg.blur;
-    root.style.setProperty("--app-wallpaper", `url(${bg.imageData})`);
-    root.style.setProperty("--app-wallpaper-opacity", String(bg.opacity / 100));
-    root.style.setProperty("--app-wallpaper-blur", `${blurPx}px`);
-    root.style.setProperty("--app-wallpaper-brightness", `${bg.brightness}%`);
-    root.style.setProperty("--app-wallpaper-dim", String(bg.dimOverlay / 100));
-    root.style.setProperty("--app-wallpaper-size", bg.displayMode === "contain" ? "contain" : "cover");
-    root.style.setProperty("--app-wallpaper-attachment", bg.displayMode === "fixed" ? "fixed" : "scroll");
-  } else {
-    root.style.removeProperty("--app-wallpaper");
-    root.style.setProperty("--app-wallpaper-opacity", "0");
-  }
+    // Background image — a single set of CSS vars feeds three possible layer
+    // elements (full-app / dashboard-scoped / sidebar-scoped); data-bg-target
+    // picks which one is actually visible, so switching "target" needs no JS.
+    const bg = appearance.background;
+    root.setAttribute("data-bg-target", bg.target);
+    if (bg.imageData) {
+      const blurPx = bg.displayMode === "blur" ? Math.min(40, bg.blur * 2 + 12) : bg.blur;
+      root.style.setProperty("--app-wallpaper", `url(${bg.imageData})`);
+      root.style.setProperty("--app-wallpaper-opacity", String(bg.opacity / 100));
+      root.style.setProperty("--app-wallpaper-blur", `${blurPx}px`);
+      root.style.setProperty("--app-wallpaper-brightness", `${bg.brightness}%`);
+      root.style.setProperty("--app-wallpaper-dim", String(bg.dimOverlay / 100));
+      root.style.setProperty("--app-wallpaper-size", bg.displayMode === "contain" ? "contain" : "cover");
+      root.style.setProperty("--app-wallpaper-attachment", bg.displayMode === "fixed" ? "fixed" : "scroll");
+    } else {
+      root.style.removeProperty("--app-wallpaper");
+      root.style.setProperty("--app-wallpaper-opacity", "0");
+    }
 
-  root.setAttribute("data-density", appearance.density);
-  root.setAttribute("data-font-scale", appearance.fontScale);
-  root.setAttribute("data-high-contrast", String(appearance.highContrast));
-  root.setAttribute("data-large-targets", String(appearance.largeClickTargets));
-  root.lang = appearance.language || "en";
+    root.setAttribute("data-density", appearance.density);
+    root.setAttribute("data-font-scale", appearance.fontScale);
+    root.setAttribute("data-high-contrast", String(appearance.highContrast));
+    root.setAttribute("data-large-targets", String(appearance.largeClickTargets));
+    root.lang = appearance.language || "en";
+  });
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {

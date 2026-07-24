@@ -6,9 +6,13 @@ import { toast } from "sonner";
 import { Product, TraceStep } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import { downloadJson } from "@/lib/csv";
 import { UseRunSimulatorResult } from "./run-simulator-panel";
 import {
   Select,
@@ -55,6 +59,7 @@ const STATUS_STYLES: Record<TraceStep["status"], string> = {
 export function RunSimulatorRedesigned({ product, sim, products = [], onProductChange }: RunSimulatorRedesignedProps) {
   const [copiedRequest, setCopiedRequest] = useState(false);
   const [copiedResponse, setCopiedResponse] = useState(false);
+  const [inputMode, setInputMode] = useState<"form" | "json">("form");
 
   const result = sim.decisionResult;
 
@@ -95,82 +100,174 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
 
   const availableProducts = products.length > 0 ? products : [product];
 
+  // Form view is a labeled-input presentation of the exact same jsonText
+  // state the JSON tab edits — no separate data source, so the two views
+  // can never drift out of sync.
+  let parsedFields: [string, unknown][] = [];
+  let jsonIsValid = true;
+  try {
+    parsedFields = Object.entries(JSON.parse(sim.jsonText || "{}"));
+  } catch {
+    jsonIsValid = false;
+  }
+
+  const updateField = (key: string, raw: string) => {
+    try {
+      const obj = JSON.parse(sim.jsonText || "{}");
+      const original = obj[key];
+      if (typeof original === "number") {
+        const n = Number(raw);
+        obj[key] = Number.isNaN(n) ? raw : n;
+      } else if (typeof original === "boolean") {
+        obj[key] = raw === "true";
+      } else {
+        obj[key] = raw;
+      }
+      sim.setJsonText(JSON.stringify(obj, null, 2));
+    } catch {
+      // Underlying JSON is invalid — nothing to patch until it's fixed via the JSON tab.
+    }
+  };
+
+  const handleDownloadReport = () => {
+    if (!result) return;
+    downloadJson(`simulation_report_${product.id}`, {
+      product: { id: product.id, name: product.name, domain: product.domain },
+      generatedAt: new Date().toISOString(),
+      input: sim.jsonText ? JSON.parse(sim.jsonText) : {},
+      decision: {
+        outcome: result.outcome,
+        summary: result.summary,
+        passed: result.flatTrace.filter((t) => t.status === "Passed").length,
+        failed: result.flatTrace.filter((t) => t.status === "Failed").length,
+      },
+      executionPlan: executionPlan.map((rule, idx) => ({ sequence: idx + 1, ruleId: rule.id, ruleName: rule.name, ruleType: rule.ruleType })),
+      timeline: result.flatTrace.map((step) => ({
+        ruleId: step.ruleId,
+        ruleName: step.ruleName,
+        input: inputSummary(step),
+        condition: conditionSummary(step),
+        output: outputSummary(step),
+        status: step.status,
+        durationMs: step.durationMs,
+      })),
+      apiRequest: sim.apiRequestEnvelope,
+      apiResponse: sim.responseShape,
+    });
+    toast.success("Report downloaded");
+  };
+
+  const outcomeTone = !result
+    ? null
+    : result.outcome === "Approved" ? "emerald" : result.outcome === "Rejected" ? "red" : "amber";
+
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
-      {/* Main Content Grid */}
       <ScrollArea className="min-h-0 flex-1">
-        <div className="p-5 space-y-4 min-h-full">
+        <div className="p-5 space-y-5 min-h-full">
+          {/* Consolidated product context — single source of truth for product
+              identity, replacing the previously duplicated Select Product +
+              Product Summary blocks. */}
+          <div className="flex flex-col gap-3 rounded-lg border bg-card p-3.5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <Select
+                items={Object.fromEntries(availableProducts.map((p) => [p.id, p.name]))}
+                value={product.id}
+                onValueChange={handleProductChange}
+              >
+                <SelectTrigger className="h-9 w-full max-w-64 shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableProducts.map((prod) => (
+                    <SelectItem key={prod.id} value={prod.id}>
+                      {prod.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Badge
+                className={cn(
+                  "border-0 shrink-0",
+                  product.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"
+                )}
+              >
+                {product.status}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px]">
+              <span>
+                <span className="text-muted-foreground">Domain</span>{" "}
+                <span className="font-medium">{product.domain}</span>
+              </span>
+              <span>
+                <span className="text-muted-foreground">Mapped Rules</span>{" "}
+                <span className="font-medium">{executionPlan.length}</span>
+              </span>
+              <span>
+                <span className="text-muted-foreground">Last Updated</span>{" "}
+                <span className="font-medium">
+                  {new Date(product.updatedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-12 gap-4 items-start">
-            {/* Left Column - 6 cols */}
-            <div className="col-span-12 lg:col-span-6 space-y-4">
-              {/* Select Product */}
-              <div className="space-y-2.5">
-                <h3 className="text-sm font-semibold">Select Product</h3>
-                <div className="space-y-2">
-                  <Select
-                    items={Object.fromEntries(availableProducts.map((p) => [p.id, p.name]))}
-                    value={product.id}
-                    onValueChange={handleProductChange}
-                  >
-                    <SelectTrigger className="w-full h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableProducts.map((prod) => (
-                        <SelectItem key={prod.id} value={prod.id}>
-                          {prod.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Badge
-                    className={cn(
-                      "border-0 w-fit",
-                      product.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"
-                    )}
-                  >
-                    {product.status}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Product Summary Table */}
-              <div className="space-y-2.5">
-                <h3 className="text-sm font-semibold">Product Summary</h3>
-                <div className="border rounded-lg overflow-hidden bg-card">
-                  <table className="w-full text-xs">
-                    <tbody className="divide-y">
-                      <tr>
-                        <td className="px-3 py-2.5 text-muted-foreground">Product Name</td>
-                        <td className="px-3 py-2.5 font-medium text-right">{product.name}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2.5 text-muted-foreground">Domain</td>
-                        <td className="px-3 py-2.5 font-medium text-right">{product.domain}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2.5 text-muted-foreground">Mapped Rules</td>
-                        <td className="px-3 py-2.5 font-medium text-right">{executionPlan.length}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2.5 text-muted-foreground">Last Updated</td>
-                        <td className="px-3 py-2.5 font-medium text-right">
-                          {new Date(product.updatedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Template JSON Section - Editable */}
-              <div className="space-y-2.5">
+            {/* Left — Simulation Input, 7 cols */}
+            <div className="col-span-12 lg:col-span-7 space-y-2.5">
+              <Tabs value={inputMode} onValueChange={(v) => v && setInputMode(v as "form" | "json")}>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Template JSON (Input)</h3>
-                  <div className="flex gap-1">
+                  <h3 className="text-sm font-semibold">Simulation Input</h3>
+                  <TabsList>
+                    <TabsTrigger value="form">Form</TabsTrigger>
+                    <TabsTrigger value="json">JSON</TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <TabsContent value="form" className="mt-2.5">
+                  {jsonIsValid && parsedFields.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 rounded-lg border bg-card p-3.5">
+                      {parsedFields.map(([key, value]) => (
+                        <div key={key} className="space-y-1">
+                          <label htmlFor={`sim-field-${key}`} className="text-[11px] font-medium text-muted-foreground">
+                            {key}
+                          </label>
+                          {typeof value === "boolean" ? (
+                            <Select value={String(value)} onValueChange={(v) => v && updateField(key, v)}>
+                              <SelectTrigger id={`sim-field-${key}`} size="sm" className="h-8 w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="true">true</SelectItem>
+                                <SelectItem value="false">false</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              id={`sim-field-${key}`}
+                              className="h-8 text-xs"
+                              type={typeof value === "number" ? "number" : "text"}
+                              value={String(value)}
+                              onChange={(e) => updateField(key, e.target.value)}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed px-4 py-6 text-center text-xs text-muted-foreground">
+                      {jsonIsValid ? "No fields in the current input." : "The JSON is invalid — switch to the JSON tab to fix it."}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="json" className="mt-2.5 space-y-2">
+                  <div className="flex items-center justify-end gap-1">
                     <Button
                       size="icon-sm"
                       variant="ghost"
+                      aria-label="Copy input JSON"
                       title="Copy"
                       onClick={() => handleCopyJson(sim.jsonText || "{}", false)}
                     >
@@ -180,23 +277,22 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
                         <Copy className="size-4 text-gray-600" />
                       )}
                     </Button>
-                    <Button size="icon-sm" variant="ghost" className="hover:bg-gray-100" title="Format" onClick={handleFormatJson}>
+                    <Button size="icon-sm" variant="ghost" aria-label="Format input JSON" title="Format" onClick={handleFormatJson}>
                       <Sparkles className="size-4 text-gray-600" />
                     </Button>
-                    <Button size="icon-sm" variant="ghost" className="hover:bg-gray-100" title="Reset to Default" onClick={sim.resetToSampleJson}>
+                    <Button size="icon-sm" variant="ghost" aria-label="Reset input to sample JSON" title="Reset to Default" onClick={sim.resetToSampleJson}>
                       <RotateCcw className="size-4 text-gray-600" />
                     </Button>
                   </div>
-                </div>
-                <Textarea
-                  value={sim.jsonText || "{}"}
-                  onChange={(e) => sim.setJsonText(e.target.value)}
-                  placeholder='{"key": "value"}'
-                  className="font-mono text-xs max-h-40 overflow-y-auto bg-gray-900 text-gray-100 border-gray-700"
-                />
-              </div>
+                  <Textarea
+                    value={sim.jsonText || "{}"}
+                    onChange={(e) => sim.setJsonText(e.target.value)}
+                    placeholder='{"key": "value"}'
+                    className="font-mono text-xs max-h-48 overflow-y-auto bg-gray-900 text-gray-100 border-gray-700"
+                  />
+                </TabsContent>
+              </Tabs>
 
-              {/* Run Simulation Button */}
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="gap-1.5" onClick={sim.resetToSampleJson}>
                   <RotateCcw className="size-3.5" /> Reset
@@ -212,95 +308,70 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
               </div>
             </div>
 
-            {/* Right Column - 6 cols */}
-            <div className="col-span-12 lg:col-span-6 space-y-2">
-              {/* Simulation Summary */}
-              <div className="rounded-lg border bg-card p-3 space-y-2">
-                <h3 className="font-semibold text-xs">Simulation Summary</h3>
-                <div className="space-y-0.5 text-[11px] border-b pb-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Product</span>
-                    <span className="font-medium">{product.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Mapped Rules</span>
-                    <span className="font-medium">{executionPlan.length}</span>
-                  </div>
-                </div>
-                <div className="space-y-0.5 text-[11px] border-b pb-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Passed</span>
-                    <span className="font-medium text-emerald-600">{result ? result.flatTrace.filter((t) => t.status === "Passed").length : "—"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Failed</span>
-                    <span className="font-medium text-red-600">{result ? result.flatTrace.filter((t) => t.status === "Failed").length : "—"}</span>
-                  </div>
-                </div>
-                {result ? (
-                  <div className="flex flex-wrap gap-1">
-                    <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-0 px-2 py-1">COMPLETED</Badge>
-                    <Badge
-                      className={cn(
-                        "text-[10px] border-0 px-2 py-1",
-                        result.outcome === "Approved"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : result.outcome === "Rejected"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-amber-100 text-amber-700"
-                      )}
-                    >
-                      {result.outcome.toUpperCase()}
-                    </Badge>
-                  </div>
-                ) : (
-                  <p className="text-[10.5px] text-muted-foreground">Run the simulation to see the decision.</p>
+            {/* Right — Decision, 5 cols. The single place the outcome is
+                shown — replaces the old Simulation Summary card + pinned
+                footer banner, which each repeated it separately. */}
+            <div className="col-span-12 lg:col-span-5">
+              <div
+                aria-live="polite"
+                className={cn(
+                  "h-full space-y-3 rounded-lg border p-4",
+                  result
+                    ? outcomeTone === "emerald"
+                      ? "bg-emerald-50 border-emerald-200"
+                      : outcomeTone === "red"
+                        ? "bg-red-50 border-red-200"
+                        : "bg-amber-50 border-amber-200"
+                    : "bg-card"
                 )}
-              </div>
-
-              {/* API Request */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold">API Request</h3>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    className="h-6 w-6"
-                    onClick={() => handleCopyJson(apiRequestJson, false)}
-                    title="Copy"
-                  >
-                    {copiedRequest ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
-                  </Button>
-                </div>
-                <div className="rounded-lg border bg-gray-900 p-2 font-mono text-[10px] text-gray-100 max-h-24 overflow-y-auto">
-                  <pre className="whitespace-pre-wrap">{apiRequestJson}</pre>
-                </div>
-              </div>
-
-              {/* Final Output (Response JSON) — always populated: the full
-                  contract shape (empty values) before a run, real values
-                  after, via sim.responseShape. Never gated on a run. */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold">Final Output (Response JSON)</h3>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    className="h-6 w-6"
-                    onClick={() => handleCopyJson(apiResponseJson, true)}
-                    title="Copy"
-                  >
-                    {copiedResponse ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
-                  </Button>
-                </div>
-                <div className="rounded-lg border bg-gray-900 p-2 font-mono text-[10px] text-gray-100 max-h-24 overflow-y-auto">
-                  <pre className="whitespace-pre-wrap">{apiResponseJson}</pre>
-                </div>
+              >
+                <h3 className="text-sm font-semibold">Decision</h3>
+                {result ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Check
+                        className={cn(
+                          "size-5 shrink-0",
+                          outcomeTone === "emerald" ? "text-emerald-600" : outcomeTone === "red" ? "text-red-600" : "text-amber-600"
+                        )}
+                      />
+                      <Badge
+                        className={cn(
+                          "text-[11px] border-0 px-2 py-1",
+                          outcomeTone === "emerald"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : outcomeTone === "red"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-amber-100 text-amber-700"
+                        )}
+                      >
+                        {result.outcome.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-foreground/80">{result.summary}</p>
+                    <div className="grid grid-cols-2 gap-2 border-t pt-2.5 text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Passed</span>
+                        <span className="font-medium text-emerald-600">{result.flatTrace.filter((t) => t.status === "Passed").length}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Failed</span>
+                        <span className="font-medium text-red-600">{result.flatTrace.filter((t) => t.status === "Failed").length}</span>
+                      </div>
+                    </div>
+                    <Button size="sm" className="w-full gap-1.5" onClick={handleDownloadReport}>
+                      <Download className="size-3.5" /> Download Full Report
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Run the simulation to see the decision here.</p>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Full Width Execution Plan Section */}
+          {/* Execution Plan — elevated above the fold, directly under Run,
+              now also carrying live pass/fail status once a result exists. */}
           <div className="space-y-2.5">
             <h3 className="text-sm font-semibold">Execution Plan (Rule Sequence)</h3>
             {executionPlan.length === 0 ? (
@@ -309,23 +380,29 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                {executionPlan.map((rule, idx) => (
-                  <div key={rule.id} className="flex flex-col items-center gap-1 p-2 border rounded-lg bg-card hover:bg-accent/50">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-                      {idx + 1}
+                {executionPlan.map((rule, idx) => {
+                  const step = result?.flatTrace.find((t) => t.ruleId === rule.id);
+                  return (
+                    <div key={rule.id} className="flex flex-col items-center gap-1 p-2 border rounded-lg bg-card hover:bg-accent/50">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                        {idx + 1}
+                      </div>
+                      <div className="text-center">
+                        <div className="text-[10px] font-medium">{rule.id}</div>
+                        <div className="text-[9px] text-muted-foreground leading-tight">{rule.name}</div>
+                        <div className="mt-0.5 flex flex-wrap items-center justify-center gap-1">
+                          {rule.ruleType && <Badge className="text-[8px] bg-blue-50 text-blue-700 border-0 px-1 py-0">{rule.ruleType}</Badge>}
+                          {step && <Badge className={cn("text-[8px] border-0 px-1 py-0", STATUS_STYLES[step.status])}>{step.status}</Badge>}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-[10px] font-medium">{rule.id}</div>
-                      <div className="text-[9px] text-muted-foreground leading-tight">{rule.name}</div>
-                      {rule.ruleType && <Badge className="mt-0.5 text-[8px] bg-blue-50 text-blue-700 border-0 px-1 py-0">{rule.ruleType}</Badge>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Full Width Simulation Timeline - Below Execution Plan */}
+          {/* Simulation Timeline — auto-expands once a run has happened */}
           {result && result.flatTrace.length > 0 && (
             <div className="space-y-2.5">
               <h3 className="text-sm font-semibold">Simulation Timeline</h3>
@@ -364,44 +441,57 @@ export function RunSimulatorRedesigned({ product, sim, products = [], onProductC
               </div>
             </div>
           )}
+
+          {/* Developer View — collapsed by default; raw request/response
+              payloads for technical audiences, demoted from top-level cards
+              that used to compete for attention with the Decision. */}
+          <Accordion>
+            <AccordionItem value="dev-view">
+              <AccordionTrigger className="text-sm font-semibold">Developer View — API Request &amp; Response</AccordionTrigger>
+              <AccordionContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold">API Request</h4>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        aria-label="Copy API request JSON"
+                        title="Copy"
+                        onClick={() => handleCopyJson(apiRequestJson, false)}
+                      >
+                        {copiedRequest ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                      </Button>
+                    </div>
+                    <div className="rounded-lg border bg-gray-900 p-2 font-mono text-[10px] text-gray-100 max-h-56 overflow-y-auto">
+                      <pre className="whitespace-pre-wrap">{apiRequestJson}</pre>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold">Final Output (Response JSON)</h4>
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        aria-label="Copy response JSON"
+                        title="Copy"
+                        onClick={() => handleCopyJson(apiResponseJson, true)}
+                      >
+                        {copiedResponse ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                      </Button>
+                    </div>
+                    <div className="rounded-lg border bg-gray-900 p-2 font-mono text-[10px] text-gray-100 max-h-56 overflow-y-auto">
+                      <pre className="whitespace-pre-wrap">{apiResponseJson}</pre>
+                    </div>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </ScrollArea>
-
-      {/* Success Message & Footer */}
-      <div className="border-t bg-card p-4 space-y-3">
-        {result && (
-          <div
-            className={cn(
-              "flex items-center gap-3 rounded-lg border px-4 py-3",
-              result.outcome === "Approved"
-                ? "bg-emerald-50 border-emerald-200"
-                : result.outcome === "Rejected"
-                  ? "bg-red-50 border-red-200"
-                  : "bg-amber-50 border-amber-200"
-            )}
-          >
-            <Check
-              className={cn(
-                "size-5 shrink-0",
-                result.outcome === "Approved"
-                  ? "text-emerald-600"
-                  : result.outcome === "Rejected"
-                    ? "text-red-600"
-                    : "text-amber-600"
-              )}
-            />
-            <div>
-              <p className="text-sm font-semibold">Simulation Completed — {result.outcome}</p>
-              <p className="text-xs text-muted-foreground">{result.summary}</p>
-            </div>
-          </div>
-        )}
-        <div className="flex gap-2 justify-end">
-          <Button size="sm" className="gap-1.5" disabled={!result}>
-            <Download className="size-3.5" /> Download Full Report
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
