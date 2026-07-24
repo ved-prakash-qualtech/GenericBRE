@@ -144,10 +144,10 @@ export function UserManager() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search users or roles..."
-              className="h-8 pl-8 text-xs"
+              className="h-9 pl-8 text-sm"
             />
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-medium text-muted-foreground">
             {filteredUsers.length} Users Configured
           </span>
         </div>
@@ -167,23 +167,23 @@ export function UserManager() {
             <div>
               <div className="flex items-start gap-2.5 justify-between">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary shadow-2xs">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary shadow-2xs">
                     {user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase() || "?"}
                   </span>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <p className="truncate text-xs font-semibold tracking-tight text-foreground">{user.name}</p>
+                      <p className="truncate text-sm font-semibold tracking-tight text-foreground">{user.name}</p>
                       <Badge
                         variant={user.status === "Active" ? "outline" : "secondary"}
                         className={cn(
-                          "shrink-0 text-[10px] py-0 h-4",
+                          "shrink-0 text-sm py-0 h-5",
                           user.status === "Active" && "border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
                         )}
                       >
                         {user.status}
                       </Badge>
                     </div>
-                    <p className="truncate text-[11px] font-medium text-muted-foreground">{user.role}</p>
+                    <p className="truncate text-sm font-medium text-muted-foreground">{user.role}</p>
                   </div>
                 </div>
 
@@ -203,7 +203,7 @@ export function UserManager() {
                 </div>
               </div>
 
-              <div className="mt-2.5 space-y-1 text-[11px] text-muted-foreground">
+              <div className="mt-2.5 space-y-1 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Mail className="size-3 shrink-0 text-muted-foreground/70" />
                   <span className="truncate">{user.email}</span>
@@ -217,13 +217,13 @@ export function UserManager() {
 
             <div className="mt-3.5 space-y-2 border-t pt-2.5">
               <div>
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Permissions</p>
+                <p className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Permissions</p>
                 <div className="max-h-[76px] overflow-y-auto pr-1 flex flex-wrap items-center gap-1.5 scrollbar-thin">
                   {user.permissions.length === 0 ? (
-                    <span className="text-[10px] text-muted-foreground/60 italic">None</span>
+                    <span className="text-sm text-muted-foreground/60 italic">None</span>
                   ) : (
                     user.permissions.map((c) => (
-                      <span key={c} className="rounded-md border border-border/80 bg-muted/60 px-2 py-0.5 text-xs font-mono font-medium text-foreground">
+                      <span key={c} className="rounded-md border border-border/80 bg-muted/60 px-2 py-0.5 text-sm font-mono font-medium text-foreground">
                         {capabilityLabel(c)}
                       </span>
                     ))
@@ -232,15 +232,15 @@ export function UserManager() {
               </div>
 
               <div>
-                <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="mb-1 flex items-center gap-1 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   <ShieldCheck className="size-3 text-amber-500" /> Approvals
                 </p>
                 <div className="flex flex-wrap items-center gap-1">
                   {user.approvalCategories.length === 0 ? (
-                    <span className="text-[10px] text-muted-foreground/60 italic">None assigned</span>
+                    <span className="text-sm text-muted-foreground/60 italic">None assigned</span>
                   ) : (
                     user.approvalCategories.map((cat) => (
-                      <span key={cat} className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                      <span key={cat} className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-sm font-medium text-amber-700 dark:text-amber-400">
                         {cat}
                       </span>
                     ))
@@ -254,7 +254,7 @@ export function UserManager() {
           <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
             <ShieldCheck className="size-8 text-muted-foreground/50 mb-2" />
             <p className="text-sm font-medium text-foreground">No users found</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {search ? "No users match your search filter." : "No users configured yet."}
             </p>
           </div>

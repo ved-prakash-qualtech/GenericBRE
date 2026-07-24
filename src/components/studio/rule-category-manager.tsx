@@ -126,10 +126,10 @@ export function RuleCategoryManager() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search categories..."
-              className="h-8 pl-8 text-xs"
+              className="h-9 pl-8 text-sm"
             />
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-medium text-muted-foreground">
             {filteredCategories.length} Categories · {rules.length} Rules
           </span>
         </div>
@@ -166,13 +166,13 @@ export function RuleCategoryManager() {
                       <Tag className="size-3.5" />
                     </span>
                     <div>
-                      <p className="font-semibold text-xs tracking-tight text-foreground">{cat.name}</p>
+                      <p className="font-semibold text-sm tracking-tight text-foreground">{cat.name}</p>
                       {cat.industry ? (
-                        <Badge variant="outline" className="mt-0.5 text-[10px] py-0 h-4">
+                        <Badge variant="outline" className="mt-0.5 text-sm py-0 h-5">
                           {industries.find((i) => i.id === cat.industry)?.name ?? cat.industry}
                         </Badge>
                       ) : (
-                        <span className="text-[10px] font-medium text-muted-foreground/70">Shared Domain</span>
+                        <span className="text-sm font-medium text-muted-foreground/70">Shared Domain</span>
                       )}
                     </div>
                   </div>
@@ -193,16 +193,16 @@ export function RuleCategoryManager() {
                   </div>
                 </div>
 
-                <p className="mt-2 line-clamp-2 text-[11px] text-muted-foreground leading-snug">
+                <p className="mt-2 line-clamp-2 text-sm text-muted-foreground leading-snug">
                   {desc}
                 </p>
               </div>
 
               <div className="mt-2.5 flex items-center justify-between border-t pt-2">
-                <span className={cn("rounded-md px-2 py-0.5 text-[10px] font-medium border border-transparent", accent.bg, accent.text)}>
+                <span className={cn("rounded-md px-2 py-0.5 text-sm font-medium border border-transparent", accent.bg, accent.text)}>
                   {count} rule{count === 1 ? "" : "s"} tagged
                 </span>
-                <span className="text-[10px] font-mono text-muted-foreground/60">{cat.id}</span>
+                <span className="text-sm font-mono text-muted-foreground/60">{cat.id}</span>
               </div>
             </div>
           );
@@ -212,7 +212,7 @@ export function RuleCategoryManager() {
           <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
             <FolderGit2 className="size-8 text-muted-foreground/50 mb-2" />
             <p className="text-sm font-medium text-foreground">No categories found</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {search ? "No categories match your search term." : "No categories configured yet."}
             </p>
           </div>
@@ -227,22 +227,22 @@ export function RuleCategoryManager() {
           </DialogHeader>
           <div className="space-y-3 py-1">
             <div className="space-y-1.5">
-              <Label className="text-xs">Category Name *</Label>
+              <Label className="text-sm">Category Name *</Label>
               <Input
                 value={draft.name}
                 onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
                 placeholder="e.g. Eligibility, Pricing, Compliance..."
-                className="text-xs"
+                className="text-sm"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Domain</Label>
+              <Label className="text-sm">Domain</Label>
               <Select
                 items={{ "": "Shared across all domains", ...Object.fromEntries(industries.map((i) => [i.id, i.name])) }}
                 value={draft.industry ?? ""}
                 onValueChange={(v) => setDraft((d) => ({ ...d, industry: v ? (v as string) : undefined }))}
               >
-                <SelectTrigger className="w-full text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Shared across all domains</SelectItem>
                   {industries.map((i) => (
@@ -252,12 +252,12 @@ export function RuleCategoryManager() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Description</Label>
+              <Label className="text-sm">Description</Label>
               <Textarea
                 value={draft.description ?? ""}
                 onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
                 placeholder="What kind of rules belong in this category..."
-                className="min-h-20 text-xs"
+                className="min-h-20 text-sm"
               />
             </div>
           </div>
@@ -273,7 +273,7 @@ export function RuleCategoryManager() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove &quot;{pendingDelete?.name}&quot;?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs leading-relaxed">
+            <AlertDialogDescription className="text-sm leading-relaxed">
               Existing rules already tagged with this category keep their reference, but it will no longer appear as a
               selectable option in Rule Builder or Repository filters.
             </AlertDialogDescription>

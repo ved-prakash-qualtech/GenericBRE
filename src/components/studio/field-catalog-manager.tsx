@@ -220,7 +220,7 @@ export function FieldCatalogManager() {
               placeholder="Search by label, key or business name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 pl-8 text-xs bg-background"
+              className="h-9 pl-8 text-sm bg-background"
             />
           </div>
           <MultiSelect
@@ -228,27 +228,27 @@ export function FieldCatalogManager() {
             options={industries.map((i) => ({ value: i.id, label: i.name }))}
             selected={industryFilters}
             onChange={setIndustryFilters}
-            className="h-8 text-xs"
+            className="h-9 text-sm"
           />
           <MultiSelect
             label="Type"
             options={FIELD_TYPES.map((t) => ({ value: t, label: t }))}
             selected={typeFilters}
             onChange={setTypeFilters}
-            className="h-8 text-xs"
+            className="h-9 text-sm"
           />
           <MultiSelect
             label="Status"
             options={STATUSES.map((s) => ({ value: s, label: s }))}
             selected={statusFilters}
             onChange={setStatusFilters}
-            className="h-8 text-xs"
+            className="h-9 text-sm"
           />
           {(search !== "" || industryFilters.length > 0 || typeFilters.length > 0 || statusFilters.length > 0) && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 text-xs text-muted-foreground hover:text-foreground"
+              className="h-9 text-sm text-muted-foreground hover:text-foreground"
               onClick={() => {
                 setSearch("");
                 setIndustryFilters([]);
@@ -273,13 +273,13 @@ export function FieldCatalogManager() {
               e.target.value = "";
             }}
           />
-          <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs text-xs" onClick={() => importRef.current?.click()}>
+          <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs text-sm" onClick={() => importRef.current?.click()}>
             <Upload className="size-3.5" /> Import
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs text-xs" onClick={exportCsv}>
+          <Button variant="outline" size="sm" className="gap-1.5 shadow-2xs text-sm" onClick={exportCsv}>
             <Download className="size-3.5" /> Export
           </Button>
-          <Button size="sm" className="gap-1.5 shadow-xs font-medium text-xs" onClick={startCreate}>
+          <Button size="sm" className="gap-1.5 shadow-xs font-medium text-sm" onClick={startCreate}>
             <Plus className="size-3.5" /> Add Field
           </Button>
         </div>
@@ -290,11 +290,11 @@ export function FieldCatalogManager() {
         <Table>
           <TableHeader className="bg-card/95 border-b">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="text-xs font-semibold text-foreground">Label & Key</TableHead>
-              <TableHead className="text-xs font-semibold text-foreground">Type & Entity</TableHead>
-              <TableHead className="text-xs font-semibold text-foreground">Status</TableHead>
-              <TableHead className="text-xs font-semibold text-foreground">Used By</TableHead>
-              <TableHead className="w-20 text-right text-xs font-semibold text-foreground">Actions</TableHead>
+              <TableHead className="text-sm font-semibold text-foreground">Label & Key</TableHead>
+              <TableHead className="text-sm font-semibold text-foreground">Type & Entity</TableHead>
+              <TableHead className="text-sm font-semibold text-foreground">Status</TableHead>
+              <TableHead className="text-sm font-semibold text-foreground">Used By</TableHead>
+              <TableHead className="w-20 text-right text-sm font-semibold text-foreground">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -306,46 +306,46 @@ export function FieldCatalogManager() {
                 <TableRow key={f.key} className="hover:bg-accent/40 transition-colors">
                   <TableCell className="py-2.5">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-semibold text-xs text-foreground tracking-tight">{f.label}</span>
+                      <span className="font-semibold text-sm text-foreground tracking-tight">{f.label}</span>
                       {f.computed && (
-                        <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-mono">
+                        <Badge variant="secondary" className="px-1.5 py-0 text-sm font-mono">
                           computed
                         </Badge>
                       )}
                     </div>
-                    <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{f.key}</p>
-                    {f.businessName && <p className="text-[10px] text-muted-foreground/70">{f.businessName}</p>}
+                    <p className="mt-0.5 font-mono text-sm text-muted-foreground">{f.key}</p>
+                    {f.businessName && <p className="text-sm text-muted-foreground/70">{f.businessName}</p>}
                   </TableCell>
                   <TableCell className="py-2.5">
                     <div className="flex items-center gap-1.5">
-                      <Badge variant="outline" className="px-1.5 py-0.5 text-[10px] font-mono bg-muted/30">
+                      <Badge variant="outline" className="px-1.5 py-0.5 text-sm font-mono bg-muted/30">
                         {f.type}
                       </Badge>
                       {entityName && (
-                        <span className="text-[10px] text-muted-foreground">· {entityName}</span>
+                        <span className="text-sm text-muted-foreground">· {entityName}</span>
                       )}
                     </div>
                   </TableCell>
                   <TableCell className="py-2.5">
-                    <span className={`inline-flex items-center gap-1 text-xs font-medium ${STATUS_TONE[f.status ?? "Active"]}`}>
+                    <span className={`inline-flex items-center gap-1 text-sm font-medium ${STATUS_TONE[f.status ?? "Active"]}`}>
                       <span className="size-1.5 rounded-full bg-current" />
                       {f.status ?? "Active"}
                     </span>
                   </TableCell>
                   <TableCell className="py-2.5">
                     {usage.count === 0 ? (
-                      <span className="text-xs text-muted-foreground/60 italic">Unused</span>
+                      <span className="text-sm text-muted-foreground/60 italic">Unused</span>
                     ) : (
                       <Popover>
                         <PopoverTrigger
                           render={
-                            <button className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                            <button className="flex items-center gap-1 text-sm font-medium text-primary hover:underline">
                               <Link2 className="size-3" /> {usage.count} rule{usage.count === 1 ? "" : "s"}
                             </button>
                           }
                         />
                         <PopoverContent className="w-56 p-2">
-                          <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Where used</p>
+                          <p className="mb-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Where used</p>
                           <div className="flex flex-col gap-0.5">
                             {usage.ruleIds.slice(0, 8).map((id) => {
                               const rule = rules.find((r) => r.id === id);
@@ -353,14 +353,14 @@ export function FieldCatalogManager() {
                                 <Link
                                   key={id}
                                   href={`/repository?search=${id}`}
-                                  className="truncate rounded-md px-1.5 py-1 text-xs hover:bg-muted"
+                                  className="truncate rounded-md px-1.5 py-1 text-sm hover:bg-muted"
                                 >
-                                  <span className="font-mono text-[10px] text-muted-foreground">{id}</span> {rule?.name}
+                                  <span className="font-mono text-sm text-muted-foreground">{id}</span> {rule?.name}
                                 </Link>
                               );
                             })}
                             {usage.count > 8 && (
-                              <p className="px-1.5 py-1 text-[10px] text-muted-foreground">+{usage.count - 8} more</p>
+                              <p className="px-1.5 py-1 text-sm text-muted-foreground">+{usage.count - 8} more</p>
                             )}
                           </div>
                         </PopoverContent>
@@ -388,7 +388,7 @@ export function FieldCatalogManager() {
             })}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="py-8 text-center text-xs text-muted-foreground">
+                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
                   No fields match the current filters.
                 </TableCell>
               </TableRow>
@@ -397,7 +397,7 @@ export function FieldCatalogManager() {
         </Table>
 
         {/* Pagination Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-3.5 py-2 text-xs text-muted-foreground bg-muted/20">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t px-3.5 py-2 text-sm text-muted-foreground bg-muted/20">
           <div>
             Showing <span className="font-semibold text-foreground">{filtered.length > 0 ? (safePage - 1) * PAGE_SIZE + 1 : 0}</span> to{" "}
             <span className="font-semibold text-foreground">{Math.min(safePage * PAGE_SIZE, filtered.length)}</span> of{" "}
@@ -429,7 +429,7 @@ export function FieldCatalogManager() {
               >
                 <ChevronLeft className="size-3.5" />
               </Button>
-              <span className="px-2 text-xs font-medium text-foreground">
+              <span className="px-2 text-sm font-medium text-foreground">
                 Page {safePage} of {totalPages}
               </span>
               <Button

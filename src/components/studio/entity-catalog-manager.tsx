@@ -113,10 +113,10 @@ export function EntityCatalogManager() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search entities..."
-              className="h-8 pl-8 text-xs"
+              className="h-9 pl-8 text-sm"
             />
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-medium text-muted-foreground">
             {filteredEntities.length} Entities · {fieldCatalog.length} Fields Total
           </span>
         </div>
@@ -152,13 +152,13 @@ export function EntityCatalogManager() {
                       <Boxes className="size-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold tracking-tight text-foreground">{ent.name}</p>
+                      <p className="truncate text-sm font-semibold tracking-tight text-foreground">{ent.name}</p>
                       {ent.industry ? (
-                        <Badge variant="outline" className="mt-0.5 text-[10px] py-0 h-4">
+                        <Badge variant="outline" className="mt-0.5 text-sm py-0 h-5">
                           {industries.find((i) => i.id === ent.industry)?.name ?? ent.industry}
                         </Badge>
                       ) : (
-                        <span className="text-[10px] font-medium text-muted-foreground/70">Shared Domain</span>
+                        <span className="text-sm font-medium text-muted-foreground/70">Shared Domain</span>
                       )}
                     </div>
                   </div>
@@ -179,32 +179,32 @@ export function EntityCatalogManager() {
                   </div>
                 </div>
 
-                <p className="mt-2.5 line-clamp-2 text-[11px] text-muted-foreground leading-relaxed">
+                <p className="mt-2.5 line-clamp-2 text-sm text-muted-foreground leading-relaxed">
                   {ent.description || "No description provided"}
                 </p>
               </div>
 
               <div className="mt-3.5 space-y-2 border-t pt-2.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className={cn("rounded-md px-2 py-0.5 text-[10px] font-medium border border-transparent", accent.bg, accent.text)}>
+                <div className="flex items-center justify-between text-sm">
+                  <span className={cn("rounded-md px-2 py-0.5 text-sm font-medium border border-transparent", accent.bg, accent.text)}>
                     {count} field{count === 1 ? "" : "s"} attached
                   </span>
-                  <span className="text-[10px] font-mono text-muted-foreground/60">{ent.id}</span>
+                  <span className="text-sm font-mono text-muted-foreground/60">{ent.id}</span>
                 </div>
 
                 {count > 0 ? (
                   <div className="flex flex-wrap items-center gap-1">
                     {fields.slice(0, 3).map((f) => (
-                      <span key={f.key} className="rounded-md border bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                      <span key={f.key} className="rounded-md border bg-muted/50 px-1.5 py-0.5 text-sm text-muted-foreground">
                         {f.label}
                       </span>
                     ))}
                     {count > 3 && (
-                      <span className="text-[10px] font-medium text-muted-foreground/70">+{count - 3} more</span>
+                      <span className="text-sm font-medium text-muted-foreground/70">+{count - 3} more</span>
                     )}
                   </div>
                 ) : (
-                  <p className="text-[10px] text-muted-foreground/60 italic">
+                  <p className="text-sm text-muted-foreground/60 italic">
                     No fields tagged yet — assign in Field Catalog.
                   </p>
                 )}
@@ -216,7 +216,7 @@ export function EntityCatalogManager() {
           <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
             <Boxes className="size-8 text-muted-foreground/50 mb-2" />
             <p className="text-sm font-medium text-foreground">No entities found</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {search ? "No entities match your search term." : "No entities configured yet."}
             </p>
           </div>
@@ -230,21 +230,21 @@ export function EntityCatalogManager() {
           </DialogHeader>
           <div className="space-y-3 py-1">
             <div className="space-y-1.5">
-              <Label className="text-xs">Entity Name *</Label>
+              <Label className="text-sm">Entity Name *</Label>
               <Input
                 value={draft.name}
                 onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
                 placeholder="e.g. Applicant, Loan Account, Collateral..."
-                className="text-xs"
+                className="text-sm"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Domain</Label>
+              <Label className="text-sm">Domain</Label>
               <Select
                 value={draft.industry ?? ""}
                 onValueChange={(v) => setDraft((d) => ({ ...d, industry: v ? (v as string) : undefined }))}
               >
-                <SelectTrigger className="w-full text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Shared across all domains</SelectItem>
                   {industries.map((i) => (
@@ -254,12 +254,12 @@ export function EntityCatalogManager() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Description</Label>
+              <Label className="text-sm">Description</Label>
               <Textarea
                 value={draft.description ?? ""}
                 onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
                 placeholder="What this entity represents..."
-                className="min-h-20 text-xs"
+                className="min-h-20 text-sm"
               />
             </div>
           </div>
@@ -274,7 +274,7 @@ export function EntityCatalogManager() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove &quot;{pendingDelete?.name}&quot;?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs leading-relaxed">
+            <AlertDialogDescription className="text-sm leading-relaxed">
               Field Catalog entries currently assigned to this entity will revert to unassigned, but their field
               definitions will remain intact.
             </AlertDialogDescription>

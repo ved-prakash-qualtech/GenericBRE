@@ -119,10 +119,10 @@ export function RolesManager() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search roles or personas..."
-              className="h-8 pl-8 text-xs"
+              className="h-9 pl-8 text-sm"
             />
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-medium text-muted-foreground">
             {filteredRoles.length} Roles Configured
           </span>
         </div>
@@ -148,8 +148,8 @@ export function RolesManager() {
                       <Icon className="size-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold tracking-tight text-foreground">{role.personaName}</p>
-                      <p className="truncate text-[11px] font-medium text-muted-foreground">{role.name}</p>
+                      <p className="truncate text-sm font-semibold tracking-tight text-foreground">{role.personaName}</p>
+                      <p className="truncate text-sm font-medium text-muted-foreground">{role.name}</p>
                     </div>
                   </div>
 
@@ -171,17 +171,17 @@ export function RolesManager() {
               </div>
 
               <div className="mt-3.5 space-y-2 border-t pt-2.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
                     <ShieldCheck className="size-3 text-primary" />
                     {role.capabilities.length} capabilit{role.capabilities.length === 1 ? "y" : "ies"}
                   </span>
-                  <span className="text-[10px] font-mono text-muted-foreground/60">{role.id}</span>
+                  <span className="text-sm font-mono text-muted-foreground/60">{role.id}</span>
                 </div>
 
                 <div className="max-h-[76px] overflow-y-auto pr-1 flex flex-wrap items-center gap-1.5 scrollbar-thin">
                   {role.capabilities.map((c) => (
-                    <span key={c} className="rounded-md border border-border/80 bg-muted/60 px-2 py-0.5 text-xs font-mono font-medium text-foreground">
+                    <span key={c} className="rounded-md border border-border/80 bg-muted/60 px-2 py-0.5 text-sm font-mono font-medium text-foreground">
                       {capabilityLabel(c)}
                     </span>
                   ))}
@@ -194,7 +194,7 @@ export function RolesManager() {
           <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
             <ShieldCheck className="size-8 text-muted-foreground/50 mb-2" />
             <p className="text-sm font-medium text-foreground">No roles found</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {search ? "No roles match your search filter." : "No roles configured yet."}
             </p>
           </div>
@@ -210,28 +210,28 @@ export function RolesManager() {
           <div className="space-y-3 py-1">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">Role Title *</Label>
+                <Label className="text-sm">Role Title *</Label>
                 <Input
                   value={draft.name}
                   onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
                   placeholder="e.g. Compliance Officer"
-                  className="text-xs"
+                  className="text-sm"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Persona Name *</Label>
+                <Label className="text-sm">Persona Name *</Label>
                 <Input
                   value={draft.personaName}
                   onChange={(e) => setDraft((d) => ({ ...d, personaName: e.target.value }))}
                   placeholder="e.g. Neha Kapoor"
-                  className="text-xs"
+                  className="text-sm"
                 />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Icon</Label>
+              <Label className="text-sm">Icon</Label>
               <Select value={draft.icon} onValueChange={(v) => setDraft((d) => ({ ...d, icon: v ?? "Briefcase" }))}>
-                <SelectTrigger className="w-full text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {ROLE_ICON_OPTIONS.map((name) => (
                     <SelectItem key={name} value={name}>{name}</SelectItem>
@@ -240,10 +240,10 @@ export function RolesManager() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Capabilities</Label>
+              <Label className="text-sm">Capabilities</Label>
               <div className="grid grid-cols-2 gap-2 rounded-lg border bg-muted/20 p-2.5 max-h-48 overflow-y-auto">
                 {ALL_CAPABILITIES.map((cap) => (
-                  <label key={cap} className="flex items-center gap-2 text-xs font-normal text-foreground cursor-pointer">
+                  <label key={cap} className="flex items-center gap-2 text-sm font-normal text-foreground cursor-pointer">
                     <Checkbox checked={draft.capabilities.includes(cap)} onCheckedChange={() => toggleCapability(cap)} />
                     {capabilityLabel(cap)}
                   </label>
@@ -263,7 +263,7 @@ export function RolesManager() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove &quot;{pendingDelete?.name}&quot;?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs leading-relaxed">
+            <AlertDialogDescription className="text-sm leading-relaxed">
               It will no longer appear on the Demo Mode role picker or as a selectable role anywhere in the app.
             </AlertDialogDescription>
           </AlertDialogHeader>
