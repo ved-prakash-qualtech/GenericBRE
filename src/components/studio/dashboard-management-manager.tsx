@@ -1,6 +1,8 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Search, LayoutDashboard } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { DashboardConfig } from "@/lib/types";
 import { WIDGET_LABELS } from "@/components/dashboard/manage-widgets-sheet";
@@ -9,7 +11,9 @@ import { KPI_LABELS, DEFAULT_KPI_IDS } from "@/components/dashboard/kpi-cards";
 import { ACTION_LABELS, DEFAULT_ACTION_IDS } from "@/components/dashboard/quick-actions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { iconForRole } from "@/lib/role-icons";
+import { cn } from "@/lib/utils";
 
 const LANDING_ROUTES: { value: string; label: string }[] = [
   { value: "/dashboard", label: "Dashboard" },
@@ -23,6 +27,18 @@ const LANDING_ROUTES: { value: string; label: string }[] = [
 const ALL_WIDGET_IDS = Object.keys(WIDGET_LABELS);
 const ALL_KPI_IDS = Object.keys(KPI_LABELS);
 const ALL_ACTION_IDS = Object.keys(ACTION_LABELS);
+
+// Cycled by card position (not tied to a fixed role id) so every role —
+// including custom ones added later in Roles Manager — gets a distinct,
+// consistent accent for quick visual scanning across the grid.
+const ROLE_ACCENT_PALETTE: { bg: string; text: string; border: string }[] = [
+  { bg: "bg-blue-500/10 dark:bg-blue-500/20", text: "text-blue-600 dark:text-blue-400", border: "hover:border-blue-500/40" },
+  { bg: "bg-emerald-500/10 dark:bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400", border: "hover:border-emerald-500/40" },
+  { bg: "bg-violet-500/10 dark:bg-violet-500/20", text: "text-violet-600 dark:text-violet-400", border: "hover:border-violet-500/40" },
+  { bg: "bg-amber-500/10 dark:bg-amber-500/20", text: "text-amber-600 dark:text-amber-400", border: "hover:border-amber-500/40" },
+  { bg: "bg-sky-500/10 dark:bg-sky-500/20", text: "text-sky-600 dark:text-sky-400", border: "hover:border-sky-500/40" },
+  { bg: "bg-orange-500/10 dark:bg-orange-500/20", text: "text-orange-600 dark:text-orange-400", border: "hover:border-orange-500/40" },
+];
 
 function CheckboxPicker({
   allIds,
@@ -38,9 +54,12 @@ function CheckboxPicker({
   return (
     <div className="grid grid-cols-2 gap-1.5">
       {allIds.map((id) => (
-        <label key={id} className="flex items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted">
+        <label
+          key={id}
+          className="flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-sm text-foreground transition-colors hover:border-border/60 hover:bg-muted/50"
+        >
           <Checkbox checked={selected.includes(id)} onCheckedChange={() => onToggle(id)} />
-          {labels[id] ?? id}
+          <span className="truncate">{labels[id] ?? id}</span>
         </label>
       ))}
     </div>
@@ -51,6 +70,15 @@ export function DashboardManagementManager() {
   const roles = useAppStore((s) => s.roles);
   const dashboardConfigs = useAppStore((s) => s.dashboardConfigs);
   const setDashboardConfig = useAppStore((s) => s.setDashboardConfig);
+  const [search, setSearch] = useState("");
+
+  const filteredRoles = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return roles;
+    return roles.filter(
+      (r) => r.name.toLowerCase().includes(q) || r.personaName.toLowerCase().includes(q) || r.id.toLowerCase().includes(q)
+    );
+  }, [roles, search]);
 
   const configFor = (roleId: string): DashboardConfig =>
     dashboardConfigs[roleId] ?? {
@@ -67,12 +95,30 @@ export function DashboardManagementManager() {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      {/* Top Toolbar */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="relative w-64">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search role configurations..."
+              className="h-8 pl-8 text-sm"
+            />
+          </div>
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-medium text-muted-foreground">
+            {filteredRoles.length} Role Layouts
+          </span>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {roles.map((role) => {
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {filteredRoles.map((role, idx) => {
           const config = configFor(role.id);
           const Icon = iconForRole(role.icon);
+          const accent = ROLE_ACCENT_PALETTE[idx % ROLE_ACCENT_PALETTE.length];
 
           const setLandingRoute = (route: string) => updateConfig(role.id, { landingRoute: route });
           const reorder = (widgets: DashboardConfig["widgets"]) => updateConfig(role.id, { widgets });
@@ -90,21 +136,27 @@ export function DashboardManagementManager() {
             updateConfig(role.id, { quickActions: actions.includes(id) ? actions.filter((a) => a !== id) : [...actions, id] });
 
           return (
-            <div key={role.id} className="space-y-3 rounded-xl border bg-card p-3.5">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Icon className="size-4" />
+            <div
+              key={role.id}
+              className={cn(
+                "space-y-4 rounded-xl border bg-card p-4 shadow-2xs transition-all duration-150 hover:shadow-xs",
+                accent.border
+              )}
+            >
+              <div className="flex items-center gap-3 border-b pb-3">
+                <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg shadow-2xs", accent.bg, accent.text)}>
+                  <Icon className="size-4.5" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{role.name}</p>
-                  <p className="truncate text-sm text-muted-foreground">{role.personaName}</p>
+                  <p className="truncate text-sm font-semibold tracking-tight text-foreground">{role.name}</p>
+                  <p className="truncate text-sm font-medium text-muted-foreground">{role.personaName}</p>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-muted-foreground">Landing Route</label>
+                <label className="text-sm font-semibold text-foreground">Landing Route</label>
                 <Select value={config.landingRoute} onValueChange={(v) => setLandingRoute((v as string) ?? "/dashboard")}>
-                  <SelectTrigger size="sm" className="h-8 w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full text-sm bg-background"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {LANDING_ROUTES.map((r) => (
                       <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
@@ -114,17 +166,17 @@ export function DashboardManagementManager() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-muted-foreground">KPI Cards</label>
+                <label className="text-sm font-semibold text-foreground">KPI Cards</label>
                 <CheckboxPicker allIds={ALL_KPI_IDS} labels={KPI_LABELS} selected={kpis} onToggle={toggleKpi} />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-muted-foreground">Quick Actions</label>
+                <label className="text-sm font-semibold text-foreground">Quick Actions</label>
                 <CheckboxPicker allIds={ALL_ACTION_IDS} labels={ACTION_LABELS} selected={actions} onToggle={toggleAction} />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-muted-foreground">Default Widgets</label>
+              <div className="space-y-1.5 border-t pt-3">
+                <label className="text-sm font-semibold text-foreground">Default Widgets</label>
                 <div className="max-h-72 overflow-y-auto pr-1">
                   <WidgetReorderList items={config.widgets} labels={WIDGET_LABELS} onReorder={reorder} onToggleVisible={toggleVisible} />
                 </div>
@@ -132,6 +184,13 @@ export function DashboardManagementManager() {
             </div>
           );
         })}
+        {filteredRoles.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-dashed p-8 text-center">
+            <LayoutDashboard className="size-8 text-muted-foreground/50 mb-2" />
+            <p className="text-sm font-medium text-foreground">No role configurations found</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">No roles match your search filter.</p>
+          </div>
+        )}
       </div>
     </div>
   );
